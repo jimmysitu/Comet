@@ -2,6 +2,7 @@
 #define CACHE_H
 
 #include "portability.h"
+#include "controller.h"
 
 #define RP_NONE                     0
 #define RP_FIFO                     1

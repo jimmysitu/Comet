@@ -257,6 +257,9 @@ void DC(Core& core
     else if(core.ctrl.prev_opCode[1] == RISCV_LD && (core.ctrl.prev_rds[1] == rs1
             || core.ctrl.prev_rds[1] == rs2))
     {
+        // i think this is useless because now that we use cache
+        // cachelock prevents core from going forward
+
         /// duplicate instruction to remove freeze fetch
         /// and the dependency from dc to ft
         /// but how to handle it?
