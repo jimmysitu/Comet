@@ -1,7 +1,7 @@
 #include "controller.h"
 
 void controller(unsigned int memory[DRAM_SIZE],
-                ac_int<32, false> iaddress, ac_int<32, false> daddress, ac_int<32, false>& address,
+                ac_int<32, false> iaddress, ac_int<32, false> daddress,
                 unsigned int& memdatum, unsigned int coredatum,
                 bool ienable, bool denable, bool writeenable,
                 bool& idatumvalid, bool& ddatumvalid
@@ -12,26 +12,33 @@ void controller(unsigned int memory[DRAM_SIZE],
 {
     if(ienable)
     {
-        memdatum = memory[iaddress];
+        memdatum = memory[iaddress >> 2];
+        simul(cycles += MEMORY_READ_LATENCY;)
         idatumvalid = true;
         ddatumvalid = false;
-        address = iaddress;
     }
     else if(denable)
     {
+        if(daddress == 0x223a0)
+            gdebug("test\n");
         if(writeenable)
-            memory[daddress] = coredatum;
+        {
+            memory[daddress >> 2] = coredatum;
+            simul(cycles += MEMORY_WRITE_LATENCY;)
+        }
         else
-            memdatum = memory[daddress];
+        {
+            memdatum = memory[daddress >> 2];
+            simul(cycles += MEMORY_READ_LATENCY;)
+        }
 
         idatumvalid = false;
         ddatumvalid = true;
-        address = daddress;
     }
     else
     {
         idatumvalid = false;
         ddatumvalid = false;
-        address = 0;
+        memdatum = 0;
     }
 }

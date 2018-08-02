@@ -23,7 +23,7 @@ const ac_int<32, false> CSR::marchid = 0;
 //template<unsigned int hartid>
 const ac_int<32, false> CSR::mimpid = 0;
 
-void Ft(Core& core, unsigned int im[DRAM_SIZE]
+void Ft(Core& core, unsigned int memory[DRAM_SIZE]
     #ifndef __HLS__
         , ac_int<64, false>& cycles
     #endif
@@ -106,7 +106,7 @@ void Ft(Core& core, unsigned int im[DRAM_SIZE]
 #else
     if(!core.ctrl.freeze_fetch)
     {
-        core.ftoDC.instruction = im[core.pc/4];
+        core.ftoDC.instruction = memory[core.pc/4];
         simul(cycles += MEMORY_READ_LATENCY);
         core.ftoDC.pc = core.pc;
         core.ftoDC.realInstruction = true;
@@ -167,7 +167,7 @@ void Ft(Core& core, unsigned int im[DRAM_SIZE]
     {
         coredebug("Ft   \n");
     })
-    gdebug("i @%06x   %08x\n", core.pc.to_int(), im[core.pc/4]);
+    gdebug("i @%06x   %08x\n", core.pc.to_int(), memory[core.pc/4]);
 #endif
 }
 
@@ -876,7 +876,7 @@ void Ex(Core& core
     })
 }
 
-void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
+void do_Mem(Core& core, unsigned int memory[DRAM_SIZE]
             #ifndef __HLS__
                 , ac_int<64, false>& cycles
             #endif
@@ -905,7 +905,7 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
             core.memtoWB.realInstruction = false;
         }
 #else
-        data_memory[core.daddress >> 2] = core.dctrl.valuetowrite;
+        memory[core.daddress >> 2] = core.dctrl.valuetowrite;
         core.ctrl.cachelock = false;
 
         core.memtoWB.realInstruction = core.extoMem.realInstruction;
@@ -949,14 +949,14 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
             core.memtoWB.instruction = core.extoMem.instruction;)
             core.memtoWB.rd = core.extoMem.rd;
 
-            ac_int<32, false> mem_read = data_memory[core.extoMem.result >> 2];
+            ac_int<32, false> mem_read = memory[core.extoMem.result >> 2];
             simul(cycles += MEMORY_READ_LATENCY;)
             formatread(core.extoMem.result, core.datasize, core.signenable, mem_read);
             core.memtoWB.result = mem_read;
 
             // data                                             size                @address
             coredebug("dR%d  @%06x   %08x   %08x   %s\n", core.datasize.to_int(), core.extoMem.result.to_int(),
-                      data_memory[core.extoMem.result >> 2], mem_read.to_int(), core.signenable?"true":"false");
+                      memory[core.extoMem.result >> 2], mem_read.to_int(), core.signenable?"true":"false");
                    // what is in memory                  what is actually read    sign extension
 #endif
             simul(if(core.extoMem.result >= 0x11040 && core.extoMem.result < 0x11048)
@@ -993,7 +993,7 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
 
-            ac_int<32, false> memory_val = data_memory[core.extoMem.result >> 2];
+            ac_int<32, false> memory_val = memory[core.extoMem.result >> 2];
             simul(cycles += MEMORY_READ_LATENCY;)
             formatwrite(core.extoMem.result, core.datasize, memory_val, core.extoMem.datac);
 
@@ -1002,7 +1002,7 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
 
             // data                                         size                    @address
             coredebug("dW%d  @%06x   %08x   %08x   %08x\n", core.datasize.to_int(), core.extoMem.result.to_int(),
-                      data_memory[core.extoMem.result >> 2], core.extoMem.datac.to_int(), memory_val.to_int());
+                      memory[core.extoMem.result >> 2], core.extoMem.datac.to_int(), memory_val.to_int());
                    // what was there before                 what we want to write       what is actually written
 
             core.ctrl.cachelock = true;     // we need one more cycle to write the formatted data
@@ -1175,7 +1175,7 @@ void coreinit(Core& core, ac_int<32, false> startpc)
 
 template<unsigned int hartid>
 void doCore(ac_int<32, false> startpc, bool &exit,
-            unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
+            unsigned int memory[DRAM_SIZE],
             unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
             ac_int<128, false> memictrl[Sets], ac_int<128, false> memdctrl[Sets]
         #ifndef __HLS__
@@ -1204,7 +1204,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
     }
     coredebug("\n");)
 
-    do_Mem(core , dm
+    do_Mem(core , memory
        #ifndef __HLS__
            , core.csrs.mcycle
        #endif
@@ -1222,7 +1222,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
                    , exit
     #endif
                    );
-        Ft(core, im
+        Ft(core, memory
    #ifndef __HLS__
           , core.csrs.mcycle
    #endif
@@ -1261,19 +1261,27 @@ void doCore(ac_int<32, false> startpc, bool &exit,
     // cache should maybe be all the way up or down
     // cache down generates less hardware and is less cycle costly(20%?)
     // but cache up has a slightly better critical path
-    dcache(core.dctrl, memdctrl, dm, cdm, core.daddress, core.datasize, core.signenable, core.dcacheenable,
-           core.writeenable, core.writevalue, core.readvalue, core.datavalid
+    dcache(core.dctrl, memdctrl, cdm, core.daddress, core.datasize, core.signenable, core.dcacheenable,
+           core.writeenable, core.writevalue, core.readvalue, core.datavalid,
+           core.daddresstoc, core.denabletoc, core.dwritetoc, core.dwriteenabletoc, core.datum, core.ddatumvalid
        #ifndef __HLS__
            , core.csrs.mcycle
        #endif
            );
-    icache(core.ictrl, memictrl, im, cim, core.iaddress, core.cachepc, core.instruction, core.insvalid
+    icache(core.ictrl, memictrl, cim, core.iaddress, core.cachepc, core.instruction, core.insvalid,
+           core.iaddresstoc, core.ienabletoc, core.datum, core.idatumvalid
        #ifndef __HLS__
            , core.csrs.mcycle
        #endif
            );
 #endif
 
+    controller(memory, core.iaddresstoc, core.daddresstoc, core.datum, core.dwritetoc,
+               core.ienabletoc, core.denabletoc, core.dwriteenabletoc, core.idatumvalid, core.ddatumvalid
+           #ifndef __HLS__
+               , core.csrs.mcycle
+           #endif
+               );
 
     simul(
     int M = MEMORY_READ_LATENCY>MEMORY_WRITE_LATENCY?MEMORY_READ_LATENCY:MEMORY_WRITE_LATENCY;
@@ -1291,7 +1299,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
 }
 
 void doStep(ac_int<32, false> startpc, bool &exit,
-            unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
+            unsigned int memory[DRAM_SIZE],
             unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
             ac_int<128, false> memictrl[Sets], ac_int<128, false> memdctrl[Sets]
         #ifndef __HLS__
@@ -1299,7 +1307,7 @@ void doStep(ac_int<32, false> startpc, bool &exit,
         #endif
             )
 {
-    doCore<0>(startpc, exit, im, dm,
+    doCore<0>(startpc, exit, memory,
               cim, cdm, memictrl, memdctrl
           #ifndef __HLS__
               , sim

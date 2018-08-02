@@ -151,12 +151,25 @@ struct Core
     int writevalue;
     int readvalue;
     bool datavalid;
+
+    /// Controller
+    unsigned int datum;
+
+    ac_int<32, false> iaddresstoc;
+    bool ienabletoc;
+    bool idatumvalid;
+
+    ac_int<32, false> daddresstoc;
+    bool denabletoc;
+    int dwritetoc;
+    bool dwriteenabletoc;
+    bool ddatumvalid;
 };
 
 class Simulator;
 
 void doStep(ac_int<32, false> startpc, bool &exit,
-            unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
+            unsigned int memory[DRAM_SIZE],
             unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
             ac_int<128, false> memictrl[Sets], ac_int<128, false> memdctrl[Sets]
         #ifndef __HLS__

@@ -214,10 +214,12 @@ void update_policy(DCacheControl& dctrl)
 #endif
 }
 
-void icache(ICacheControl& ictrl, ac_int<128, false> memictrl[Sets],                            // control
-            unsigned int imem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
-            ac_int<32, false> address,                                                          // from cpu
-            ac_int<32, false>& cachepc, int& instruction, bool& insvalid                        // to cpu
+void icache(ICacheControl& ictrl, ac_int<128, false> memictrl[Sets],        // control
+            unsigned int data[Sets][Blocksize][Associativity],              // cachedata
+            ac_int<32, false> address,                                      // from cpu
+            ac_int<32, false>& cachepc, int& instruction, bool& insvalid,   // to cpu
+            ac_int<32, false>& addresstocontroller, bool& controllerenable, // to memory controller
+            unsigned int datum, bool datumvalid                             // from memory controller
 #ifndef __HLS__
            , ac_int<64, false>& cycles
 #endif
@@ -263,6 +265,8 @@ void icache(ICacheControl& ictrl, ac_int<128, false> memictrl[Sets],            
             if(find(ictrl, address))
             {
                 instruction = ictrl.setctrl.data[ictrl.currentway];
+                insvalid = true;
+                cachepc = address;
 
                 ictrl.state = IState::Idle;
             }
@@ -280,15 +284,15 @@ void icache(ICacheControl& ictrl, ac_int<128, false> memictrl[Sets],            
                 wordad.set_slc(30, (ac_int<2, false>)0);
                 coredebug("starting fetching to %d %d from %06x to %06x (%06x to %06x)\n", ictrl.currentset.to_int(), ictrl.currentway.to_int(), (wordad.to_int() << 2)&(tagmask+setmask),
                       (((int)(wordad.to_int()+Blocksize) << 2)&(tagmask+setmask))-1, (address >> 2).to_int() & (~(blockmask >> 2)), (((address >> 2).to_int() + Blocksize) & (~(blockmask >> 2)))-1);
-                ictrl.valuetowrite = imem[wordad];
-                simul(cycles += MEMORY_READ_LATENCY);
-                // critical word first
-                instruction = ictrl.valuetowrite;
+                //ictrl.valuetowrite = imem[wordad];
+                //simul(cycles += MEMORY_READ_LATENCY);
+                addresstocontroller = address;
+                controllerenable = true;
+
+                insvalid = false;
             }
 
             update_policy(ictrl);
-            insvalid = true;
-            cachepc = address;
         }
         break;
     case IState::StoreControl:
@@ -323,38 +327,48 @@ void icache(ICacheControl& ictrl, ac_int<128, false> memictrl[Sets],            
         ictrl.workAddress = address;
         ictrl.ctrlLoaded = false;
         insvalid = false;
+        controllerenable = false;
         break;
     case IState::Fetch:
-        data[ictrl.currentset][ictrl.i][ictrl.currentway] = ictrl.valuetowrite;
-
-        if(++ictrl.i != getOffset(ictrl.workAddress))
+        // controller gave us what we wanted, ask for next data
+        if(datumvalid)
         {
-            ac_int<32, false> bytead = 0;
-            setTag(bytead, ictrl.setctrl.tag[ictrl.currentway]);
-            setSet(bytead, ictrl.currentset);
-            setOffset(bytead, ictrl.i);
-
-            ictrl.valuetowrite = imem[bytead >> 2];
-            simul(cycles += MEMORY_READ_LATENCY);
-            instruction = ictrl.valuetowrite;
+            data[ictrl.currentset][ictrl.i][ictrl.currentway] = datum;
+            instruction = datum;
             cachepc = ictrl.workAddress;
             cachepc.set_slc(2, ictrl.i);
             insvalid = true;
+
+            if(++ictrl.i != getOffset(ictrl.workAddress))
+            {
+                ac_int<32, false> bytead = 0;
+                setTag(bytead, ictrl.setctrl.tag[ictrl.currentway]);
+                setSet(bytead, ictrl.currentset);
+                setOffset(bytead, ictrl.i);
+
+                addresstocontroller = bytead;
+                controllerenable = true;
+            }
+            else    // end of fetch
+            {
+                ictrl.state = IState::Idle;
+                ictrl.setctrl.valid[ictrl.currentway] = true;
+                ictrl.ctrlLoaded = true;
+                //ictrl.currentset = getSet(address);  //use workaddress?
+                //ictrl.workAddress = address;
+                insvalid = false;
+
+                controllerenable = false;
+                addresstocontroller = 0;
+            }
         }
-        else
-        {
-            ictrl.state = IState::Idle;
-            ictrl.setctrl.valid[ictrl.currentway] = true;
-            ictrl.ctrlLoaded = true;
-            //ictrl.currentset = getSet(address);  //use workaddress?
-            //ictrl.workAddress = address;
-            insvalid = false;
-        }
+
         break;
     default:
         insvalid = false;
         ictrl.state = IState::Idle;
         ictrl.ctrlLoaded = false;
+        controllerenable = false;
         break;
     }
 
@@ -365,10 +379,14 @@ void icache(ICacheControl& ictrl, ac_int<128, false> memictrl[Sets],            
 
 }
 
-void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],                            // control
-            unsigned int dmem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
-            ac_int<32, false> address, ac_int<2, false> datasize, bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
-            int& read, bool& datavalid                                                          // to cpu
+void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],        // control
+            unsigned int data[Sets][Blocksize][Associativity],              // cachedata
+            ac_int<32, false> address, ac_int<2, false> datasize,
+            bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
+            int& read, bool& datavalid,                                     // to cpu
+            ac_int<32, false>& addresstocontroller, bool& controllerenable,
+            int& writecontroller, bool& writetocontroller,                  // to memory controller
+            unsigned int datum, bool datumvalid                             // from memory controller
 #ifndef __HLS__
            , ac_int<64, false>& cycles
 #endif
@@ -389,6 +407,8 @@ void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],            
     {
         dctrl.state == DState::StoreControl;
     }*/
+    if(address == 0x223a0)
+        gdebug("test\n");
 
     switch(dctrl.state)
     {
@@ -435,11 +455,12 @@ void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],            
                 }
                 update_policy(dctrl);
                 datavalid = true;
+                controllerenable = false;
             }
             else    // not found or invalid
             {
                 select(dctrl);
-                gdebug("cdm  @%06x   not found or invalid   ", address.to_int());
+                coredebug("cdm  @%06x   not found or invalid   ", address.to_int());
                 if(dctrl.setctrl.dirty[dctrl.currentway] && dctrl.setctrl.valid[dctrl.currentway])
                 {
                     dctrl.state = DState::FirstWriteBack;
@@ -449,37 +470,29 @@ void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],            
                     setSet(dctrl.workAddress, dctrl.currentset);
                     //dctrl.valuetowrite = dctrl.setctrl.data[dctrl.currentway];    // only if same offset than requested address
                     datavalid = false;
-                    coredebug("starting writeback from %d %d from %06x to %06x\n", dctrl.currentset.to_int(), dctrl.currentway.to_int(), dctrl.workAddress.to_int(), dctrl.workAddress.to_int() + 4*Blocksize-1);
+
+                    controllerenable = false;
+
+                    coredebug("starting writeback %d %d from %06x to %06x\n", dctrl.currentset.to_int(), dctrl.currentway.to_int(), dctrl.workAddress.to_int(), dctrl.workAddress.to_int() + 4*Blocksize-1);
                 }
                 else
                 {
                     dctrl.setctrl.tag[dctrl.currentway] = getTag(address);
                     dctrl.workAddress = address;
-                    dctrl.state = DState::Fetch;
+                    dctrl.state = DState::FirstFetch;
                     dctrl.setctrl.valid[dctrl.currentway] = false;
                     dctrl.i = getOffset(address);
                     ac_int<32, false> wordad = 0;
                     wordad.set_slc(0, address.slc<30>(2));
                     wordad.set_slc(30, (ac_int<2, false>)0);
-                    coredebug("starting fetching to %d %d for %s from %06x to %06x (%06x to %06x)\n", dctrl.currentset.to_int(), dctrl.currentway.to_int(), writeenable?"W":"R", (wordad.to_int() << 2)&(tagmask+setmask),
-                          (((int)(wordad.to_int()+Blocksize) << 2)&(tagmask+setmask))-1, (address >> 2).to_int() & (~(blockmask >> 2)), (((address >> 2).to_int() + Blocksize) & (~(blockmask >> 2)))-1 );
-                    dctrl.valuetowrite = dmem[wordad];
-                    simul(cycles += MEMORY_READ_LATENCY);
-                    // critical word first
-                    if(writeenable)
-                    {
-                        formatwrite(address, datasize, dctrl.valuetowrite, writevalue);
-                        dctrl.setctrl.dirty[dctrl.currentway] = true;
-                    }
-                    else
-                    {
-                        ac_int<32, false> r = dctrl.valuetowrite;
-                        dctrl.setctrl.dirty[dctrl.currentway] = false;
-                        formatread(address, datasize, signenable, r);
-                        read = r;
-                    }
+                    coredebug("starting fetching to %d %d for %s from %06x to %06x\n", dctrl.currentset.to_int(), dctrl.currentway.to_int(), writeenable?"W":"R",
+                              address.to_int() & (~(blockmask >> 2)), ((address.to_int() + 4*Blocksize) & (~(blockmask >> 2)))-1 );
 
-                    datavalid = true;
+                    controllerenable = true;
+                    addresstocontroller = address;
+                    writetocontroller = false;
+
+                    datavalid = false;
                 }
             }
         }
@@ -536,51 +549,108 @@ void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],            
         setSet(bytead, dctrl.currentset);
         setOffset(bytead, dctrl.i);
 
-        dctrl.valuetowrite = data[dctrl.currentset][dctrl.i][dctrl.currentway];
+        controllerenable = true;
+        addresstocontroller = bytead;
+        writecontroller = data[dctrl.currentset][dctrl.i][dctrl.currentway];
+        writetocontroller = true;
+
+        //dctrl.valuetowrite = data[dctrl.currentset][dctrl.i][dctrl.currentway];
         dctrl.state = DState::WriteBack;
         datavalid = false;
         break;
     }
     case DState::WriteBack:
-    {   //bracket for scope and allow compilation
-        ac_int<32, false> bytead = 0;
-        setTag(bytead, dctrl.setctrl.tag[dctrl.currentway]);
-        setSet(bytead, dctrl.currentset);
-        setOffset(bytead, dctrl.i);
-        dmem[bytead >> 2] = dctrl.valuetowrite;
-        simul(cycles += MEMORY_WRITE_LATENCY);
-
-        if(++dctrl.i)
-            dctrl.valuetowrite = data[dctrl.currentset][dctrl.i][dctrl.currentway];
-        else
+        if(datumvalid)
         {
-            dctrl.state = DState::StoreControl;
-            dctrl.setctrl.dirty[dctrl.currentway] = false;
-            //gdebug("end of writeback\n");
-        }
+            if(++dctrl.i)
+            {
+                ac_int<32, false> bytead = 0;
+                setTag(bytead, dctrl.setctrl.tag[dctrl.currentway]);
+                setSet(bytead, dctrl.currentset);
+                setOffset(bytead, dctrl.i);
 
+                controllerenable = true;
+                addresstocontroller = bytead;
+                writecontroller = data[dctrl.currentset][dctrl.i][dctrl.currentway];
+                writetocontroller = true;
+            }
+            else
+            {
+                dctrl.state = DState::StoreControl; // can be done here
+                dctrl.setctrl.dirty[dctrl.currentway] = false;
+
+                controllerenable = false;
+                writetocontroller = false;
+                gdebug("end of writeback\n");
+            }
+        }
         datavalid = false;
         break;
-    }
-    case DState::Fetch:
-        data[dctrl.currentset][dctrl.i][dctrl.currentway] = dctrl.valuetowrite;
-
-        if(++dctrl.i != getOffset(dctrl.workAddress))
+    case DState::FirstFetch:    // used for critical word
+        if(datumvalid)
         {
+            ac_int<32, false> tmp = datum;
+            if(writeenable)
+            {
+                formatwrite(address, datasize, tmp, writevalue);
+                data[dctrl.currentset][dctrl.i][dctrl.currentway] = tmp;
+                dctrl.setctrl.dirty[dctrl.currentway] = true;
+            }
+            else
+            {
+                formatread(address, datasize, signenable, tmp);
+                data[dctrl.currentset][dctrl.i][dctrl.currentway] = datum;
+                dctrl.setctrl.dirty[dctrl.currentway] = false;
+                read = tmp;
+            }
+
+            datavalid = true;
+
             ac_int<32, false> bytead = 0;
             setTag(bytead, dctrl.setctrl.tag[dctrl.currentway]);
             setSet(bytead, dctrl.currentset);
-            setOffset(bytead, dctrl.i);
+            setOffset(bytead, ++dctrl.i);
 
-            dctrl.valuetowrite = dmem[bytead >> 2];
-            simul(cycles += MEMORY_READ_LATENCY);
+            controllerenable = true;
+            addresstocontroller = bytead;
+            writetocontroller = false;
+
+            dctrl.state = DState::Fetch;
         }
         else
         {
-            dctrl.state = DState::StoreControl;
-            dctrl.setctrl.valid[dctrl.currentway] = true;
-            update_policy(dctrl);
-            //gdebug("end of fetch to %d %d\n", dctrl.currentset.to_int(), dctrl.currentway.to_int());
+            datavalid = false;
+        }
+
+        break;
+    case DState::Fetch:
+        if(datumvalid)
+        {
+            data[dctrl.currentset][dctrl.i][dctrl.currentway] = datum;
+
+            if(++dctrl.i != getOffset(dctrl.workAddress))
+            {
+                ac_int<32, false> bytead = 0;
+                setTag(bytead, dctrl.setctrl.tag[dctrl.currentway]);
+                setSet(bytead, dctrl.currentset);
+                setOffset(bytead, dctrl.i);
+
+                controllerenable = true;
+                addresstocontroller = bytead;
+                writetocontroller = false;
+            }
+            else
+            {
+                dctrl.state = DState::StoreControl; // can be done here
+                dctrl.setctrl.valid[dctrl.currentway] = true;
+
+                controllerenable = false;
+                writetocontroller = false;
+
+                update_policy(dctrl);
+                gdebug("end of fetch to %d %d\n", dctrl.currentset.to_int(), dctrl.currentway.to_int());
+            }
+
         }
 
         datavalid = false;
@@ -588,17 +658,32 @@ void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],            
     default:
         datavalid = false;
         dctrl.state = DState::Idle;
+
+        controllerenable = false;
+        writetocontroller = false;
         break;
     }
 
     simul(if(datavalid)
     {
         if(writeenable)
-            coredebug("dW%d  @%06x   %08x   %08x   %08x   %d %d\n", datasize.to_int(), address.to_int(), dctrl.state == DState::Fetch?dmem[address/4]:data[dctrl.currentset][dctrl.i][dctrl.currentway],
-                                                                      writevalue, dctrl.valuetowrite.to_int(), dctrl.currentset.to_int(), dctrl.currentway.to_int());
+        {
+            if(dctrl.state == DState::Fetch)
+                coredebug("dW%d  @%06x   %08x   %08x    %08x   %d %d\n", datasize.to_int(), address.to_int(), datum, writevalue,
+              data[dctrl.currentset][(dctrl.i-1).to_int()][dctrl.currentway], dctrl.currentset.to_int(), dctrl.currentway.to_int());
+            else
+                coredebug("dW%d  @%06x   %08x   %08x    %08x   %d %d\n", datasize.to_int(), address.to_int(), dctrl.setctrl.data[dctrl.currentway],
+              writevalue, dctrl.valuetowrite.to_int(), dctrl.currentset.to_int(), dctrl.currentway.to_int());;
+        }
         else
-            coredebug("dR%d  @%06x   %08x   %08x   %5s   %d %d\n", datasize.to_int(), address.to_int(), dctrl.state == DState::Fetch?dmem[address/4]:data[dctrl.currentset][dctrl.i][dctrl.currentway],
-                                                                    read, signenable?"true":"false", dctrl.currentset.to_int(), dctrl.currentway.to_int());
+        {
+            if(dctrl.state == DState::Fetch)
+                coredebug("dR%d  @%06x   %08x   %08x    %5s   %d %d\n", datasize.to_int(), address.to_int(), datum, read,
+              signenable?"true":"false", dctrl.currentset.to_int(), dctrl.currentway.to_int());
+            else
+                coredebug("dR%d  @%06x   %08x   %08x    %5s   %d %d\n", datasize.to_int(), address.to_int(), dctrl.setctrl.data[dctrl.currentway], read,
+              signenable?"true":"false", dctrl.currentset.to_int(), dctrl.currentway.to_int());
+        }
     })
 }
 

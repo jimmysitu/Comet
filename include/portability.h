@@ -63,6 +63,7 @@
     if(!(cond)) {  \
         fprintf(stderr, __VA_ARGS__); \
         printf(__VA_ARGS__); \
+        fflush(stdout); \
         assert(cond); \
     } \
 } while(0)

@@ -81,6 +81,7 @@ enum DState {
     StoreData       ,
     FirstWriteBack  ,
     WriteBack       ,
+    FirstFetch      ,
     Fetch           ,
     DStates
 };
@@ -172,18 +173,24 @@ struct DCacheControl
     DSetControl setctrl;
 };
 
-void icache(ICacheControl& ctrl, ac_int<128, false> memctrl[Sets],                              // control
-            unsigned int imem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
-            ac_int<32, false> iaddress,                                                         // from cpu
-            ac_int<32, false> &cachepc, int& instruction, bool& insvalid                        // to cpu
+void icache(ICacheControl& ctrl, ac_int<128, false> memctrl[Sets],          // control
+            unsigned int data[Sets][Blocksize][Associativity],              // cachedata
+            ac_int<32, false> iaddress,                                     // from cpu
+            ac_int<32, false> &cachepc, int& instruction, bool& insvalid,   // to cpu
+            ac_int<32, false>& addresstocontroller, bool& controllerenable, // to memory controller
+            unsigned int datum, bool datumvalid                             // from memory controller
 #ifndef __HLS__
            , ac_int<64, false>& cycles
 #endif
            );
-void dcache(DCacheControl& ctrl, ac_int<128, false> memctrl[Sets],                              // control
-            unsigned int dmem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
-            ac_int<32, false> address, ac_int<2, false> datasize, bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
-            int& read, bool& datavalid                                                          // to cpu
+void dcache(DCacheControl& ctrl, ac_int<128, false> memctrl[Sets],          // control
+            unsigned int data[Sets][Blocksize][Associativity],              // cachedata
+            ac_int<32, false> address, ac_int<2, false> datasize,
+            bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
+            int& read, bool& datavalid,                                     // to cpu
+            ac_int<32, false>& addresstocontroller, bool& controllerenable,
+            int& writecontroller, bool& writetocontroller,                  // to memory controller
+            unsigned int datum, bool datumvalid                             // from memory controller
 #ifndef __HLS__
            , ac_int<64, false>& cycles
 #endif

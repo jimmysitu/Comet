@@ -17,12 +17,10 @@
 Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int benchargc, char **benchargv)
     : core(0), dctrl(0), ddata(0)
 {
-    ins_memory = new ac_int<32, true>[DRAM_SIZE];
-    data_memory = new ac_int<32, true>[DRAM_SIZE];
+    main_memory = new ac_int<32, true>[DRAM_SIZE];
     for(int i(0); i < DRAM_SIZE; i++)
     {
-        ins_memory[i] = 0;
-        data_memory[i] = 0;
+        main_memory[i] = 0;
     }
     heapAddress = 0;
     input = output = 0;
@@ -44,7 +42,7 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
             for(unsigned int byteNumber = 0; byteNumber<oneSection->size; byteNumber++)
             {
                 counter++;
-                setDataMemory(oneSection->address + byteNumber, sectionContent[byteNumber]);
+                setMainMemory(oneSection->address + byteNumber, sectionContent[byteNumber]);
             }
             free(sectionContent);
             coredebug("filling data from %06x to %06x\n", oneSection->address, oneSection->address + oneSection->size -1);
@@ -55,7 +53,7 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
             unsigned char* sectionContent = oneSection->getSectionCode();
             for(unsigned int byteNumber = 0; byteNumber < oneSection->size; byteNumber++)
             {
-                setInstructionMemory((oneSection->address + byteNumber), sectionContent[byteNumber]);
+                setMainMemory((oneSection->address + byteNumber), sectionContent[byteNumber]);
             }
             free(sectionContent);
             coredebug("filling instruction from %06x to %06x\n", oneSection->address, oneSection->address + oneSection->size -1);
@@ -87,33 +85,33 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
 
     unsigned int heap = heapAddress;    // keep heap where it is because it will be set over stackpointer
 
-    setDataMemory(STACK_INIT, benchargc & 0xFF);
-    setDataMemory(STACK_INIT + 1, (benchargc >> 8) & 0xFF);
-    setDataMemory(STACK_INIT + 2, (benchargc >> 16) & 0xFF);
-    setDataMemory(STACK_INIT + 3, (benchargc >> 24) & 0xFF);
+    setMainMemory(STACK_INIT, benchargc & 0xFF);
+    setMainMemory(STACK_INIT + 1, (benchargc >> 8) & 0xFF);
+    setMainMemory(STACK_INIT + 2, (benchargc >> 16) & 0xFF);
+    setMainMemory(STACK_INIT + 3, (benchargc >> 24) & 0xFF);
     //fprintf(stderr, "Writing %08x @%06x\n", benchargc, STACK_INIT);
 
     ac_int<32, true> currentPlaceStrings = STACK_INIT + 4 + 4*benchargc;
     for (int oneArg = 0; oneArg < benchargc; oneArg++)
     {
-        setDataMemory(STACK_INIT+ 4*oneArg + 4, currentPlaceStrings.slc<8>(0));
-        setDataMemory(STACK_INIT+ 4*oneArg + 5, currentPlaceStrings.slc<8>(8));
-        setDataMemory(STACK_INIT+ 4*oneArg + 6, currentPlaceStrings.slc<8>(16));
-        setDataMemory(STACK_INIT+ 4*oneArg + 7, currentPlaceStrings.slc<8>(24));
+        setMainMemory(STACK_INIT+ 4*oneArg + 4, currentPlaceStrings.slc<8>(0));
+        setMainMemory(STACK_INIT+ 4*oneArg + 5, currentPlaceStrings.slc<8>(8));
+        setMainMemory(STACK_INIT+ 4*oneArg + 6, currentPlaceStrings.slc<8>(16));
+        setMainMemory(STACK_INIT+ 4*oneArg + 7, currentPlaceStrings.slc<8>(24));
         //fprintf(stderr, "Writing %08x @%06x\n", (int)currentPlaceStrings, STACK_INIT+ 4*oneArg + 4);
 
         int oneCharIndex = 0;
         char oneChar = benchargv[oneArg][oneCharIndex];
         while (oneChar != 0)
         {
-            setDataMemory(currentPlaceStrings + oneCharIndex, oneChar);
+            setMainMemory(currentPlaceStrings + oneCharIndex, oneChar);
 
             //fprintf(stderr, "Writing %c (%d) @%06x\n", oneChar, (int)oneChar, currentPlaceStrings.to_int() + oneCharIndex);
 
             oneCharIndex++;
             oneChar = benchargv[oneArg][oneCharIndex];
         }
-        setDataMemory(currentPlaceStrings + oneCharIndex, oneChar);
+        setMainMemory(currentPlaceStrings + oneCharIndex, oneChar);
         //fprintf(stderr, "Writing %c (%d) @%06x\n", oneChar, (int)oneChar, currentPlaceStrings.to_int() + oneCharIndex);
         oneCharIndex++;
         currentPlaceStrings += oneCharIndex;
@@ -125,8 +123,7 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
 
 Simulator::~Simulator()
 {
-    delete[] ins_memory;
-    delete[] data_memory;
+    delete[] main_memory;
 
     if(input)
         fclose(input);
@@ -139,54 +136,31 @@ void Simulator::fillMemory()
     //Check whether data memory and instruction memory from program will actually fit in processor.
     //cout << ins_memorymap.size()<<endl;
 
-    if(ins_memorymap.size() / 4 > DRAM_SIZE)
+    if(memorymap.size() / 4 > DRAM_SIZE)
     {
-        printf("Error! Instruction memory size exceeded");
-        exit(-1);
-    }
-    if(data_memorymap.size() / 4 > DRAM_SIZE)
-    {
-        printf("Error! Data memory size exceeded");
+        printf("Error! Memory size exceeded");
         exit(-1);
     }
 
-    //fill instruction memory
-    for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = ins_memorymap.begin(); it!=ins_memorymap.end(); ++it)
+    //fill memory
+    for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = memorymap.begin(); it != memorymap.end(); ++it)
     {
-        ins_memory[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
+        main_memory[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
         //gdebug("@%06x    @%06x    %d    %02x\n", it->first, (it->first/4) % DRAM_SIZE, ((it->first)%4)*8, it->second);
     }
-
-    //fill data memory
-    for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = data_memorymap.begin(); it!=data_memorymap.end(); ++it)
-    {
-        //data_memory.set_byte((it->first/4)%DRAM_SIZE,it->second,it->first%4);
-        data_memory[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
-    }
 }
 
-void Simulator::setInstructionMemory(ac_int<32, false> addr, ac_int<8, true> value)
+void Simulator::setMainMemory(ac_int<32, false> addr, ac_int<8, true> value)
 {
-    ins_memorymap[addr] = value;
+    dbgassert(memorymap.find(addr) == memorymap.end(), "conflicting addresses @%06x\n", addr.to_int());
+    memorymap[addr] = value;
     if(addr > heapAddress)
         heapAddress = addr;
 }
 
-void Simulator::setDataMemory(ac_int<32, false> addr, ac_int<8, true> value)
+void Simulator::setMemory(unsigned int *m)
 {
-    data_memorymap[addr] = value;
-    if(addr > heapAddress)
-        heapAddress = addr;
-}
-
-void Simulator::setDM(unsigned int *d)
-{
-    dm = d;
-}
-
-void Simulator::setIM(unsigned int *i)
-{
-    im = i;
+    memory = m;
 }
 
 void Simulator::writeBack()
@@ -200,7 +174,10 @@ void Simulator::writeBack()
                             // dirty bit                                    // valid bit
             if(dctrl[i].slc<1>(Associativity*(32-tagshift+1) + j) && dctrl[i].slc<1>(Associativity*(32-tagshift) + j))
                 for(unsigned int k = 0; k < Blocksize; ++k)
-                    dm[(dctrl[i].slc<32-tagshift>(j*(32-tagshift)).to_int() << (tagshift-2)) | (i << (setshift-2)) | k] = cdm[i][k][j];
+                {
+                    memory[(dctrl[i].slc<32-tagshift>(j*(32-tagshift)).to_int() << (tagshift-2)) | (i << (setshift-2)) | k] = cdm[i][k][j];
+                    //gdebug("Writing back %08x   @%06x\n", cdm[i][k][j], ((dctrl[i].slc<32-tagshift>(j*(32-tagshift)).to_int() << (tagshift-2)) | (i << (setshift-2)) | k)*4);
+                }
 #endif
 }
 
@@ -211,14 +188,9 @@ void Simulator::setCore(Core *c, ac_int<128, false>* ctrl, unsigned int cachedat
     ddata = (unsigned int*)cachedata;
 }
 
-ac_int<32, true>* Simulator::getInstructionMemory() const
+ac_int<32, true>* Simulator::getMemory() const
 {
-    return ins_memory;
-}
-
-ac_int<32, true>* Simulator::getDataMemory() const
-{
-    return data_memory;
+    return main_memory;
 }
 
 Core* Simulator::getCore() const
@@ -253,9 +225,9 @@ void Simulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
     }
 #endif
     // write in main memory as well
-    ac_int<32, false> mem = dm[addr >> 2];
+    ac_int<32, false> mem = memory[addr >> 2];
     formatwrite(addr, 0, mem, value);
-    dm[addr >> 2] = mem;
+    memory[addr >> 2] = mem;
     //fprintf(stderr,"Write @%06x   %02x\n", addr.to_int(), value.to_int()&0xFF);
 
 }
@@ -304,7 +276,7 @@ ac_int<8, true> Simulator::ldb(ac_int<32, false> addr)
 #endif
     // read main memory if it wasn't in cache
     ac_int<8, true> result;
-    ac_int<32, false> read = dm[addr >> 2];
+    ac_int<32, false> read = memory[addr >> 2];
     formatread(addr, 0, 0, read);
     result = read;
     //fprintf(stderr, "Read @%06x    %02x   %08x\n", addr.to_int(), result.to_int(), dm[addr >> 2]);
@@ -543,7 +515,7 @@ ac_int<32, true> Simulator::doRead(ac_int<32, false> file, ac_int<32, false> buf
 
 ac_int<32, true> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
 {
-    //dbgsys("SYS_write %d bytes to file %d\n", size.to_int(), file.to_int());
+    dbgsys("SYS_write %d bytes to file %d\n", size.to_int(), file.to_int());
     char* localBuffer = new char[size.to_int()];
     for (int i=0; i<size; i++)
         localBuffer[i] = this->ldb(bufferAddr + i);

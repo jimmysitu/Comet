@@ -15,23 +15,20 @@ class Simulator
 {
 private:
     //counters
-    std::map<ac_int<32, false>, ac_int<8, false> > ins_memorymap;
-    std::map<ac_int<32, false>, ac_int<8, false> > data_memorymap;
+    std::map<ac_int<32, false>, ac_int<8, false> > memorymap;
 
     ac_int<32, false> pc;
 
-    ac_int<32, true>* ins_memory;
-    ac_int<32, true>* data_memory;
+    ac_int<32, true>* main_memory;
 
-    unsigned int* im;
-    unsigned int* dm;
+    unsigned int* memory;
 
     FILE* input;
     FILE* output;
     unsigned int heapAddress;
 
     ac_int<128, false>* dctrl;
-    unsigned int* ddata; //[Sets][Blocksize][Associativity];
+    unsigned int* ddata;
     Core* core;
 
 public:
@@ -39,15 +36,12 @@ public:
     ~Simulator();
 
     void fillMemory();
-    void setInstructionMemory(ac_int<32, false> addr, ac_int<8, true> value);
-    void setDataMemory(ac_int<32, false> addr, ac_int<8, true> value);
-    void setDM(unsigned int* d);
-    void setIM(unsigned int* i);
+    void setMainMemory(ac_int<32, false> addr, ac_int<8, true> value);
+    void setMemory(unsigned int* m);
     void setCore(Core* core, ac_int<128, false>* dctrl, unsigned int cachedata[Sets][Blocksize][Associativity]);
     void writeBack();
 
-    ac_int<32, true>* getInstructionMemory() const;
-    ac_int<32, true>* getDataMemory() const;
+    ac_int<32, true>* getMemory() const;
     Core* getCore() const;
 
     void setPC(ac_int<32, false> pc);

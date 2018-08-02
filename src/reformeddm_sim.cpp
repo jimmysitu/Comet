@@ -77,16 +77,13 @@ CCS_MAIN(int argc, char** argv)
 
     Simulator sim(binaryFile, inputFile, outputFile, benchargc, benchargv);
 
-    unsigned int* dm = new unsigned int[DRAM_SIZE];
-    unsigned int* im = new unsigned int[DRAM_SIZE];
+    unsigned int* mem = new unsigned int[DRAM_SIZE];
     for(int i = 0; i < DRAM_SIZE; i++)
     {
-        dm[i] = sim.getDataMemory()[i];
-        im[i] = sim.getInstructionMemory()[i];
+        mem[i] = sim.getMemory()[i];
     }
 
-    sim.setDM(dm);
-    sim.setIM(im);   
+    sim.setMemory(mem);
 
     unsigned int* cim = new unsigned int[Sets*Blocksize*Associativity];
     unsigned int* cdm = new unsigned int[Sets*Blocksize*Associativity];
@@ -107,20 +104,14 @@ CCS_MAIN(int argc, char** argv)
     /*unsigned int (&cim)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cacheim));
     unsigned int (&cdm)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cachedm));*/
 
-    coredebug("instruction memory :\n");
-    for(int i = 0; i < DRAM_SIZE; i++)
-    {
-        if(im[i])
-            coredebug("%06x : %08x (%d)\n", 4*i, im[i], im[i]);
-    }
-    coredebug("data memory :\n");
+    coredebug("memory :\n");
     for(int i = 0; i < DRAM_SIZE; i++)
     {
         for(int j(0); j < 4; ++j)
         {
-            if(dm[i] & (0xFF << (8*j)))
+            if(mem[i] & (0xFF << (8*j)))
             {
-                coredebug("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
+                coredebug("%06x : %02x (%d)\n", 4*i+j, (mem[i] & (0xFF << (8*j))) >> (8*j), (mem[i] & (0xFF << (8*j))) >> (8*j));
             }
         }
     }
@@ -131,7 +122,7 @@ CCS_MAIN(int argc, char** argv)
     while(!exit)
     {
         CCS_DESIGN(doStep(sim.getPC(), exit,
-/* main memories */       im, dm,
+/* main memories */       mem,
 /** cache memories **/    (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cim)), (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm)),
 /* control memories */    memictrl, memdctrl
                   #ifndef __HLS__
@@ -151,9 +142,9 @@ CCS_MAIN(int argc, char** argv)
     {
         for(int j(0); j < 4; ++j)
         {
-            if(dm[i] & (0xFF << (8*j)))
+            if(mem[i] & (0xFF << (8*j)))
             {
-                coredebug("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
+                coredebug("%06x : %02x (%d)\n", 4*i+j, (mem[i] & (0xFF << (8*j))) >> (8*j), (mem[i] & (0xFF << (8*j))) >> (8*j));
             }
         }
     }
@@ -163,9 +154,9 @@ CCS_MAIN(int argc, char** argv)
     {
         for(int j(0); j < 4; ++j)
         {
-            if(dm[i] & (0xFF << (8*j)))
+            if(mem[i] & (0xFF << (8*j)))
             {
-                printf("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
+                printf("%06x : %02x (%d)\n", 4*i+j, (mem[i] & (0xFF << (8*j))) >> (8*j), (mem[i] & (0xFF << (8*j))) >> (8*j));
             }
         }
     }
@@ -174,8 +165,7 @@ CCS_MAIN(int argc, char** argv)
     for(int i = 0; i < benchargc; ++i)
         delete[] benchargv[i];
     delete[] benchargv;
-    delete[] dm;
-    delete[] im;
+    delete[] mem;
     delete[] cim;
     delete[] cdm;
     delete[] memictrl;
