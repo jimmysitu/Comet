@@ -905,13 +905,20 @@ void do_Mem(Core& core, unsigned int memory[DRAM_SIZE]
             core.memtoWB.realInstruction = false;
         }
 #else
-        memory[core.daddress >> 2] = core.dctrl.valuetowrite;
-        core.ctrl.cachelock = false;
-
-        core.memtoWB.realInstruction = core.extoMem.realInstruction;
-        simul(core.memtoWB.pc = core.extoMem.pc;
-        core.memtoWB.instruction = core.extoMem.instruction;)
-        core.memtoWB.rd = core.extoMem.rd;
+        if(core.writeenable)
+        {
+            memory[core.daddress >> 2] = core.dctrl.valuetowrite;
+            core.ctrl.cachelock = true;
+            core.writeenable = false;
+        }
+        else
+        {
+            core.ctrl.cachelock = false;
+            core.memtoWB.realInstruction = core.extoMem.realInstruction;
+            simul(core.memtoWB.pc = core.extoMem.pc;
+            core.memtoWB.instruction = core.extoMem.instruction;)
+            core.memtoWB.rd = core.extoMem.rd;
+        }
 #endif
     }
     else if(core.ctrl.branch[2])
@@ -944,15 +951,17 @@ void do_Mem(Core& core, unsigned int memory[DRAM_SIZE]
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
 #else
-            core.memtoWB.realInstruction = core.extoMem.realInstruction;
-            simul(core.memtoWB.pc = core.extoMem.pc;
-            core.memtoWB.instruction = core.extoMem.instruction;)
-            core.memtoWB.rd = core.extoMem.rd;
+            core.memtoWB.pc = 0;
+            simul(core.memtoWB.instruction = 0;)
+            core.memtoWB.rd = 0;
+            core.memtoWB.realInstruction = false;
 
             ac_int<32, false> mem_read = memory[core.extoMem.result >> 2];
             simul(cycles += MEMORY_READ_LATENCY;)
             formatread(core.extoMem.result, core.datasize, core.signenable, mem_read);
             core.memtoWB.result = mem_read;
+            core.writeenable = false;
+            core.ctrl.cachelock = true;     // lock core for 1 cycle, prevent Ft from using memory
 
             // data                                             size                @address
             coredebug("dR%d  @%06x   %08x   %08x   %s\n", core.datasize.to_int(), core.extoMem.result.to_int(),
@@ -998,6 +1007,7 @@ void do_Mem(Core& core, unsigned int memory[DRAM_SIZE]
             formatwrite(core.extoMem.result, core.datasize, memory_val, core.extoMem.datac);
 
             core.daddress = core.extoMem.result;
+            core.writeenable = true;
             core.dctrl.valuetowrite = memory_val;   // dctrl is not used anyway
 
             // data                                         size                    @address
