@@ -407,9 +407,6 @@ void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],        // c
     {
         dctrl.state == DState::StoreControl;
     }*/
-    if(address == 0x223a0)
-        gdebug("test\n");
-
     switch(dctrl.state)
     {
     case DState::Idle:

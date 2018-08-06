@@ -23,11 +23,7 @@ const ac_int<32, false> CSR::marchid = 0;
 //template<unsigned int hartid>
 const ac_int<32, false> CSR::mimpid = 0;
 
-void Ft(Core& core, unsigned int memory[DRAM_SIZE]
-    #ifndef __HLS__
-        , ac_int<64, false>& cycles
-    #endif
-        )
+void Ft(Core& core)
 {
     ac_int<32, false> next_pc = core.pc + 4;
 #ifndef nocache
@@ -106,11 +102,23 @@ void Ft(Core& core, unsigned int memory[DRAM_SIZE]
 #else
     if(!core.ctrl.freeze_fetch)
     {
-        core.ftoDC.instruction = memory[core.pc/4];
-        simul(cycles += MEMORY_READ_LATENCY);
-        core.ftoDC.pc = core.pc;
-        core.ftoDC.realInstruction = true;
-        core.ftoDC.nextpc = next_pc;
+        if(core.idatumvalid && core.iaddresstoc == core.pc)
+        {
+            core.ftoDC.instruction = core.datum;
+            core.ftoDC.pc = core.pc;
+            core.ftoDC.realInstruction = true;
+            core.ftoDC.nextpc = next_pc;
+        }
+        else
+        {
+            core.ftoDC.instruction = 0x13;
+            core.ftoDC.pc = 0;
+            core.ftoDC.realInstruction = false;
+
+            next_pc = core.pc;
+
+            gdebug("Mem busy at fetch\n");
+        }
 
         switch(core.ctrl.prev_opCode[2])
         {
@@ -159,6 +167,9 @@ void Ft(Core& core, unsigned int memory[DRAM_SIZE]
         gdebug("Fetch frozen\n");
     }
 
+    core.ienabletoc = true;
+    core.iaddresstoc = core.pc;
+
     simul(if(core.ftoDC.pc)
     {
         coredebug("Ft   @%06x   %08x\n", core.ftoDC.pc.to_int(), core.ftoDC.instruction.to_int());
@@ -167,7 +178,6 @@ void Ft(Core& core, unsigned int memory[DRAM_SIZE]
     {
         coredebug("Ft   \n");
     })
-    gdebug("i @%06x   %08x\n", core.pc.to_int(), memory[core.pc/4]);
 #endif
 }
 
@@ -876,11 +886,7 @@ void Ex(Core& core
     })
 }
 
-void do_Mem(Core& core, unsigned int memory[DRAM_SIZE]
-            #ifndef __HLS__
-                , ac_int<64, false>& cycles
-            #endif
-            )
+void do_Mem(Core& core)
 {
     if(core.ctrl.cachelock)
     {
@@ -905,19 +911,48 @@ void do_Mem(Core& core, unsigned int memory[DRAM_SIZE]
             core.memtoWB.realInstruction = false;
         }
 #else
-        if(core.writeenable)
+        if(core.ddatumvalid)
         {
-            memory[core.daddress >> 2] = core.dctrl.valuetowrite;
-            core.ctrl.cachelock = true;
-            core.writeenable = false;
-        }
-        else
-        {
-            core.ctrl.cachelock = false;
-            core.memtoWB.realInstruction = core.extoMem.realInstruction;
-            simul(core.memtoWB.pc = core.extoMem.pc;
-            core.memtoWB.instruction = core.extoMem.instruction;)
-            core.memtoWB.rd = core.extoMem.rd;
+            if(core.writeenable)
+            {
+                ac_int<32, false> mem_val = core.datum;
+                formatwrite(core.extoMem.result, core.datasize, mem_val, core.writevalue);
+                core.denabletoc = true;
+                core.daddresstoc = core.extoMem.result;
+                core.dwriteenabletoc = true;
+                core.dwritetoc = mem_val;
+                core.ctrl.cachelock = true;
+                // data                                         size                    @address
+                coredebug("dW%d  @%06x   %08x   %08x   %08x\n", core.datasize.to_int(), core.extoMem.result.to_int(),
+                          core.datum, core.writevalue, mem_val.to_int());
+             // what was there before  what we want to write  what is actually written
+                core.writeenable = false;
+                core.datavalid = true;
+            }
+            else
+            {
+                core.ctrl.cachelock = false;
+                core.memtoWB.realInstruction = core.extoMem.realInstruction;
+                simul(core.memtoWB.pc = core.extoMem.pc;
+                core.memtoWB.instruction = core.extoMem.instruction;)
+                core.memtoWB.rd = core.extoMem.rd;
+                core.denabletoc = false;
+                core.dwriteenabletoc = false;
+
+                if(!core.datavalid)
+                {
+                    ac_int<32, false> mem_val = core.datum;
+                    formatread(core.extoMem.result, core.datasize, core.signenable, mem_val);
+                    core.memtoWB.result = mem_val;
+                    // data                                             size                @address
+                    coredebug("dR%d  @%06x   %08x   %08x   %s\n", core.datasize.to_int(), core.extoMem.result.to_int(),
+                              core.datum, mem_val.to_int(), core.signenable?"true":"false");
+                       // what is in memory  what is actually read    sign extension
+                }
+
+                core.writeenable = false;
+                core.datavalid = false;
+            }
         }
 #endif
     }
@@ -956,17 +991,12 @@ void do_Mem(Core& core, unsigned int memory[DRAM_SIZE]
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
 
-            ac_int<32, false> mem_read = memory[core.extoMem.result >> 2];
-            simul(cycles += MEMORY_READ_LATENCY;)
-            formatread(core.extoMem.result, core.datasize, core.signenable, mem_read);
-            core.memtoWB.result = mem_read;
-            core.writeenable = false;
-            core.ctrl.cachelock = true;     // lock core for 1 cycle, prevent Ft from using memory
+            core.denabletoc = true;
+            core.daddresstoc = core.extoMem.result;
+            core.dwriteenabletoc = false;
 
-            // data                                             size                @address
-            coredebug("dR%d  @%06x   %08x   %08x   %s\n", core.datasize.to_int(), core.extoMem.result.to_int(),
-                      memory[core.extoMem.result >> 2], mem_read.to_int(), core.signenable?"true":"false");
-                   // what is in memory                  what is actually read    sign extension
+            core.writeenable = false;
+            core.ctrl.cachelock = true;     // lock core for 1 cycle
 #endif
             simul(if(core.extoMem.result >= 0x11040 && core.extoMem.result < 0x11048)
             {
@@ -1002,19 +1032,15 @@ void do_Mem(Core& core, unsigned int memory[DRAM_SIZE]
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
 
-            ac_int<32, false> memory_val = memory[core.extoMem.result >> 2];
-            simul(cycles += MEMORY_READ_LATENCY;)
-            formatwrite(core.extoMem.result, core.datasize, memory_val, core.extoMem.datac);
+            // controller signal
+            core.denabletoc = true;
+            core.daddresstoc = core.extoMem.result;
+            core.dwriteenabletoc = false;
 
+            // we remember stuff for next turn
             core.daddress = core.extoMem.result;
+            core.writevalue = core.extoMem.datac;
             core.writeenable = true;
-            core.dctrl.valuetowrite = memory_val;   // dctrl is not used anyway
-
-            // data                                         size                    @address
-            coredebug("dW%d  @%06x   %08x   %08x   %08x\n", core.datasize.to_int(), core.extoMem.result.to_int(),
-                      memory[core.extoMem.result >> 2], core.extoMem.datac.to_int(), memory_val.to_int());
-                   // what was there before                 what we want to write       what is actually written
-
             core.ctrl.cachelock = true;     // we need one more cycle to write the formatted data
 #endif
             break;
@@ -1214,11 +1240,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
     }
     coredebug("\n");)
 
-    do_Mem(core , memory
-       #ifndef __HLS__
-           , core.csrs.mcycle
-       #endif
-           );
+    do_Mem(core);
 
     if(!core.ctrl.cachelock)
     {
@@ -1232,11 +1254,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
                    , exit
     #endif
                    );
-        Ft(core, memory
-   #ifndef __HLS__
-          , core.csrs.mcycle
-   #endif
-          );
+        Ft(core);
 
         if(core.ctrl.prev_opCode[2] == RISCV_LD)
             core.ctrl.prev_res[2] = core.memtoWB.result;    // store the loaded value, not the address
