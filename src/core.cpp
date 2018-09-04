@@ -26,16 +26,16 @@ const ac_int<32, false> CSR::mimpid = 0;
 #endif
 
 void Ft(Core& core
-    #ifdef nocache
+    /*#ifdef nocache
         , unsigned int im[DRAM_SIZE]
         #ifndef __HLS__
             , ac_int<64, false>& cycles
         #endif
-    #endif
+    #endif*/
         )
 {
     ac_int<32, false> next_pc = core.pc + 4;
-#ifndef nocache
+//#ifndef nocache
     if(core.ctrl.freeze_fetch)
     {
         // LD dependency, do nothing
@@ -108,14 +108,23 @@ void Ft(Core& core
     {
         coredebug("Ft   \n");
     })
-#else
+/*#else
     if(!core.ctrl.freeze_fetch)
     {
-        core.ftoDC.instruction = im[core.pc/4];
-        simul(cycles += MEMORY_READ_LATENCY);
-        core.ftoDC.pc = core.pc;
-        core.ftoDC.realInstruction = true;
-        core.ftoDC.nextpc = next_pc;
+        if(core.ireply.insvalid && core.ireply.cachepc == core.pc)
+        {
+            core.ftoDC.instruction = core.ireply.instruction;
+            simul(cycles += MEMORY_READ_LATENCY);
+            core.ftoDC.pc = core.pc;
+            core.ftoDC.realInstruction = true;
+            core.ftoDC.nextpc = next_pc;
+        }
+        else
+        {
+            core.ftoDC.instruction = 0x13;  // insert bubble (0x13 is NOP instruction and corresponds to ADDI r0, r0, 0)
+            core.ftoDC.pc = 0;
+            core.ftoDC.realInstruction = false;
+        }
 
         switch(core.ctrl.prev_opCode[2])
         {
@@ -164,6 +173,7 @@ void Ft(Core& core
         gdebug("Fetch frozen\n");
     }
 
+    core.irequest.address = core.pc;
     simul(if(core.ftoDC.pc)
     {
         coredebug("Ft   @%06x   %08x\n", core.ftoDC.pc.to_int(), core.ftoDC.instruction.to_int());
@@ -173,7 +183,7 @@ void Ft(Core& core
         coredebug("Ft   \n");
     })
     gdebug("i @%06x   %08x\n", core.pc.to_int(), im[core.pc/4]);
-#endif
+#endif*/
 }
 
 template<unsigned int hartid>
@@ -1104,17 +1114,17 @@ void Ex(Core& core
 }
 
 void do_Mem(Core& core
-        #ifdef nocache
+        /*#ifdef nocache
             , unsigned int data_memory[DRAM_SIZE]
             #ifndef __HLS__
                 , ac_int<64, false>& cycles
             #endif
-        #endif
+        #endif*/
             )
 {
     if(core.ctrl.cachelock)
     {
-#ifndef nocache
+//#ifndef nocache
         if(core.dreply.datavalid)
         {
             core.memtoWB.pc = core.extoMem.pc;
@@ -1134,7 +1144,7 @@ void do_Mem(Core& core
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
         }
-#else
+/*#else
         data_memory[core.drequest.address >> 2] = core.drequest.writevalue;
         core.ctrl.cachelock = false;
 
@@ -1142,7 +1152,7 @@ void do_Mem(Core& core
         simul(core.memtoWB.pc = core.extoMem.pc;
         core.memtoWB.instruction = core.extoMem.instruction;)
         core.memtoWB.rd = core.extoMem.rd;
-#endif
+#endif*/
     }
     else if(core.ctrl.branch[2])
     {
@@ -1163,7 +1173,7 @@ void do_Mem(Core& core
         {
             core.drequest.datasize = core.extoMem.funct3.slc<2>(0);
             core.drequest.signenable = !core.extoMem.funct3.slc<1>(2);
-#ifndef nocache
+//#ifndef nocache
             core.drequest.address = core.extoMem.result;
             core.drequest.dcacheenable = true;
             core.drequest.writeenable = false;
@@ -1173,7 +1183,7 @@ void do_Mem(Core& core
             simul(core.memtoWB.instruction = 0;)
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
-#else
+/*#else
             core.memtoWB.realInstruction = core.extoMem.realInstruction;
             simul(core.memtoWB.pc = core.extoMem.pc;
             core.memtoWB.instruction = core.extoMem.instruction;)
@@ -1188,7 +1198,7 @@ void do_Mem(Core& core
             coredebug("dR%d  @%06x   %08x   %08x   %s\n", core.drequest.datasize.to_int(), core.extoMem.result.to_int(),
                       data_memory[core.extoMem.result >> 2], mem_read.to_int(), core.drequest.signenable?"true":"false");
                    // what is in memory                  what is actually read    sign extension
-#endif
+#endif*/
             simul(if(core.extoMem.result >= 0x11040 && core.extoMem.result < 0x11048)
             {
                 fprintf(stderr, "end here? %lld   @%06x   @%06x R%d\n", core.csrs.mcycle.to_int64(), core.extoMem.pc.to_int(), core.extoMem.result.to_int(),
@@ -1206,7 +1216,7 @@ void do_Mem(Core& core
             simul(if(core.extoMem.result >= 0x11000 && core.extoMem.result < 0x11040)
                   fprintf(stderr, "end here? %lld   @%06x   @%06x W%d  %08x\n", core.csrs.mcycle.to_int64(), core.extoMem.pc.to_int(), core.extoMem.result.to_int(),
                           core.drequest.datasize.to_int(), core.extoMem.datac.to_int());)
-#ifndef nocache
+//#ifndef nocache
             core.drequest.address = core.extoMem.result;
             core.drequest.dcacheenable = true;
             core.drequest.writeenable = true;
@@ -1217,7 +1227,7 @@ void do_Mem(Core& core
             simul(core.memtoWB.instruction = 0;)
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
-#else
+/*#else
             core.memtoWB.pc = 0;
             simul(core.memtoWB.instruction = 0;)
             core.memtoWB.rd = 0;
@@ -1236,7 +1246,7 @@ void do_Mem(Core& core
                    // what was there before                 what we want to write       what is actually written
 
             core.ctrl.cachelock = true;     // we need one more cycle to write the formatted data
-#endif
+#endif*/
             break;
         }
         default:
@@ -1399,12 +1409,12 @@ void coreinit(Core& core, ac_int<32, false> startpc)
 
 template<unsigned int hartid>
 void doCore(ac_int<32, false> startpc, bool &exit,
-        #ifdef nocache
+        /*#ifdef nocache
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE]
-        #else
+        #else*/
             ICacheRequest& ireq, ICacheReply irep,
             DCacheRequest& dreq, DCacheReply drep
-        #endif
+        //#endif
         #ifndef __HLS__
             , Simulator* sim
         #endif
@@ -1419,12 +1429,12 @@ void doCore(ac_int<32, false> startpc, bool &exit,
         simul(sim->setCore(&core);)
     }
 
-#ifdef nocache
+/*#ifdef nocache
     simul(uint64_t oldcycles = core.csrs.mcycle;)
-#else
+#else*/
     core.ireply = irep;
     core.dreply = drep;
-#endif
+//#endif
 
     //if(!core.ctrl.sleep)
     {
@@ -1440,12 +1450,12 @@ void doCore(ac_int<32, false> startpc, bool &exit,
         coredebug("\n");)
 
         do_Mem(core
-        #ifdef nocache
+        /*#ifdef nocache
                , dm
            #ifndef __HLS__
                , core.csrs.mcycle
            #endif
-        #endif
+        #endif*/
                );
 
         if(!core.ctrl.cachelock)
@@ -1461,12 +1471,12 @@ void doCore(ac_int<32, false> startpc, bool &exit,
         #endif
               );
             Ft(core
-       #ifdef nocache
+       /*#ifdef nocache
            , im
            #ifndef __HLS__
                , core.csrs.mcycle
            #endif
-       #endif
+       #endif*/
               );
 
             if(core.ctrl.prev_opCode[2] == RISCV_LD)
@@ -1514,34 +1524,41 @@ void doCore(ac_int<32, false> startpc, bool &exit,
 
 
 
-#ifndef nocache
+//#ifndef nocache
     ireq = core.irequest;
     dreq = core.drequest;
-#endif
+//#endif
 
 
 
 }
 
 void doStep(ac_int<32, false> startpc, bool &exit,
+        #ifndef nocache
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
             unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
             ac_int<IWidth, false> memictrl[Sets], ac_int<DWidth, false> memdctrl[Sets]
+        #else
+            ICacheRequest& ireq, ICacheReply irep,
+            DCacheRequest& dreq, DCacheReply drep
+        #endif
         #ifndef __HLS__
             , Simulator* sim
         #endif
             )
 {
+#ifndef nocache
     static ICacheRequest ireq; static ICacheReply irep;
     static DCacheRequest dreq; static DCacheReply drep;
+#endif
 
     doCore<0>(startpc, exit,
-          #ifdef nocache
+          /*#ifdef nocache
               im, dm
-          #else
+          #else*/
               ireq, irep,
               dreq, drep
-          #endif
+          //#endif
           #ifndef __HLS__
               , sim
           #endif
