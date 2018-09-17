@@ -26,6 +26,7 @@ struct LineCoherence
     LineCoherence()
     : state(LineCoherence::Invalid), tag(0)
     {
+        #pragma hls_unroll yes
         for(int i(0); i < COMET_CORE; ++i)
             sharers[i] = false;
     }
@@ -98,6 +99,7 @@ struct DirectoryControl
     : state(DirectoryControl::Idle), line(), cd(), core(0)
     {
         for(int i(0); i < COMET_CORE; ++i)
+            #pragma hls_pipeline_init_interval 1
             for(int j(0); j < Sets*Associativity; ++j)
                 lines[i][j] = LineCoherence();
     }

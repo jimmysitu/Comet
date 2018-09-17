@@ -143,9 +143,16 @@ void directory(CoherenceCacheToDirectory in_cd[COMET_CORE],
         out_dc[i] = dc[i];
 }
 
+
 #include <iostream>
 #include <bitset>
 #include <string>
+#include <cstdio>
+
+#ifdef __HLS__
+typedef long long int64_t;
+typedef unsigned long long uint64_t;
+#endif
 
 using namespace std;
 
@@ -172,7 +179,11 @@ CCS_MAIN(int argc, char**argv)
 
     while(i < 1e7)
     {
-        CCS_DESIGN(directory(cd, dc, 0));
+        CCS_DESIGN(directory(cd, dc
+      #ifndef __HLS__
+        , 0
+      #endif
+        ));
 
         ++i;
     }
@@ -195,3 +206,4 @@ CCS_MAIN(int argc, char**argv)
 
     CCS_RETURN(0);
 }
+

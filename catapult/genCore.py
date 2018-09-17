@@ -67,12 +67,13 @@ solution options set /Input/SearchPath ../include
 solution options set ComponentLibs/SearchPath ../memories -append
 flow package require /SCVerify
 solution file add ../src/core.cpp -type C++
-solution file add ../src/reformeddm_sim.cpp -type C++ -exclude True
+//solution file add ../src/reformeddm_sim.cpp -type C++ -exclude True
 solution file add ../src/cache.cpp -type C++
 solution file add ../src/simulator.cpp -type C++ -exclude True
 solution file add ../src/elfFile.cpp -type C++ -exclude True
 solution file add ../src/portability.cpp -type C++
 solution file add ../src/multicycleoperator.cpp -type C++
+solution file add ../src/coherence.cpp -type C++
 go new
 directive set -DESIGN_GOAL area
 directive set -OLD_SCHED false
@@ -152,7 +153,8 @@ for {{ set i 1 }} {{ $i < [llength $memconstraint] }} {{ incr i }} {{
 //}}
 """
 
-
+genL2 = """go architect
+"""
 
 genCacheonly = """if {{ {cachesize} == 65536 }} {{
 	directive set /{top}/cim:rsc -MAP_TO_MODULE ST_singleport_16384x32.ST_SPHD_BB_16384x32m32_aTdol_wrapper
@@ -478,15 +480,8 @@ def doCore(doCache, cachesize, associativity, blocksize, policy, explore=False, 
 	period = 1.5
 	halfperiod = period/2
 	
-	if cacheonly:
-		top = "cacheWrapper"
-		core = (header + libraries + genCacheonly).format(**locals())
-	elif doCache:
-		top = "doStep"
-		core = (header + libraries + genCacheCore).format(**locals())
-	else:
-		top = "doStep"
-		core = (header + libraries + genCore).format(**locals())
+	top = "directory"
+	core = (header + libraries + genL2).format(**locals())
 		
 	# ~ core += constraint
 	
