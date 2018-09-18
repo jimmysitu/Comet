@@ -24,12 +24,8 @@ enum CoherenceState
 struct LineCoherence
 {
     LineCoherence()
-    : state(LineCoherence::Invalid), tag(0)
-    {
-        #pragma hls_unroll yes
-        for(int i(0); i < COMET_CORE; ++i)
-            sharers[i] = false;
-    }
+    : state(LineCoherence::Invalid), tag(0), sharers(0)
+    {}
 
     enum DCoherenceState
     {
@@ -38,7 +34,7 @@ struct LineCoherence
         Modified        // Read/Write, assumed dirty
     } state;
     ac_int<32-tagshift, false> tag;
-    bool sharers[COMET_CORE];
+    ac_int<COMET_CORE, false> sharers;
 };
 
 // Used from cache to directory
@@ -58,8 +54,8 @@ struct CoherenceCacheToDirectory
     enum Type
     {
         None            ,   // No request
-        Ack             ,   // Acknowledgment
-        Reply           ,   // Used to reply to directory request
+        Ack             ,   // Acknowledgment (useless?)
+        Reply           ,   // Used to reply to directory request with data
         ReadMiss        ,   // Cache doesnt have data and wants to read it
         WriteMiss       ,   // Cache doesnt have data and wants to write it
         WriteInvalidate ,   // Cache has data in shared state and wants to write it
@@ -84,11 +80,12 @@ struct CoherenceDirectoryToCache
     enum Type
     {
         None            ,   // No request
-        Ack             ,   // Acknowledgment
-        Reply           ,   // Used to reply to cache request
+        Ack             ,   // Acknowledgment (useless?)
+        Reply           ,   // Used to reply to cache request with data
         Invalidate      ,   // Cache must invalidate its data
         Fetch           ,   // Cache must reply with requested address
         FetchInvalidate ,   // same as previous, but must also invalidate its data after
+        Abort           ,   // Used when several cache replies, tell caches to abort ?
     } type;
     ac_int<32, false> data;
 };
@@ -96,26 +93,35 @@ struct CoherenceDirectoryToCache
 struct DirectoryControl
 {
     DirectoryControl()
-    : state(DirectoryControl::Idle), line(), cd(), core(0)
+    : state(DirectoryControl::Idle), line(), cd(), reqcore(0), fetchcore(0), valuetowrite(0), i(0)
     {
-        for(int i(0); i < COMET_CORE; ++i)
-            #pragma hls_pipeline_init_interval 1
-            for(int j(0); j < Sets*Associativity; ++j)
-                lines[i][j] = LineCoherence();
+        #pragma hls_pipeline_init_interval 1
+        for(int i(0); i < COMET_CORE*Sets*Associativity; ++i)
+            lines[i] = LineCoherence();
     }
 
+    // read Ack for every state
     enum
     {
-        Idle    ,
-        Reply   ,
-        ReWrite ,
-        Waitingforreply,
+        Idle            ,
+        AppropriateReply,   // rename as dispatch?
+        FirstFetchMem   ,
+        FetchMem        ,
+        FetchCache      ,
+        WriteMem        ,
+        StoreControl    ,
+        Waitingforreply ,
     } state;
 
-    LineCoherence lines[COMET_CORE][Sets*Associativity];
-    LineCoherence line;             // line we work on
-    CoherenceCacheToDirectory cd;   // request we must service
-    ac_int<ac::log2_ceil<COMET_CORE>::val, false> core; // requesting core (if any)
+    LineCoherence lines[COMET_CORE*Sets*Associativity];
+    LineCoherence line;                                         // line we work on
+    CoherenceCacheToDirectory cd;                               // request we must service
+    ac_int<ac::log2_ceil<COMET_CORE>::val, false> reqcore;      // requesting core
+    ac_int<ac::log2_ceil<COMET_CORE>::val, false> fetchcore;    // core we fetch data from
+
+    ac_int<32, false> valuetowrite;
+    ac_int<ac::log2_ceil<Blocksize>::val, false> i;
+
 
 };
 
@@ -127,7 +133,8 @@ struct DirectoryControl
 
 class Simulator;
 
-void directory(CoherenceCacheToDirectory cd[COMET_CORE],
+void directory(unsigned int mem[DRAM_SIZE],
+               CoherenceCacheToDirectory cd[COMET_CORE],
                CoherenceDirectoryToCache dc[COMET_CORE]
             #ifndef __HLS__
                , Simulator* sim
