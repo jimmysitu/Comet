@@ -33,8 +33,7 @@ struct LineCoherence
         Shared      ,   // Read only
         Modified    ,   // Read/Write, assumed dirty
         NUMSTATES = 3
-    };
-    DCoherenceState state : ac::log2_ceil<NUMSTATES>::val;
+    } state : ac::log2_ceil<NUMSTATES>::val;
     ac_int<32-tagshift, false> tag;
     ac_int<COMET_CORE, false> sharers;
 };
