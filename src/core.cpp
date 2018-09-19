@@ -1642,7 +1642,7 @@ void doStep(ac_int<32, false> startpc, bool &exit,
     // cache should maybe be all the way up or down
     // cache down generates less hardware and is less cycle costly(20%?)
     // but cache up has a slightly better critical path
-    dcache(memdctrl, dm, cdm, dreq, drep
+    dcache<0>(memdctrl, dm, cdm, dreq, drep
        #ifndef __HLS__
            , sim
        #endif

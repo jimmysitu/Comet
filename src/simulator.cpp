@@ -16,8 +16,12 @@
 #define dbgsys(...)
 #endif
 
+Simulator::Simulator()
+: ins_memory(0), data_memory(0), core(0), dctrl(0), ddata(0), icachedata(), dcachedata(), coredata(), input(0), output(0)
+{}
+
 Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int benchargc, char **benchargv)
-    : core(0), dctrl(0), ddata(0), icachedata(), dcachedata(), coredata()
+: core(0), dctrl(0), ddata(0), icachedata(), dcachedata(), coredata(), input(0), output(0)
 {
     ins_memory = new ac_int<32, true>[DRAM_SIZE];
     data_memory = new ac_int<32, true>[DRAM_SIZE];
@@ -127,8 +131,8 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
 
 Simulator::~Simulator()
 {
-    delete[] ins_memory;
-    delete[] data_memory;
+    delete[] ins_memory;    // deleting null pointer is safe
+    delete[] data_memory;   // deleting null pointer is safe
 
     if(input)
         fclose(input);

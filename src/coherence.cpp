@@ -1,10 +1,11 @@
 #include "mc_scverify.h"
 
 #include "coherence.h"
+#include "cache.h"
 
-#ifndef __HLS__
+
 #include "simulator.h"
-#endif
+
 
 /********************************************************************
  * switch of switch of switch is kinda ugly                         *
@@ -316,6 +317,24 @@ typedef unsigned long long uint64_t;
 
 using namespace std;
 
+void createCacheMemories(ac_int<DWidth, false>** memdctrl, unsigned int** cdm)
+{
+    *cdm = new unsigned int[Sets*Blocksize*Associativity];
+
+    *memdctrl = new ac_int<DWidth, false>[Sets];
+}
+
+void deleteCacheMemories(ac_int<DWidth, false>** memdctrl, unsigned int** cdm)
+{
+    delete[] *cdm;
+    delete[] *memdctrl;
+
+    *memdctrl = 0;
+    *cdm = 0;
+}
+
+#define ptrtocache(mem) (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(mem))
+
 CCS_MAIN(int argc, char**argv)
 {
 #ifndef nocache
@@ -326,23 +345,36 @@ CCS_MAIN(int argc, char**argv)
     (void)argc;
     (void)argv;
 
+    Simulator* sim = new Simulator();
     unsigned int* mem = new unsigned int[DRAM_SIZE];
     CoherenceCacheToDirectory cd[COMET_CORE];
     CoherenceDirectoryToCache dc[COMET_CORE];
+    DCacheRequest dreq[COMET_CORE];
+    DCacheReply drep[COMET_CORE];
+    unsigned int** cdm = new unsigned int*[COMET_CORE];
+    ac_int<DWidth, false>** memdctrl = new ac_int<DWidth, false>*[COMET_CORE];
 
     for(int i(0); i < COMET_CORE; ++i)
     {
         cd[i] = CoherenceCacheToDirectory();
         dc[i] = CoherenceDirectoryToCache();
+        createCacheMemories(&memdctrl[i], &cdm[i]);
+        // zero the control (although only the valid bit should be zeroed, rest is don't care)
+        for(int j(0); j < Sets; ++j)
+        {
+            memdctrl[i][j] = 0;
+        }
     }
 
     int64_t i = 0;
 
     while(i < 1e7)
     {
+        dcache<0>(memdctrl[0], mem, ptrtocache(cdm[0]), dreq[0], drep[0], sim);
+        dcache<1>(memdctrl[1], mem, ptrtocache(cdm[1]), dreq[1], drep[1], sim);
         CCS_DESIGN(directory(mem, cd, dc
       #ifndef __HLS__
-        , 0
+        , sim
       #endif
         ));
 
@@ -365,7 +397,12 @@ CCS_MAIN(int argc, char**argv)
 
     }*/
 
+    for(int i(0); i < COMET_CORE; ++i)
+        deleteCacheMemories(&memdctrl[i], &cdm[i]);
+    delete[] cdm;
+    delete[] memdctrl;
     delete[] mem;
+    delete sim;
 
     CCS_RETURN(0);
 }

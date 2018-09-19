@@ -14,7 +14,7 @@ void cacheWrapper(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_S
     static DCacheControl dctrl;
 
     icache(memictrl, imem, cim, irequest, ireply);
-    dcache(memdctrl, dmem, cdm, drequest, dreply);
+    dcache<0>(memdctrl, dmem, cdm, drequest, dreply);
 #endif
 }
 
@@ -416,6 +416,7 @@ void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], 
 
 }
 
+template<unsigned int uuid>
 void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], // control & memory
             unsigned int data[Sets][Blocksize][Associativity],                  // cachedata
             DCacheRequest drequest, DCacheReply& dreply                         // from & to cpu
@@ -694,3 +695,22 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
     })
 }
 
+
+// forward declaration, allows definition to stay in cpp...
+template
+void dcache<0>(ac_int<DWidth, false> memctrl[Sets], unsigned int dmem[DRAM_SIZE],  // control & memory
+               unsigned int data[Sets][Blocksize][Associativity],                  // cachedata
+               DCacheRequest drequest, DCacheReply& dreply                         // from & to cpu
+            #ifndef __HLS__
+               , Simulator* sim
+            #endif
+              );
+
+template
+void dcache<1>(ac_int<DWidth, false> memctrl[Sets], unsigned int dmem[DRAM_SIZE],  // control & memory
+               unsigned int data[Sets][Blocksize][Associativity],                  // cachedata
+               DCacheRequest drequest, DCacheReply& dreply                         // from & to cpu
+            #ifndef __HLS__
+               , Simulator* sim
+            #endif
+              );

@@ -131,7 +131,7 @@ struct DirectoryControl
 
 
 /// workload:
-/// producteur producteur (vers une FIFO pour les 2)
+/// producteur producteur (vers une FIFO pour les 2) --> matmul ou dijkstra
 /// producteur consommateur
 /// consommateur consommateur (d'une FIFO vers autre FIFO?)
 

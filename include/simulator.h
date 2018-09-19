@@ -32,6 +32,7 @@ private:
     Core* core;
 
 public:
+    Simulator();
     Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int argc, char** argv);
     ~Simulator();
 

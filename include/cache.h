@@ -288,6 +288,7 @@ void icache(ac_int<IWidth, false> memctrl[Sets], unsigned int imem[DRAM_SIZE],  
         #endif
             );
 
+template<unsigned int uuid>
 void dcache(ac_int<DWidth, false> memctrl[Sets], unsigned int dmem[DRAM_SIZE],  // control & memory
             unsigned int data[Sets][Blocksize][Associativity],                  // cachedata
             DCacheRequest drequest, DCacheReply& dreply                         // from & to cpu
