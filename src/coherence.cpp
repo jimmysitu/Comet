@@ -30,7 +30,7 @@ void directory(unsigned int mem[DRAM_SIZE],
     CoherenceDirectoryToCache dc[COMET_CORE];
     /// Unconditionnal read
     #pragma hls_unroll yes
-    for(int i(0); i < COMET_CORE;  ++i)
+    input:for(int i(0); i < COMET_CORE;  ++i)
         cd[i] = in_cd[i];
 
     switch(ctrl.state)
@@ -76,7 +76,7 @@ void directory(unsigned int mem[DRAM_SIZE],
         ac_int<ac::log2_ceil<COMET_CORE>::val, false> tmpi = 0;
         bool foundfetcher = false;
         #pragma hls_unroll yes
-        for(int i(0); i < COMET_CORE; ++i)    // send appropriate request to sharers of line
+        dispatch:for(int i(0); i < COMET_CORE; ++i)    // send appropriate request to sharers of line
         {
             if(i != ctrl.reqcore && ctrl.line.sharers[i])
                 switch(ctrl.cd.type)
@@ -299,7 +299,7 @@ void directory(unsigned int mem[DRAM_SIZE],
 
     /// Unconditionnal write
     #pragma hls_unroll yes
-    for(int i(0); i < COMET_CORE;  ++i)
+    output:for(int i(0); i < COMET_CORE;  ++i)
         out_dc[i] = dc[i];
 }
 

@@ -31,8 +31,10 @@ struct LineCoherence
     {
         Invalid     ,   // Uncached
         Shared      ,   // Read only
-        Modified        // Read/Write, assumed dirty
-    } state;
+        Modified    ,   // Read/Write, assumed dirty
+        NUMSTATES = 3
+    };
+    DCoherenceState state : ac::log2_ceil<NUMSTATES>::val;
     ac_int<32-tagshift, false> tag;
     ac_int<COMET_CORE, false> sharers;
 };
@@ -60,7 +62,8 @@ struct CoherenceCacheToDirectory
         WriteMiss       ,   // Cache doesnt have data and wants to write it
         WriteInvalidate ,   // Cache has data in shared state and wants to write it
         WriteBack       ,   // Cache has data in Modified state and wants to evict it
-    } type;
+        NUMSTATES
+    } type : ac::log2_ceil<NUMSTATES>::val;
     ac_int<32, false> data; // data to be written back
 };
 
@@ -86,7 +89,8 @@ struct CoherenceDirectoryToCache
         Fetch           ,   // Cache must reply with requested address
         FetchInvalidate ,   // same as previous, but must also invalidate its data after
         Abort           ,   // Used when several cache replies, tell caches to abort ?
-    } type;
+        NUMSTATES
+    } type : ac::log2_ceil<NUMSTATES>::val;
     ac_int<32, false> data;
 };
 
@@ -111,7 +115,8 @@ struct DirectoryControl
         WriteMem        ,
         StoreControl    ,
         Waitingforreply ,
-    } state;
+        NUMSTATES = Waitingforreply
+    } state : ac::log2_ceil<NUMSTATES>::val;
 
     LineCoherence lines[COMET_CORE*Sets*Associativity];
     LineCoherence line;                                         // line we work on
