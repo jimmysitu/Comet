@@ -1585,7 +1585,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
             }
             core.ctrl.jump_pc[1] = core.ctrl.jump_pc[0];
         }
-        
+
         core.csrs.mcycle += 1;
 
     #ifdef nocache

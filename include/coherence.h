@@ -60,7 +60,8 @@ struct CoherenceCacheToDirectory
         ReadMiss        ,   // Cache doesnt have data and wants to read it
         WriteMiss       ,   // Cache doesnt have data and wants to write it
         WriteInvalidate ,   // Cache has data in shared state and wants to write it
-        WriteBack       ,   // Cache has data in Modified state and wants to evict it
+        RemoveData      ,   // Cache has data in shared state and wants to evict it
+        DataWriteBack   ,   // Cache has data in Modified state and wants to evict it
         NUMSTATES
     } type : ac::log2_ceil<NUMSTATES+1>::val;
     ac_int<32, false> data; // data to be written back
@@ -103,25 +104,35 @@ struct DirectoryControl
             lines[i] = LineCoherence();
     }
 
-    // read Ack for every state
+    // we can merge some states (fetchcache/writemem)
     enum
     {
         Idle            ,
         AppropriateReply,   // rename as dispatch?
         FirstFetchMem   ,
         FetchMem        ,
-        FetchCache      ,
-        WriteMem        ,
+        FetchCache      ,   // forward data from one cache to another
+        WriteMem        ,   // write dirty data from cache to memory, data is now invalid
         StoreControl    ,
-        Waitingforreply ,
+        WaitForAck      ,   // make sure all cache acked the request
         NUMSTATES
     } state : ac::log2_ceil<NUMSTATES+1>::val;
 
+    // this won't work... need to store the same way as cache
+    // so should be [COMET_CORE][Sets][Associativity]
+    // and have the same policy that should be retrieved from cache, or cache
+    // should send the way as well(we can use the data field for this)
+    // I mean, it works, but is not synchronized with cache because may overwrite a line that is
+    // still present in a cache...
     LineCoherence lines[COMET_CORE*Sets*Associativity];
+
     LineCoherence line;                                         // line we work on
     CoherenceCacheToDirectory cd;                               // request we must service
+    bool mem;                                                   // rewrite mem?
+    // represent next two as mask?
     ac_int<ac::log2_ceil<COMET_CORE>::val, false> reqcore;      // requesting core
     ac_int<ac::log2_ceil<COMET_CORE>::val, false> fetchcore;    // core we fetch data from
+    ac_int<COMET_CORE, false> ackers;                           // all caches acked?
 
     ac_int<32, false> valuetowrite;
     ac_int<ac::log2_ceil<Blocksize>::val, false> i;

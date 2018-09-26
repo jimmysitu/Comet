@@ -38,31 +38,31 @@
 #include <stdint.h>
 
 #ifdef __DEBUG__
-#define gdebug(...)     printf(__VA_ARGS__)     // generic debug, can be deactivated
+#define gdebug(msg, ...)     printf(msg, ##__VA_ARGS__)     // generic debug, can be deactivated
 #else
 #define gdebug(...)
 #endif
 #define simul(...)      __VA_ARGS__
 
 #ifdef __DEBUG__
-#define coredebug(...)  printf(__VA_ARGS__)     // mandatory debug
+#define coredebug(msg, ...)  printf(msg, ##__VA_ARGS__)     // mandatory debug
 #else
 #define coredebug(...)
 #endif
 
 #ifdef __DEBUG__
-#define dbglog(...) do { \
-    fprintf(stderr, __VA_ARGS__); \
-    printf(__VA_ARGS__); \
+#define dbglog(msg, ...) do { \
+    fprintf(stderr, msg, ##__VA_ARGS__); \
+    printf(msg, ##__VA_ARGS__); \
 } while(0)
 #else
 #define dbglog(...)
 #endif
 
-#define dbgassert(cond, ...) do { \
+#define dbgassert(cond, msg, ...) do { \
     if(!(cond)) {  \
-        fprintf(stderr, __VA_ARGS__); \
-        printf(__VA_ARGS__); \
+        fprintf(stderr, msg, ##__VA_ARGS__); \
+        printf(msg, ##__VA_ARGS__); \
         assert(cond); \
     } \
 } while(0)
@@ -94,6 +94,10 @@
 #define MEMORY_WRITE_LATENCY    5
 #endif
 
+#ifdef __HLS__
+typedef long long int64_t;
+typedef unsigned long long uint64_t;
+#endif
 
 void formatread (ac_int<32, false> address, ac_int<2, false> datasize, bool sign, ac_int<32, false>& read);
 void formatwrite(ac_int<32, false> address, ac_int<2, false> datasize, ac_int<32, false>& mem, ac_int<32, false> write);
