@@ -35,7 +35,6 @@
 #endif
 
 #define Sets                        (Size/(Blocksize*sizeof(int))/Associativity)
-#define Lines                       (Size/(Blocksize*sizeof(int)))
 
 #define blockshift                  2
 #define setshift                    (ac::log2_ceil<Blocksize>::val + 2)

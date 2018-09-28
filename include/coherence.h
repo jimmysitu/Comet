@@ -12,7 +12,9 @@
 #define setDSet(address, set)   (address.set_slc(setshift, (ac_int<32-DirectoryTag-setshift>)set))
 #define setDTag(address, tag)   (address.set_slc(32-DirectoryTag, (ac_int<DirectoryTag>)tag))
 
-namespace CoherenceState {  // define this in cache.h?
+// define this in cache.h?
+// it's not really needed, it's just a combination of the dirty & valid bits
+namespace CoherenceState {
 enum CoherenceState
 {
     Invalid ,
@@ -105,7 +107,6 @@ struct DirectoryControl
             lines[i] = LineCoherence();
     }
 
-    // we can merge some states (fetchcache/writemem)
     enum State
     {
         Idle            ,
@@ -120,11 +121,10 @@ struct DirectoryControl
     } state : ac::log2_ceil<NUMSTATES+1>::val;
 
     // this won't work... need to store the same way as cache
-    // so should be [COMET_CORE][Sets][Associativity]
-    // and have the same policy that should be retrieved from cache, or cache
-    // should send the way as well(we can use the data field for this)
+    // so should be [Sets][COMET_CORE*Associativity]
     // I mean, it works, but is not synchronized with cache because may overwrite a line that is
     // still present in a cache...
+    // we also need to add our own policy at the L2
     LineCoherence lines[COMET_CORE*Sets*Associativity];
 
     LineCoherence line;                                         // line we work on
@@ -140,12 +140,6 @@ struct DirectoryControl
 
 
 };
-
-
-/// workload:
-/// producteur producteur (vers une FIFO pour les 2) --> matmul ou dijkstra
-/// producteur consommateur
-/// consommateur consommateur (d'une FIFO vers autre FIFO?)
 
 class Simulator;
 
