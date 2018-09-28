@@ -153,7 +153,10 @@ for {{ set i 1 }} {{ $i < [llength $memconstraint] }} {{ incr i }} {{
 //}}
 """
 
-genL2 = """go architect
+genL2 = """directive set /directory/core/ctrl.lines.state:rsc -PACKING_MODE sidebyside
+directive set /directory/core/ctrl.lines.tag -RESOURCE ctrl.lines.state:rsc
+directive set /directory/core/ctrl.lines.sharers -RESOURCE ctrl.lines.state:rsc
+go architect
 """
 
 genCacheonly = """if {{ {cachesize} == 65536 }} {{
