@@ -80,6 +80,31 @@ const char* linestatetostr(LineCoherence::DCoherenceState s)
     }
 }
 
+const char* dirstatetostr(DirectoryControl::State s)
+{
+    switch(s)
+    {
+    case DirectoryControl::Idle:
+        return "Idle";
+    case DirectoryControl::AppropriateReply:
+        return "AppropriateReply";
+    case DirectoryControl::FirstFetchMem:
+        return "FirstFetchMem";
+    case DirectoryControl::FetchMem        :
+        return "FetchMem";
+    case DirectoryControl::FetchCache      :
+        return "FetchCache";
+    case DirectoryControl::WriteMem        :
+        return "WriteMem";
+    case DirectoryControl::StoreControl    :
+        return "StoreControl";
+    case DirectoryControl::WaitForAck      :
+        return "WaitForAck";
+    default:
+        return "Unknown";
+    }
+}
+
 void directory(unsigned int mem[DRAM_SIZE],
                CoherenceCacheToDirectory in_cd[COMET_CORE],
                CoherenceDirectoryToCache out_dc[COMET_CORE]
@@ -134,7 +159,8 @@ void directory(unsigned int mem[DRAM_SIZE],
                 ctrl.state = DirectoryControl::FirstFetchMem;
                 printf(" not found in cache\n");
             }
-            printf("Line parameters : @%06x    %d      %s\n",ctrl.line.tag.to_int(), ctrl.line.sharers.to_int(), linestatetostr(ctrl.line.state));
+            printf("%d directory reading control %d : @%06x    %d      %s\n", cycle, getDSet(address).to_int(), ctrl.line.tag.to_int(),
+                   ctrl.line.sharers.to_int(), linestatetostr(ctrl.line.state));
 
             // Acknowledge so the cache knows we are servicing its request
             dc[i].type = CoherenceDirectoryToCache::Ack;
@@ -155,6 +181,7 @@ void directory(unsigned int mem[DRAM_SIZE],
         dispatch:for(int i(0); i < COMET_CORE; ++i)    // send appropriate request to sharers of line
         {
             if(i != ctrl.reqcore && ctrl.line.sharers[i])
+            {
                 switch(ctrl.cd.type)
                 {
                 case CoherenceCacheToDirectory::ReadMiss:
@@ -168,15 +195,15 @@ void directory(unsigned int mem[DRAM_SIZE],
                     }
                     break;
                 case CoherenceCacheToDirectory::WriteMiss:
-                    if(foundfetcher)
-                    {
-                        dc[i].type = CoherenceDirectoryToCache::Invalidate;
-                    }
-                    else
+                    if(!foundfetcher)
                     {   // only one fetcher, other cache only invalidate
                         dc[i].type = CoherenceDirectoryToCache::FetchInvalidate;
                         tmpi = i;
                         foundfetcher = true;
+                    }
+                    else
+                    {
+                        dc[i].type = CoherenceDirectoryToCache::Invalidate;
                     }
                     dc[i].address = ctrl.cd.address;
                     dc[i].data = 0;
@@ -188,21 +215,20 @@ void directory(unsigned int mem[DRAM_SIZE],
                     dc[i].data = 0;
                     break;
                 default:
-                    dbgassert(ctrl.cd.type != CoherenceCacheToDirectory::Ack &&
-                              ctrl.cd.type != CoherenceCacheToDirectory::Reply,
+                    dbgassert(ctrl.cd.type == CoherenceCacheToDirectory::ReadMiss ||
+                              ctrl.cd.type == CoherenceCacheToDirectory::WriteMiss||
+                              ctrl.cd.type == CoherenceCacheToDirectory::WriteInvalidate,
                               "Wrong type of request @%06x for appropriate reply in directory control\n", ctrl.cd.address.to_int());
                     break;
                 }
+            }
         }
 
         if(foundfetcher)
-        {
             ctrl.fetchcore = tmpi;
-        }
-        // foundfetcher must be true
-        dbgassert(foundfetcher, "Dispatch called on non cached line?\n");
 
         ctrl.ackers = ctrl.line.sharers;
+        ctrl.ackers[ctrl.reqcore] = false;
 
         switch(ctrl.line.state)
         {
@@ -234,46 +260,46 @@ void directory(unsigned int mem[DRAM_SIZE],
             /// valid request are ReadMiss, forward data from one cache to another
             ///                   WriteMiss, forward data from one cache to another and invalidate
             ///                   WriteInvalidate, invalidate other cache data
-            ///                   WriteBack, remove one sharer
+            ///                   RemoveData, remove one sharer
             /// update sharers accordingly
 
-            dbgassert(ctrl.cd.type == CoherenceCacheToDirectory::ReadMiss        ||
-                      ctrl.cd.type == CoherenceCacheToDirectory::WriteMiss       ||
-                      ctrl.cd.type == CoherenceCacheToDirectory::WriteInvalidate ||
-                      ctrl.cd.type == CoherenceCacheToDirectory::RemoveData,
-                      "Invalid transition for shared line @%06x in appropriate reply\n", ctrl.cd.address.to_int());
-
             // Appropriate requests have already been sent to sharers
-            if(ctrl.cd.type == CoherenceCacheToDirectory::WriteInvalidate)
+            switch(ctrl.cd.type)
             {
+            case CoherenceCacheToDirectory::ReadMiss:
+                ctrl.line.sharers[ctrl.reqcore] = true;
+                ctrl.line.state = LineCoherence::Shared;
+                ctrl.mem = false;
+                ctrl.state = DirectoryControl::FetchCache;
+                break;
+            case CoherenceCacheToDirectory::WriteMiss:
+                ctrl.line.sharers = 0;
+                ctrl.line.sharers[ctrl.reqcore] = true;
+                ctrl.line.state = LineCoherence::Modified;
+                ctrl.mem = false;
+                ctrl.state = DirectoryControl::FetchCache;
+                break;
+            case CoherenceCacheToDirectory::WriteInvalidate:
                 ctrl.line.sharers = 0;
                 ctrl.line.sharers[ctrl.reqcore] = true;
                 ctrl.line.state = LineCoherence::Modified;
                 ctrl.state = DirectoryControl::WaitForAck;
-            }
-            else if(ctrl.cd.type == CoherenceCacheToDirectory::RemoveData)
-            {
+                break;
+            case CoherenceCacheToDirectory::RemoveData:
                 ctrl.line.sharers[ctrl.reqcore] = false;
                 if(ctrl.line.sharers == 0)
                     ctrl.line.state = LineCoherence::Invalid;
                 // no need to write back, line is shared so non dirty
                 ctrl.state = DirectoryControl::StoreControl;
+                break;
+            default:
+                dbgassert(ctrl.cd.type == CoherenceCacheToDirectory::ReadMiss        ||
+                          ctrl.cd.type == CoherenceCacheToDirectory::WriteMiss       ||
+                          ctrl.cd.type == CoherenceCacheToDirectory::WriteInvalidate ||
+                          ctrl.cd.type == CoherenceCacheToDirectory::RemoveData,
+                          "Invalid transition for shared line @%06x in appropriate reply\n", ctrl.cd.address.to_int());
+                break;
             }
-            else    // ReadMiss & WriteMiss
-            {
-                if(ctrl.cd.type == CoherenceCacheToDirectory::WriteMiss)
-                {
-                    ctrl.line.sharers = 0;
-                    ctrl.line.state = LineCoherence::Modified;
-                }
-                else
-                    ctrl.line.state = LineCoherence::Shared;
-
-                ctrl.line.sharers[ctrl.reqcore] = true;
-                ctrl.mem = false;
-                ctrl.state = DirectoryControl::FetchCache;
-            }
-            //ctrl.i = 0;
 
             break;
         case LineCoherence::Modified:
@@ -281,36 +307,35 @@ void directory(unsigned int mem[DRAM_SIZE],
         ///                   WriteMiss, forward data from one cache to another, no writeback
         ///                   DataWriteBack, forward data from one cache to main memory, remove line from directory
 
-            dbgassert(ctrl.cd.type == CoherenceCacheToDirectory::ReadMiss  ||
-                      ctrl.cd.type == CoherenceCacheToDirectory::WriteMiss ||
-                      ctrl.cd.type == CoherenceCacheToDirectory::DataWriteBack,
-                      "Invalid transition for modified line @%06x in appropriate reply\n", ctrl.cd.address.to_int());
-
             // Appropriate request has already been sent to owner
-            if(ctrl.cd.type == CoherenceCacheToDirectory::DataWriteBack)
+            switch(ctrl.cd.type)
             {
+            case CoherenceCacheToDirectory::ReadMiss:
+                ctrl.line.state = LineCoherence::Shared;
+                ctrl.line.sharers[ctrl.reqcore] = true;
+                ctrl.mem = true;
+                ctrl.state = DirectoryControl::FetchCache;
+                printf("some debug %d   %s\n", ctrl.line.sharers.to_int(), linestatetostr(ctrl.line.state));
+                break;
+            case CoherenceCacheToDirectory::WriteMiss:
+                ctrl.line.state = LineCoherence::Modified;
+                ctrl.line.sharers = 0;
+                ctrl.line.sharers[ctrl.reqcore] = true;
+                ctrl.mem = false;
+                ctrl.state = DirectoryControl::FetchCache;
+                break;
+            case CoherenceCacheToDirectory::DataWriteBack:
                 ctrl.line.state = LineCoherence::Invalid;
                 ctrl.line.sharers = 0;
                 ctrl.state = DirectoryControl::WriteMem;
+                break;
+            default:
+                dbgassert(ctrl.cd.type == CoherenceCacheToDirectory::ReadMiss  ||
+                          ctrl.cd.type == CoherenceCacheToDirectory::WriteMiss ||
+                          ctrl.cd.type == CoherenceCacheToDirectory::DataWriteBack,
+                          "Invalid transition for modified line @%06x in appropriate reply\n", ctrl.cd.address.to_int());
+                break;
             }
-            else
-            {
-                if(ctrl.cd.type == CoherenceCacheToDirectory::ReadMiss)
-                {
-                    ctrl.line.state = LineCoherence::Shared;
-                    ctrl.line.sharers[ctrl.reqcore] = true;
-                    ctrl.mem = true;
-                }
-                else
-                {
-                    ctrl.line.state = LineCoherence::Modified;
-                    ctrl.line.sharers = 0;
-                    ctrl.line.sharers[ctrl.reqcore] = true;
-                    ctrl.mem = false;
-                }
-                ctrl.state = DirectoryControl::FetchCache;
-            }
-            //ctrl.i = 0;
 
             break;
         default:
@@ -373,7 +398,7 @@ void directory(unsigned int mem[DRAM_SIZE],
             dc[ctrl.reqcore].type = CoherenceDirectoryToCache::Reply;
             dc[ctrl.reqcore].address = cd[ctrl.fetchcore].address;
             dc[ctrl.reqcore].data = cd[ctrl.fetchcore].data;
-            printf("%d dir received %06x in FetchCache from %d and sending to %d\n", cycle,
+            printf("%d dir received @%06x in FetchCache from %d and sending to %d\n", cycle,
                     cd[ctrl.fetchcore].address.to_int(), ctrl.fetchcore.to_int(), ctrl.reqcore.to_int());
 
             if(ctrl.mem)
@@ -383,7 +408,7 @@ void directory(unsigned int mem[DRAM_SIZE],
             dc[ctrl.reqcore].type = CoherenceDirectoryToCache::Ack;
             dc[ctrl.reqcore].address = cd[ctrl.fetchcore].address;
             dc[ctrl.reqcore].data = cd[ctrl.fetchcore].data;
-            printf("%d dir received last %06x in FetchCache from %d and sending to %d\n", cycle,
+            printf("%d dir received last @%06x in FetchCache from %d and sending to %d\n", cycle,
                     cd[ctrl.fetchcore].address.to_int(), ctrl.fetchcore.to_int(), ctrl.reqcore.to_int());
 
             if(ctrl.mem)
@@ -436,7 +461,8 @@ void directory(unsigned int mem[DRAM_SIZE],
      }
         break;
     case DirectoryControl::StoreControl:
-        printf("%d directory writing control %d @%06x\n", cycle, getDSet(ctrl.cd.address).to_int(), ctrl.cd.address.to_int());
+        printf("%d directory writing control %d : @%06x    %d      %s\n", cycle, getDSet(ctrl.cd.address).to_int(),
+               ctrl.cd.address.to_int(), ctrl.line.sharers.to_int(), linestatetostr(ctrl.line.state));
         ctrl.lines[getDSet(ctrl.cd.address)] = ctrl.line;
         ctrl.state = DirectoryControl::Idle;
         break;
@@ -449,6 +475,8 @@ void directory(unsigned int mem[DRAM_SIZE],
     #pragma hls_unroll yes
     output:for(int i(0); i < COMET_CORE;  ++i)
         out_dc[i] = dc[i];
+
+    printf("%d dir state %s\n", cycle, dirstatetostr(ctrl.state));
 }
 
 
@@ -478,18 +506,6 @@ void deleteCacheMemories(ac_int<DWidth, false>** memdctrl, unsigned int** cdm)
 class SimpleCacheSimulator
 {
 public:
-    SimpleCacheSimulator(int id)
-    : id(id), state(Idle), currentway(0)
-    {
-        for(int i(0); i < Sets; ++i)
-            for(int j(0); j < Associativity; ++j)
-            {
-                tag[i][j] = 0;
-                dirty[i][j] = false;
-                valid[i][j] = false;
-            }
-    }
-
     void step(DCacheRequest corereq, DCacheReply& crep, CoherenceDirectoryToCache dirreq, CoherenceCacheToDirectory& drep)
     {
         bool datavalid = false;
@@ -498,21 +514,15 @@ public:
         switch(state)
         {
         case Idle:
-            // Coherence has a higher priority than core
+            // Coherence has a higher priority than core and so is treated first
             if(dirreq.type != CoherenceDirectoryToCache::None)
             {
                 ac_int<32, false> address = dirreq.address;
-                bool found = false;
-                for(int i(0); i < Associativity; ++i)
-                {
-                    if(tag[getSet(address)][i] == getTag(address) && valid[getSet(address)][i])
-                    {
-                        found = true;
-                        currentway = i;
-                    }
-                }
 
-                dbgassert(found, "Cache %d : Received a request, but don't have the data @%06x\n", id, address.to_int());
+                if(find(address))
+                    printf("%d cache %d : Directory request %s @%06x\n", cycle, id, dctostr(dirreq.type), address.to_int());
+                else
+                    dbgassert(find(address), "Cache %d : Received a request, but don't have the data @%06x\n", id, address.to_int());
 
                 workaddress = address;
                 switch(dirreq.type)
@@ -523,16 +533,16 @@ public:
                     dirrep.address = address;
                     dirrep.type = CoherenceCacheToDirectory::Reply;
                     dirrep.data = 0;
-                    printf("%d cache %d : sending %06x to directory\n", cycle, id, dirrep.address.to_int());
+                    printf("%d cache %d : sending @%06x to directory\n", cycle, id, dirrep.address.to_int());
                     break;
                 case CoherenceDirectoryToCache::FetchInvalidate:
                     state = DirWriteBack;
                     valid[getSet(address)][currentway] = false;
-                    ctrli = getOffset(address);
+                    ctrli = getOffset(address)+1;
                     dirrep.address = address;
                     dirrep.type = CoherenceCacheToDirectory::Reply;
                     dirrep.data = 0;
-                    printf("%d cache %d : sending %06x to directory\n", cycle, id, dirrep.address.to_int());
+                    printf("%d cache %d : sending @%06x to directory\n", cycle, id, dirrep.address.to_int());
                     break;
                 case CoherenceDirectoryToCache::Invalidate:
                     state = Idle;
@@ -542,7 +552,10 @@ public:
                     dirrep.data = 0;
                     break;
                 default:
-                    dbgassert(false, "Cache %d : Wrong type of request %s from directory @%06x\n", id,
+                    dbgassert(dirreq.type == CoherenceDirectoryToCache::Fetch ||
+                              dirreq.type == CoherenceDirectoryToCache::FetchInvalidate ||
+                              dirreq.type == CoherenceDirectoryToCache::Invalidate,
+                              "Cache %d : Wrong type of request %s from directory @%06x\n", id,
                               dctostr(dirreq.type), address.to_int());
                     break;
                 }
@@ -550,28 +563,23 @@ public:
             else if(corereq.dcacheenable)
             {
                 ac_int<32, false> address = corereq.address;
-                printf("%d cache %d : Cache request @%06x\n", cycle, id, address.to_int());
-                bool found = false;
-                for(int i(0); i < Associativity; ++i)
-                {
-                    if(tag[getSet(address)][i] == getTag(address) && valid[getSet(address)][i])
-                    {
-                        found = true;
-                        currentway = i;
-                    }
-                }
+                printf("%d cache %d : Cache request @%06x for %s\n", cycle, id, address.to_int(),
+                       corereq.writeenable?"W":"R");
 
-                if(found)
+                if(find(address))
                 {
                     printf("%d cache %d : found @%06x\n", cycle, id, address.to_int());
-                    datavalid = true;
+
                     if(corereq.writeenable && !dirty[getSet(address)][currentway])
                     {
                         dirrep.address = address;
+                        workaddress = address;
                         dirrep.type = CoherenceCacheToDirectory::WriteInvalidate;
-                        dirty[getSet(address)][currentway] = true;
                         state = WaitReply;
+                        datavalid = false;
                     }
+                    else
+                        datavalid = true;
                     // updatepolicy
                 }
                 else
@@ -606,50 +614,75 @@ public:
             }
             break;
         case FirstFetch:
-            if(dirreq.type == CoherenceDirectoryToCache::Ack)
+            switch(dirreq.type)
             {
+            case CoherenceDirectoryToCache::Ack:
                 // we are being serviced
                 state = DirFetch;
-                printf("%d cache %d : serviced for %06x\n", cycle, id, workaddress.to_int());
-            }
-            else if(dirreq.type == CoherenceDirectoryToCache::None)
-            {
+                printf("%d cache %d : serviced for @%06x\n", cycle, id, workaddress.to_int());
+                break;
+            case CoherenceDirectoryToCache::None:
                 // directory is probably busy handling other request
                 dirrep = lastrequest;
-                printf("%d cache %d : waiting for %06x\n", cycle, id, workaddress.to_int());
-            }
-            else
-            {
-                // we are NOT being serviced and we should answer
-                switch(dirreq.type)
-                {
-                // update workaddress
-                case CoherenceDirectoryToCache::Fetch:
-                    state = DirWriteBack;
-                    invalidate = false;
-                    break;
-                case CoherenceDirectoryToCache::FetchInvalidate:
-                    state = DirWriteBack;
-                    invalidate = true;
-                    break;
-                case CoherenceDirectoryToCache::Invalidate:
-                    break;
-                default:
-                    dbgassert(dirreq.type == CoherenceDirectoryToCache::Fetch ||
-                              dirreq.type == CoherenceDirectoryToCache::FetchInvalidate ||
-                              dirreq.type == CoherenceDirectoryToCache::Invalidate,
-                              "%d cache %d : Invalid request from directory control @%06x\n",
-                              cycle, id, dirreq.address.to_int());
-                    break;
-                }
+                printf("%d cache %d : waiting for @%06x\n", cycle, id, workaddress.to_int());
+                break;
+            case CoherenceDirectoryToCache::Fetch:
+                workaddress = dirreq.address;
+                state = DirWriteBack;
+                ctrli = getOffset(dirreq.address)+1;
+                dirrep.address = dirreq.address;
+                dirrep.type = CoherenceCacheToDirectory::Reply;
+                dirrep.data = 0;
+                printf("%d cache %d : sending @%06x to directory\n", cycle, id, dirrep.address.to_int());
+                break;
+            case CoherenceDirectoryToCache::FetchInvalidate:
+                // we have the data, so invalidate it here
+                if(find(dirreq.address))
+                    valid[getSet(dirreq.address)][currentway] = false;
+                else
+                    dbgassert(find(dirreq.address), "Cache %d : Received a request, but don't have the data @%06x in %s\n", id, dirreq.address.to_int(), cachestatetostr(state));
+
+                workaddress = dirreq.address;
+                state = DirWriteBack;
+                ctrli = getOffset(dirreq.address)+1;
+                dirrep.address = dirreq.address;
+                dirrep.type = CoherenceCacheToDirectory::Reply;
+                dirrep.data = 0;
+                printf("%d cache %d : sending @%06x to directory\n", cycle, id, dirrep.address.to_int());
+
+                break;
+            case CoherenceDirectoryToCache::Invalidate:
+                // we have the data, so invalidate it here
+                if(find(dirreq.address))
+                    valid[getSet(dirreq.address)][currentway] = false;
+                else
+                    dbgassert(find(dirreq.address), "Cache %d : Received a request, but don't have the data @%06x in %s\n", id, dirreq.address.to_int(), cachestatetostr(state));
+
+                state = Idle;
+                valid[getSet(dirreq.address)][currentway] = false;
+                dirrep.address = dirreq.address;
                 dirrep.type = CoherenceCacheToDirectory::Ack;
+                dirrep.data = 0;
+
+                break;
+            default:
+                dbgassert(dirreq.type == CoherenceDirectoryToCache::Ack ||
+                          dirreq.type == CoherenceDirectoryToCache::None ||
+                          dirreq.type == CoherenceDirectoryToCache::Fetch ||
+                          dirreq.type == CoherenceDirectoryToCache::FetchInvalidate ||
+                          dirreq.type == CoherenceDirectoryToCache::Invalidate,
+                          "%d cache %d : Invalid request from directory control @%06x\n",
+                          cycle, id, dirreq.address.to_int());
+                break;
             }
             break;
         case DirFetch:
             if(dirreq.type == CoherenceDirectoryToCache::Reply)
             {
+                if(dirreq.address == workaddress)
+                    datavalid = true;
                 // we receive data
-                printf("%d cache %d : received %06x\n", cycle, id, dirreq.address.to_int());
+                printf("%d cache %d : received @%06x\n", cycle, id, dirreq.address.to_int());
             }
             else if(dirreq.type == CoherenceDirectoryToCache::None)
             {
@@ -660,52 +693,77 @@ public:
             else if(dirreq.type == CoherenceDirectoryToCache::Ack)
             {
                 // transaction done
-                printf("%d cache %d : received %06x & fetching done\n", cycle, id, dirreq.address.to_int());
+                printf("%d cache %d : received @%06x & fetching done\n", cycle, id, dirreq.address.to_int());
                 valid[getSet(workaddress)][currentway] = true;
-                dirty[getSet(workaddress)][currentway] = dirrep.type==CoherenceCacheToDirectory::WriteMiss;
+                dirty[getSet(workaddress)][currentway] = lastrequest.type==CoherenceCacheToDirectory::WriteMiss;
                 tag[getSet(workaddress)][currentway] = getTag(workaddress);
                 state = Idle;
             }
             break;
         case FirstWriteBack:
-            if(dirreq.type == CoherenceDirectoryToCache::Ack)
+            switch(dirreq.type)
             {
+            case CoherenceDirectoryToCache::Ack:
                 // we are being serviced
                 state = DirWriteBack;
-                printf("%d cache %d : serviced for %06x\n", cycle, id, workaddress.to_int());
-            }
-            else if(dirreq.type == CoherenceDirectoryToCache::None)
-            {
+                printf("%d cache %d : serviced for @%06x\n", cycle, id, workaddress.to_int());
+                break;
+            case CoherenceDirectoryToCache::None:
                 // directory is probably busy handling other request
+                dirrep = lastrequest;
                 state = FirstWriteBack;
-                printf("%d cache %d : waiting for %06x\n", cycle, id, workaddress.to_int());
+                printf("%d cache %d : waiting for @%06x\n", cycle, id, workaddress.to_int());
+                break;
+            case CoherenceDirectoryToCache::Fetch:
+                workaddress = dirreq.address;
+                state = DirWriteBack;
+                ctrli = getOffset(dirreq.address)+1;
+                dirrep.address = dirreq.address;
+                dirrep.type = CoherenceCacheToDirectory::Reply;
+                dirrep.data = 0;
+                printf("%d cache %d : sending @%06x to directory\n", cycle, id, dirrep.address.to_int());
+                break;
+            case CoherenceDirectoryToCache::FetchInvalidate:
+                // we have the data, so invalidate it here
+                if(find(dirreq.address))
+                    valid[getSet(dirreq.address)][currentway] = false;
+                else
+                    dbgassert(find(dirreq.address), "Cache %d : Received a request, but don't have the data @%06x in %s\n", id, dirreq.address.to_int(), cachestatetostr(state));
+
+                workaddress = dirreq.address;
+                state = DirWriteBack;
+                ctrli = getOffset(dirreq.address)+1;
+                dirrep.address = dirreq.address;
+                dirrep.type = CoherenceCacheToDirectory::Reply;
+                dirrep.data = 0;
+                printf("%d cache %d : sending @%06x to directory\n", cycle, id, dirrep.address.to_int());
+
+                break;
+            case CoherenceDirectoryToCache::Invalidate:
+                // we have the data, so invalidate it here
+                if(find(dirreq.address))
+                    valid[getSet(dirreq.address)][currentway] = false;
+                else
+                    dbgassert(find(dirreq.address), "Cache %d : Received a request, but don't have the data @%06x in %s\n", id, dirreq.address.to_int(), cachestatetostr(state));
+
+                state = Idle;
+                valid[getSet(dirreq.address)][currentway] = false;
+                dirrep.address = dirreq.address;
+                dirrep.type = CoherenceCacheToDirectory::Ack;
+                dirrep.data = 0;
+
+                break;
+            default:
+                dbgassert(dirreq.type == CoherenceDirectoryToCache::Ack ||
+                          dirreq.type == CoherenceDirectoryToCache::None ||
+                          dirreq.type == CoherenceDirectoryToCache::Fetch ||
+                          dirreq.type == CoherenceDirectoryToCache::FetchInvalidate ||
+                          dirreq.type == CoherenceDirectoryToCache::Invalidate,
+                          "%d cache %d : Invalid request from directory control @%06x\n",
+                          cycle, id, dirreq.address.to_int());
+                break;
             }
-            else
-            {
-                // we are NOT being serviced and we should answer
-                switch(dirreq.type)
-                {
-                // update workaddress
-                case CoherenceDirectoryToCache::Fetch:
-                    state = DirWriteBack;
-                    invalidate = false;
-                    break;
-                case CoherenceDirectoryToCache::FetchInvalidate:
-                    state = DirWriteBack;
-                    invalidate = true;
-                    break;
-                case CoherenceDirectoryToCache::Invalidate:
-                    break;
-                default:
-                    dbgassert(dirreq.type == CoherenceDirectoryToCache::Fetch ||
-                              dirreq.type == CoherenceDirectoryToCache::FetchInvalidate ||
-                              dirreq.type == CoherenceDirectoryToCache::Invalidate,
-                              "%d cache %d : Invalid request from directory control @%06x\n",
-                              cycle, id, dirreq.address.to_int());
-                    break;
-                }
-                dirrep.type = CoherenceCacheToDirectory::None;
-            }
+
             break;
         case DirWriteBack:
         {
@@ -722,19 +780,86 @@ public:
                 state = Idle;
                 //dirrep.data = ...
             }
-            printf("%d cache %d : sending %06x to directory\n", cycle, id, dirrep.address.to_int());
+            printf("%d cache %d : sending @%06x to directory\n", cycle, id, dirrep.address.to_int());
             ++ctrli;
         }
             break;
+        case WaitReply:
+            switch(dirreq.type)
+            {
+            case CoherenceDirectoryToCache::Ack:
+                // here we can write the data
+                state = Idle;
+                dirty[getSet(workaddress)][currentway] = true;
+                datavalid = true;
+                // + update policy
+                break;
+            case CoherenceDirectoryToCache::None:
+                dirrep = lastrequest;
+                break;
+            case CoherenceDirectoryToCache::Fetch:
+                workaddress = dirreq.address;
+                state = DirWriteBack;
+                ctrli = getOffset(dirreq.address)+1;
+                dirrep.address = dirreq.address;
+                dirrep.type = CoherenceCacheToDirectory::Reply;
+                dirrep.data = 0;
+                printf("%d cache %d : sending @%06x to directory\n", cycle, id, dirrep.address.to_int());
+                break;
+            case CoherenceDirectoryToCache::FetchInvalidate:
+                // we have the data, so invalidate it here
+                if(find(dirreq.address))
+                    valid[getSet(dirreq.address)][currentway] = false;
+                else
+                    dbgassert(find(dirreq.address), "Cache %d : Received a request, but don't have the data @%06x in %s\n", id, dirreq.address.to_int(), cachestatetostr(state));
+
+                workaddress = dirreq.address;
+                state = DirWriteBack;
+                ctrli = getOffset(dirreq.address)+1;
+                dirrep.address = dirreq.address;
+                dirrep.type = CoherenceCacheToDirectory::Reply;
+                dirrep.data = 0;
+                printf("%d cache %d : sending @%06x to directory\n", cycle, id, dirrep.address.to_int());
+
+                break;
+            case CoherenceDirectoryToCache::Invalidate:
+                // we have the data, so invalidate it here
+                if(find(dirreq.address))
+                    valid[getSet(dirreq.address)][currentway] = false;
+                else
+                    dbgassert(find(dirreq.address), "Cache %d : Received a request, but don't have the data @%06x in %s\n", id, dirreq.address.to_int(), cachestatetostr(state));
+
+                state = Idle;   // could stay in the same state if invalidate is not on same block
+                valid[getSet(dirreq.address)][currentway] = false;
+                dirrep.address = dirreq.address;
+                dirrep.type = CoherenceCacheToDirectory::Ack;
+                dirrep.data = 0;
+
+                break;
+            default:
+                dbgassert(dirreq.type == CoherenceDirectoryToCache::Ack ||
+                          dirreq.type == CoherenceDirectoryToCache::None ||
+                          dirreq.type == CoherenceDirectoryToCache::Fetch ||
+                          dirreq.type == CoherenceDirectoryToCache::FetchInvalidate ||
+                          dirreq.type == CoherenceDirectoryToCache::Invalidate,
+                          "%d cache %d : Invalid request from directory control @%06x\n",
+                          cycle, id, dirreq.address.to_int());
+                break;
+            }
+            break;
         default:
-            dbgassert(false, "impossible\n");
+            dbgassert(false, "Unknown state in cache %d cycle %d\n", id, cycle);
             break;
         }
 
         corerep.datavalid = datavalid;
         crep = corerep;
         drep = dirrep;
+
+        printf("%d cache %d state %s\n", cycle, id, cachestatetostr(state));
     }
+
+
 
 private:
     int id;
@@ -752,12 +877,60 @@ private:
     ac_int<ac::log2_ceil<Blocksize>::val, false> ctrli;
     ac_int<ac::log2_ceil<Associativity>::val, false> currentway;
     bool invalidate;
+    bool storecontrol;      // prevent wasting one cycle when serving directory instead of serving core
     //unsigned int data[Sets][Blocksize][Associativity]; // i don't even need this
     ac_int<32-tagshift, false> tag[Sets][Associativity];
     bool dirty[Sets][Associativity];
     bool valid[Sets][Associativity];
 
     CoherenceCacheToDirectory lastrequest;
+
+
+    bool find(ac_int<32, false> address)
+    {
+        for(int i(0); i < Associativity; ++i)
+            if(tag[getSet(address)][i] == getTag(address) && valid[getSet(address)][i])
+            {
+                currentway = i;
+                return true;
+            }
+        return false;
+    }
+
+public:
+    SimpleCacheSimulator(int id)
+    : id(id), state(Idle), workaddress(0), ctrli(0), currentway(0), invalidate(false),
+      storecontrol(false), lastrequest()
+    {
+        for(int i(0); i < Sets; ++i)
+            for(int j(0); j < Associativity; ++j)
+            {
+                tag[i][j] = 0;
+                dirty[i][j] = false;
+                valid[i][j] = false;
+            }
+    }
+
+    const char* cachestatetostr(State s) const
+    {
+        switch(s)
+        {
+        case Idle:
+            return "Idle";
+        case FirstFetch:
+            return "FirstFetch";
+        case DirFetch:
+            return "DirFetch";
+        case FirstWriteBack:
+            return "FirstWriteBack";
+        case DirWriteBack:
+            return "DirWriteBack";
+        case WaitReply:
+            return "WaitReply";
+        default:
+            return "Unknown";
+        }
+    }
 };
 
 #define ptrtocache(mem) (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(mem))
@@ -795,14 +968,14 @@ CCS_MAIN(int argc, char**argv)
 
     SimpleCacheSimulator cache[COMET_CORE] = {0, 1};
 
-    const int numreq = 10;
+    const int numreq = 10000;
     srand(0);
     DCacheRequest req[COMET_CORE][numreq];
     for(int i(0); i < COMET_CORE; ++i)
         for(int j(0); j < numreq; ++j)
         {
             req[i][j].address = (rand()%0x100) & 0xFFFFFC;
-            req[i][j].writeenable = rand() < 20;
+            req[i][j].writeenable = rand()/(float)RAND_MAX < 0.2;
             req[i][j].dcacheenable = true;
         }
     int index[COMET_CORE] = {0};
@@ -810,7 +983,7 @@ CCS_MAIN(int argc, char**argv)
     dreq[0] = req[0][0];
     dreq[1] = req[1][0];
 
-    while(cycle < 1e3)
+    while(cycle < 1e6)
     {
         //dcache<0>(memdctrl[0], mem, ptrtocache(cdm[0]), dreq[0], drep[0], sim);
         //dcache<1>(memdctrl[1], mem, ptrtocache(cdm[1]), dreq[1], drep[1], sim);

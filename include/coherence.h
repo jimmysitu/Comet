@@ -97,7 +97,8 @@ struct CoherenceDirectoryToCache
 struct DirectoryControl
 {
     DirectoryControl()
-    : state(DirectoryControl::Idle), line(), cd(), reqcore(0), fetchcore(0), valuetowrite(0), i(0)
+    : state(DirectoryControl::Idle), line(), cd(), mem(false), reqcore(0), fetchcore(0),
+      ackers(0), valuetowrite(0), i(0)
     {
         #pragma hls_pipeline_init_interval 1
         for(int i(0); i < COMET_CORE*Sets*Associativity; ++i)
@@ -105,7 +106,7 @@ struct DirectoryControl
     }
 
     // we can merge some states (fetchcache/writemem)
-    enum
+    enum State
     {
         Idle            ,
         AppropriateReply,   // rename as dispatch?
