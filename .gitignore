@@ -1,0 +1,11 @@
+# ignore the generated benchmarks
+*.riscv32
+*.dump
+*.x86
+
+# ignore the results of the benchmarks as well
+/benchmarks/*/res
+/benchmarks/res
+
+# ignore the simulator binary
+*.sim
