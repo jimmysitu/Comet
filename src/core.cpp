@@ -1146,6 +1146,7 @@ void do_Mem(Core& core
             , unsigned int data_memory[DRAM_SIZE]
             #ifndef __HLS__
                 , ac_int<64, false>& cycles
+                , Simulator* sim
             #endif
         #endif
             )
@@ -1251,7 +1252,7 @@ void do_Mem(Core& core
             ac_int<32, false> mem_read = data_memory[core.extoMem.result >> 2];
             simul(
                 cycles += MEMORY_READ_LATENCY;
-                sim->printMemTrace(cycle, "LD", core.drequest.datasize, core.extoMem.result);
+                sim->printMemTrace(cycles, "LD", core.drequest.datasize, core.extoMem.result);
             )
             formatread(core.extoMem.result, core.drequest.datasize, core.drequest.signenable, mem_read);
             core.memtoWB.result = mem_read;
@@ -1299,7 +1300,7 @@ void do_Mem(Core& core
             ac_int<32, false> memory_val = data_memory[core.extoMem.result >> 2];
             simul(
                 cycles += MEMORY_READ_LATENCY;
-                sim->printMemTrace(cycle, "ST", core.drequest.datasize, core.extoMem.result);
+                sim->printMemTrace(cycles, "ST", core.drequest.datasize, core.extoMem.result);
             )
             formatwrite(core.extoMem.result, core.drequest.datasize, memory_val, core.extoMem.datac);
 
@@ -1539,6 +1540,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
                , dm
            #ifndef __HLS__
                , core.csrs.mcycle
+               , sim
            #endif
         #endif
                );
