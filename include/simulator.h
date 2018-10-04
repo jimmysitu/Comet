@@ -45,7 +45,7 @@ public:
     void setCore(Core* core);
     void writeBack();
 
-    void printMemTrace(uint64_t cycle, const char* op, uint8_t op_size, uint32_t addr); 
+    void printMemTrace(const char* op, uint8_t op_size, uint32_t addr); 
 
     ac_int<32, true>* getInstructionMemory() const;
     ac_int<32, true>* getDataMemory() const;

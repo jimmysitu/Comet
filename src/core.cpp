@@ -1252,7 +1252,7 @@ void do_Mem(Core& core
             ac_int<32, false> mem_read = data_memory[core.extoMem.result >> 2];
             simul(
                 cycles += MEMORY_READ_LATENCY;
-                sim->printMemTrace(cycles, "LD", core.drequest.datasize, core.extoMem.result);
+                sim->printMemTrace("LD", core.drequest.datasize, core.extoMem.result);
             )
             formatread(core.extoMem.result, core.drequest.datasize, core.drequest.signenable, mem_read);
             core.memtoWB.result = mem_read;
@@ -1300,7 +1300,7 @@ void do_Mem(Core& core
             ac_int<32, false> memory_val = data_memory[core.extoMem.result >> 2];
             simul(
                 cycles += MEMORY_READ_LATENCY;
-                sim->printMemTrace(cycles, "ST", core.drequest.datasize, core.extoMem.result);
+                sim->printMemTrace("ST", core.drequest.datasize, core.extoMem.result);
             )
             formatwrite(core.extoMem.result, core.drequest.datasize, memory_val, core.extoMem.datac);
 
@@ -1623,7 +1623,8 @@ void doCore(ac_int<32, false> startpc, bool &exit,
 void doStep(ac_int<32, false> startpc, bool &exit,
             MultiCycleOperator& mcop, MultiCycleRes mcres,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
-            unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
+            unsigned int cim[Sets][Blocksize][Associativity], 
+            unsigned int cdm[Sets][Blocksize][Associativity],
             ac_int<IWidth, false> memictrl[Sets], ac_int<DWidth, false> memdctrl[Sets]
         #ifndef __HLS__
             , Simulator* sim

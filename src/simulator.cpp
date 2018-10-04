@@ -210,11 +210,6 @@ void Simulator::writeBack()
 #endif
 }
 
-void Simulator::printMemTrace(uint64_t cycle, const char* op, uint8_t op_size, uint32_t addr){
-    if(memtrace)
-        fprintf(memtrace, "%d,%s,%d,%d\n", cycle, op, op_size, addr);
-}
-
 void Simulator::setCore(Core *c, ac_int<DWidth, false>* ctrl, unsigned int cachedata[Sets][Blocksize][Associativity])
 {
     core = c;
@@ -225,6 +220,12 @@ void Simulator::setCore(Core *c, ac_int<DWidth, false>* ctrl, unsigned int cache
 void Simulator::setCore(Core* c)
 {
     core = c;
+}
+
+void Simulator::printMemTrace(const char* op, uint8_t op_size, uint32_t addr){
+    int op_type[] = {8,16,32,32};
+    if(memtrace)
+        fprintf(memtrace, "%d,%s,%d,%d\n", core->csrs.mcycle.to_uint64(), op, op_type[op_size%4], addr);
 }
 
 ac_int<32, true>* Simulator::getInstructionMemory() const
