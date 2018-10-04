@@ -25,6 +25,7 @@ private:
 
     FILE* input;
     FILE* output;
+    FILE* memtrace;
     unsigned int heapAddress;
 
     ac_int<DWidth, false>* dctrl;
@@ -32,7 +33,7 @@ private:
     Core* core;
 
 public:
-    Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int argc, char** argv);
+    Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, const char* memtraceFile, int argc, char** argv);
     ~Simulator();
 
     void fillMemory();
@@ -43,6 +44,8 @@ public:
     void setCore(Core* core, ac_int<DWidth, false>* dctrl, unsigned int cachedata[Sets][Blocksize][Associativity]);
     void setCore(Core* core);
     void writeBack();
+
+    void printMemTrace(uint64_t cycle, const char* op, uint8_t op_size, uint32_t addr); 
 
     ac_int<32, true>* getInstructionMemory() const;
     ac_int<32, true>* getDataMemory() const;

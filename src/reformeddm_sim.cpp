@@ -32,9 +32,13 @@ CCS_MAIN(int argc, char** argv)
     const char* binaryFile = 0;
     const char* inputFile = 0;
     const char* outputFile = 0;
+    const char* memtraceFile = 0;
+
     int argstart = 0;
     char **benchargv = 0;
+
     int benchargc = 1;
+
     for(int i = 1; i < argc; ++i)
     {
         if(strcmp("-i", argv[i]) == 0)
@@ -48,6 +52,10 @@ CCS_MAIN(int argc, char** argv)
         else if(strcmp("-f", argv[i]) == 0)
         {
             binaryFile = argv[i+1];
+        }
+        else if(strcmp("-t", argv[i]) == 0)
+        {
+            memtraceFile = argv[i+1]; 
         }
         else if(strcmp("--", argv[i]) == 0)
         {
@@ -81,7 +89,7 @@ CCS_MAIN(int argc, char** argv)
     fprintf(stderr, "Simulating %s\n", binaryFile);
     std::cout << "Simulating " << binaryFile << std::endl;
 
-    Simulator sim(binaryFile, inputFile, outputFile, benchargc, benchargv);
+    Simulator sim(binaryFile, inputFile, outputFile, memtraceFile, benchargc, benchargv);
 
     unsigned int* dm = new unsigned int[DRAM_SIZE];
     unsigned int* im = new unsigned int[DRAM_SIZE];
@@ -138,15 +146,21 @@ CCS_MAIN(int argc, char** argv)
     //core.pc = sim.getPC();
     while(!exit)
     {
-        CCS_DESIGN(doStep(sim.getPC(), exit,
-                          *mcop, *mcres,
-/* main memories */       im, dm,
-/** cache memories **/    ptrtocache(cim), ptrtocache(cdm),
-/* control memories */    memictrl, memdctrl
-                  #ifndef __HLS__
-                      , &sim
-                  #endif
-                  ));
+        CCS_DESIGN(
+            doStep(sim.getPC(), 
+                   exit,
+                   *mcop, *mcres,    // multy-cycle operator 
+                   im, dm,           // instruction and data memory
+                   ptrtocache(cim),  // instruction cache memory
+                   ptrtocache(cdm),  // data cache memory 
+                   memictrl,         // control instruction memory 
+                   memdctrl          // control data memory
+                   #ifndef __HLS__
+                   , &sim
+                   #endif
+            )
+        );
+
         multicyclecontroller(*mcop, *mcres
                         #ifndef __HLS__
                              , &sim

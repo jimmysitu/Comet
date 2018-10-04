@@ -16,7 +16,7 @@
 #define dbgsys(...)
 #endif
 
-Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int benchargc, char **benchargv)
+Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, const char* memtraceFile, int benchargc, char **benchargv)
     : core(0), dctrl(0), ddata(0), icachedata(), dcachedata(), coredata()
 {
     ins_memory = new ac_int<32, true>[DRAM_SIZE];
@@ -33,6 +33,8 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
         input = fopen(inputFile, "rb");
     if(outputFile)
         output = fopen(outputFile, "wb");
+    if(memtraceFile)
+        memtrace = fopen(memtraceFile, "w");
 
     ElfFile elfFile(binaryFile);
     int counter = 0;
@@ -134,6 +136,8 @@ Simulator::~Simulator()
         fclose(input);
     if(output)
         fclose(output);
+    if(memtrace)
+        fclose(memtrace);
 }
 
 void Simulator::fillMemory()
@@ -204,6 +208,11 @@ void Simulator::writeBack()
                 for(unsigned int k = 0; k < Blocksize; ++k)
                     dm[(dctrl[i].slc<32-tagshift>(j*(32-tagshift)).to_int() << (tagshift-2)) | (i << (setshift-2)) | k] = cdm[i][k][j];
 #endif
+}
+
+void Simulator::printMemTrace(uint64_t cycle, const char* op, uint8_t op_size, uint32_t addr){
+    if(memtrace)
+        fprintf(memtrace, "%d,%s,%d,%d\n", cycle, op, op_size, addr);
 }
 
 void Simulator::setCore(Core *c, ac_int<DWidth, false>* ctrl, unsigned int cachedata[Sets][Blocksize][Associativity])
