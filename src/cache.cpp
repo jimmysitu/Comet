@@ -483,6 +483,7 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
                 if(writeenable)
                 {
                     dctrl.valuetowrite = dctrl.setctrl.data[dctrl.currentway];
+                    simul(sim->printMemTrace("CW", datasize, address);)  // log cache write access
                     formatwrite(address, datasize, dctrl.valuetowrite, writevalue);
                     dctrl.workAddress = address;
                     dctrl.setctrl.dirty[dctrl.currentway] = true;
@@ -492,6 +493,7 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
                 else
                 {
                     ac_int<32, false> r = dctrl.setctrl.data[dctrl.currentway];
+                    simul(sim->printMemTrace("CR", datasize, address);) // log cache read access
                     formatread(address, datasize, signenable, r);
 
                     read = r;
@@ -527,10 +529,20 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
                     ac_int<32, false> wordad = 0;
                     wordad.set_slc(0, address.slc<30>(2));
                     wordad.set_slc(30, (ac_int<2, false>)0);
-                    coredebug("starting fetching to %d %d for %s from %06x to %06x (%06x to %06x)\n", dctrl.currentset.to_int(), dctrl.currentway.to_int(), writeenable?"W":"R", (wordad.to_int() << 2)&(tagmask+setmask),
-                          (((int)(wordad.to_int()+Blocksize) << 2)&(tagmask+setmask))-1, (address >> 2).to_int() & (~(blockmask >> 2)), (((address >> 2).to_int() + Blocksize) & (~(blockmask >> 2)))-1 );
+
+                    coredebug("starting fetching to %d %d for %s from %06x to %06x (%06x to %06x)\n"
+                              , dctrl.currentset.to_int()
+                              , dctrl.currentway.to_int()
+                              , writeenable ? "W" : "R"
+                              , (wordad.to_int() << 2) & (tagmask + setmask)
+                              , (((int)(wordad.to_int()+Blocksize) << 2) & (tagmask + setmask))-1
+                              , (address >> 2).to_int() & (~(blockmask >> 2))
+                              , (((address >> 2).to_int() + Blocksize) & (~(blockmask >> 2)))-1 
+                    );
+
                     dctrl.valuetowrite = dmem[wordad];
                     simul(sim->dcachedata.mainmemread++;)
+                    simul(sim->printMemTrace("FT", 2, wordad);) //log 32 bit fetch
                     dctrl.memcnt = 1;
                     // critical word first
                     if(writeenable)
@@ -623,6 +635,7 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
             setOffset(bytead, dctrl.i);
             dmem[bytead >> 2] = dctrl.valuetowrite;
             simul(sim->dcachedata.mainmemwrite++;)
+            simul(sim->printMemTrace("WB", 2, bytead >> 2);) //log 32 bit writeback 
 
             if(++dctrl.i)
             {
@@ -658,6 +671,7 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
 
                 dctrl.valuetowrite = dmem[bytead >> 2];
                 simul(sim->dcachedata.mainmemread++;)
+                simul(sim->printMemTrace("FT", 2, bytead >> 2);) //log 32 bit fetch
             }
             else
             {
