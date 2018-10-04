@@ -18,6 +18,11 @@
 #include "simulator.h"
 #include "multicycleoperator.h"
 
+#ifdef __FAULT_INJECTION__
+#include "fault_inj_support.h"
+#include <signal.h>
+#endif
+
 #define ptrtocache(mem) (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(mem))
 
 using namespace std;
@@ -35,6 +40,24 @@ CCS_MAIN(int argc, char** argv)
     int argstart = 0;
     char **benchargv = 0;
     int benchargc = 1;
+
+#ifdef __FAULT_INJECTION__
+    //fault injection parameters
+    bool injectionMode = false;
+    InjRegisterLocation injectionLocation;
+    int injectionBitLocation;
+    long long int maxCycles;
+    long long int injectionCycle;
+
+    //prepare the segfault signal catcher
+    struct sigaction act;
+    act.sa_handler = sigHandler_segfault;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = 0;
+    sigaction(SIGSEGV, &act, 0);    //catch out of memory errors
+    sigaction(SIGABRT, &act, 0);    //catch core asserts
+#endif
+
     for(int i = 1; i < argc; ++i)
     {
         if(strcmp("-i", argv[i]) == 0)
@@ -56,6 +79,22 @@ CCS_MAIN(int argc, char** argv)
             benchargv = new char*[benchargc];
             break;
         }
+#ifdef __FAULT_INJECTION__
+        //check fault injection arguments
+        else if(strcmp("-I",  argv[i]) == 0)  // Injection mode : -I <maxExecCycles> <injectionCycle> <coreLocation> <bitPosition>
+        {
+            injectionMode = true;
+            maxCycles = atol(argv[i+1]);    //max number of cycles to wait for the execution to end
+            injectionCycle = atol(argv[i+2]);   //cycle at which the injection will occur
+            injectionLocation = static_cast<InjRegisterLocation>(atoi(argv[i+3])); //force the injection location
+            injectionBitLocation = atoi(argv[i+4]);
+
+            //verify bit position and clip it if necessary
+            if(injectionBitLocation > injRegisterWidth[static_cast<int>(injectionLocation)]-1) {
+                injectionBitLocation = injRegisterWidth[static_cast<int>(injectionLocation)]-1;
+            }
+        }
+#endif
     }
     if(benchargv == 0)
         benchargv = new char*[benchargc];
@@ -134,6 +173,11 @@ CCS_MAIN(int argc, char** argv)
     }
     coredebug("end of preambule\n");
 
+
+#ifdef __FAULT_INJECTION__
+    printf("Injection will happen at cycle %lld in reg %d at bit %d\n", injectionCycle, (int)injectionLocation, injectionBitLocation);
+#endif
+
     bool exit = false;
     //core.pc = sim.getPC();
     while(!exit)
@@ -141,7 +185,7 @@ CCS_MAIN(int argc, char** argv)
         CCS_DESIGN(doStep(sim.getPC(), exit,
                           *mcop, *mcres,
 /* main memories */       im, dm,
-/** cache memories **/    ptrtocache(cim), ptrtocache(cdm),
+/* cache memories */    ptrtocache(cim), ptrtocache(cdm),
 /* control memories */    memictrl, memdctrl
                   #ifndef __HLS__
                       , &sim
@@ -152,6 +196,54 @@ CCS_MAIN(int argc, char** argv)
                              , &sim
                         #endif
                              );
+
+        #ifdef __FAULT_INJECTION__
+        //Check if we need to inject at this cycle
+        if(injectionMode)
+        {
+            if(sim.getCore()->csrs.mcycle.to_int64() == injectionCycle-1)
+            {
+                int injStatus;
+                //perform injection
+                switch(injectionLocation)
+                {
+                case FToDC_loc:
+                    injStatus = injectFault_FToDC(sim.getCore(), injectionBitLocation);
+                    break;
+                case DCToEX_loc:
+                    injStatus = injectFault_DCToEX(sim.getCore(), injectionBitLocation);
+                    break;
+                case EXToMEM_loc:
+                    injStatus = injectFault_EXToMEM(sim.getCore(), injectionBitLocation);
+                    break;
+                case MEMToWB_loc:
+                    injStatus = injectFault_MEMToWB(sim.getCore(), injectionBitLocation);
+                    break;
+                case PC_loc:
+                    injStatus = injectFault_PC(sim.getCore(), injectionBitLocation);
+                    break;
+                case CoreCtrl_loc:
+                    injStatus = injectFault_CoreCtrl(sim.getCore(), injectionBitLocation);
+                    break;
+                default:
+                    if((injectionLocation > PC_loc) && (injectionLocation < CoreCtrl_loc)) {    //register file
+                        injectFault_RF(sim.getCore(), static_cast<int>(injectionLocation - RF0_loc), injectionBitLocation);
+                    }
+                    printf("Injection Failed : location unknown\n");
+                    exit = true;
+                    break;
+                }
+            }
+        }
+        //Check fo hang
+        if(injectionMode)
+        {
+            if(sim.getCore()->csrs.mcycle.to_int64() >= maxCycles) {
+                printf("Hang detected\n");
+                exit = true;
+            }
+        }
+        #endif
     }
 
     sim.writeBack();    // writeback dirty data from cache to main mem

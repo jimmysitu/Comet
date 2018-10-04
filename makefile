@@ -21,7 +21,7 @@ debugcatapult: $(S_FILES) $(I_HEADER)
 	g++ -g -o comet.sim $(GENERIC) -D__SYNTHESIS__ -D__DEBUG__
 
 sanitize: $(S_FILES) $(I_HEADER)
-	g++ -g -o comet.sim $(GENERIC) -fsanitize=address -fsanitize=undefined -fsanitize=shift -fsanitize=shift-exponent -fsanitize=shift-base -fsanitize=integer-divide-by-zero -fsanitize=unreachable -fsanitize=vla-bound -fsanitize=null -fsanitize=return -fsanitize=signed-integer-overflow -fsanitize=bounds -fsanitize=bounds-strict -fsanitize=bool -fsanitize=enum 
+	g++ -g -o comet.sim $(GENERIC) -fsanitize=address -fsanitize=undefined -fsanitize=shift -fsanitize=shift-exponent -fsanitize=shift-base -fsanitize=integer-divide-by-zero -fsanitize=unreachable -fsanitize=vla-bound -fsanitize=null -fsanitize=return -fsanitize=signed-integer-overflow -fsanitize=bounds -fsanitize=bounds-strict -fsanitize=bool -fsanitize=enum
 
 text: $(S_FILES) $(I_HEADER)
 	g++ -E $(GENERIC) -D__DEBUG__ > comet.cpp
@@ -30,13 +30,15 @@ textcatapult: $(S_FILES) $(I_HEADER)
 	g++ -E $(GENERIC) -D__SYNTHESIS__ > catapult.cpp
 
 debug: $(S_FILES) $(I_HEADER)
-	g++ -g -o comet.sim $(GENERIC) -D__DEBUG__ 
+	g++ -g -o comet.sim $(GENERIC) -D__DEBUG__
 
-vivado.sim: $(S_FILES) $(I_HEADER) 
+vivado.sim: $(S_FILES) $(I_HEADER)
 	g++ -o vivado.sim $(INC_PARAMS) $(S_FILES) $(VARS_VIV)
 
+faultInjection.sim: $(S_FILES) $(I_HEADER)
+	g++ -O3 -o cometFI.sim $(GENERIC) -D__FAULT_INJECTION__
+
 clean:
-	rm -rf *.o comet.sim vivado.sim comet.cpp catapult.cpp 
+	rm -rf *.o comet.sim vivado.sim comet.cpp catapult.cpp
 
 .PHONY: all catapult clean debug text textcatapult
-
