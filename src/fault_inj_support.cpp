@@ -1,4 +1,9 @@
 #include "fault_inj_support.h"
+#include <cstdio>
+
+
+//for the signal handlers to be able to output the core status and memory contents
+Core* globalCore;   //yuk
 
 /*
  * This is all terrible looking, the width of each field is hardcoded...
@@ -229,6 +234,30 @@ int injectFault_CoreCtrl(Core* core, int bitPosition) {
 }
 
 
+void setGlobalCore(Core* _core) {
+    globalCore = _core;
+}
+
+void faulInjection_setup_signals(void) {
+    //prepare the segfault signal catcher
+    struct sigaction actSegFault, actAssert;
+
+    actSegFault.sa_handler = sigHandler_segfault;
+    sigemptyset(&actSegFault.sa_mask);
+    actSegFault.sa_flags = 0;
+    sigaction(SIGSEGV, &actSegFault, 0);    //catch out of memory errors
+
+    actAssert.sa_handler = sigHandler_assertFail;
+    sigemptyset(&actAssert.sa_mask);
+    actAssert.sa_flags = 0;
+    sigaction(SIGABRT, &actAssert, 0);    //catch core asserts
+}
+
+void sigHandler_assertFail(int sig) {
+    std::cout << "EndType : Crash" << std::endl;
+}
+
 void sigHandler_segfault(int sig) {
-    printf("WOWOWOWOWOWOWOW, got an uncool baby!\n");
+    std::cout << "EndType : Crash\n" << std::endl;
+    exit(0);
 }

@@ -2,6 +2,7 @@
 #define FAULT_INJ_SUPPORT_H
 
 #include "core.h"
+#include <signal.h>
 
 // The different places faults can be injected (all pipeline registers, the register file, accumulator
 // and the core controler
@@ -96,6 +97,9 @@ int injectFault_PC(Core* core, int bitPosition);
 int injectFault_CoreCtrl(Core* core, int bitPosition);
 
 //to catch segfaults cased by the fault injection
+void setGlobalCore(Core* core);
+void faulInjection_setup_signals(void);
 void sigHandler_segfault(int sig);
+void sigHandler_assertFail(int sig);
 
 #endif // FAULT_INJ_SUPPORT_H

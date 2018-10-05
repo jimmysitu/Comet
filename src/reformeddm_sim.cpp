@@ -20,7 +20,6 @@
 
 #ifdef __FAULT_INJECTION__
 #include "fault_inj_support.h"
-#include <signal.h>
 #endif
 
 #define ptrtocache(mem) (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(mem))
@@ -49,13 +48,7 @@ CCS_MAIN(int argc, char** argv)
     long long int maxCycles;
     long long int injectionCycle;
 
-    //prepare the segfault signal catcher
-    struct sigaction act;
-    act.sa_handler = sigHandler_segfault;
-    sigemptyset(&act.sa_mask);
-    act.sa_flags = 0;
-    sigaction(SIGSEGV, &act, 0);    //catch out of memory errors
-    sigaction(SIGABRT, &act, 0);    //catch core asserts
+    faulInjection_setup_signals();
 #endif
 
     for(int i = 1; i < argc; ++i)
@@ -151,6 +144,11 @@ CCS_MAIN(int argc, char** argv)
 
     sim.setCore(0, memdctrl, (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm)));
 
+#ifdef __FAULT_INJECTION__
+    //to be able to get the core status from the signal handlers
+    setGlobalCore(sim.getCore());
+#endif
+
     /*unsigned int (&cim)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cacheim));
     unsigned int (&cdm)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cachedm));*/
 
@@ -239,7 +237,7 @@ CCS_MAIN(int argc, char** argv)
         if(injectionMode)
         {
             if(sim.getCore()->csrs.mcycle.to_int64() >= maxCycles) {
-                printf("Hang detected\n");
+                std::cout <<  "EndType : Hang\n" << std::endl;
                 exit = true;
             }
         }
@@ -247,6 +245,13 @@ CCS_MAIN(int argc, char** argv)
     }
 
     sim.writeBack();    // writeback dirty data from cache to main mem
+
+#ifdef __FAULT_INJECTION__
+    //check if the execution terminated "gracefully"
+    if(sim.getCore()->csrs.mcycle.to_int64() < maxCycles) {
+        std::cout << "EndType : Normal\n" << std::endl;
+    }
+#endif
 
 #ifndef __HLS__
     printf("Successfully executed %lld instructions in %lld cycles\n", sim.getCore()->csrs.minstret.to_int64(), sim.getCore()->csrs.mcycle.to_int64());
