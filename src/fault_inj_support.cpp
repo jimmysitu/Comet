@@ -1,5 +1,6 @@
 #include "fault_inj_support.h"
 #include <cstdio>
+#include <fstream>
 
 
 //for the signal handlers to be able to output the core status and memory contents
@@ -260,4 +261,11 @@ void sigHandler_assertFail(int sig) {
 void sigHandler_segfault(int sig) {
     std::cout << "EndType : Crash\n" << std::endl;
     exit(0);
+}
+
+//no error checking...
+void saveDataMemory(char* filename, unsigned int *memory, unsigned long length) {
+    std::ofstream memDumpFile;
+    memDumpFile.open(filename);
+    memDumpFile.write(reinterpret_cast<const char *>(memory), length*sizeof(memory[0]));
 }

@@ -35,7 +35,7 @@ debug: $(S_FILES) $(I_HEADER)
 vivado.sim: $(S_FILES) $(I_HEADER)
 	g++ -o vivado.sim $(INC_PARAMS) $(S_FILES) $(VARS_VIV)
 
-faultInjection.sim: $(S_FILES) $(I_HEADER)
+faultInjection: $(S_FILES) $(I_HEADER)
 	g++ -O3 -o cometFI.sim $(GENERIC) -D__FAULT_INJECTION__
 
 clean:

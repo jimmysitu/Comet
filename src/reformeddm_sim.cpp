@@ -36,6 +36,7 @@ CCS_MAIN(int argc, char** argv)
     const char* binaryFile = 0;
     const char* inputFile = 0;
     const char* outputFile = 0;
+    int dataDumpFilenameIndex = -1;
     int argstart = 0;
     char **benchargv = 0;
     int benchargc = 1;
@@ -86,6 +87,9 @@ CCS_MAIN(int argc, char** argv)
             if(injectionBitLocation > injRegisterWidth[static_cast<int>(injectionLocation)]-1) {
                 injectionBitLocation = injRegisterWidth[static_cast<int>(injectionLocation)]-1;
             }
+        }
+        else if(strcmp("-D", argv[i]) == 0) {
+            dataDumpFilenameIndex = i+1;
         }
 #endif
     }
@@ -250,6 +254,9 @@ CCS_MAIN(int argc, char** argv)
     //check if the execution terminated "gracefully"
     if(sim.getCore()->csrs.mcycle.to_int64() < maxCycles) {
         std::cout << "EndType : Normal\n" << std::endl;
+    }
+    if(dataDumpFilenameIndex != -1) {
+        saveDataMemory(argv[dataDumpFilenameIndex], dm, DRAM_SIZE);
     }
 #endif
 

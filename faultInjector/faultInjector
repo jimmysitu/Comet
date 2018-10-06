@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+
+import subprocess, re, os, random
+
+
+benchmarkPath = '../benchmarks/build/matmul_int_4.riscv32'
+places = {'FToDC':[0, 97], 'DCToEx':[1, 174], 'ExToMem':[2, 126], 'MemToWB':[3, 115], 'PC':[4, 32], 'RF0':[5, 32],
+'RF1':[6, 32], 'RF2':[7, 32], 'RF3':[8, 32], 'RF4':[9, 32], 'RF5':[10, 32], 'RF6':[11, 32], 'RF7':[12, 32], 'RF8':[13, 32],
+'RF9':[14, 32], 'RF10':[15, 32], 'RF11':[16, 32], 'RF12':[17, 32], 'RF13':[18, 32], 'RF14':[19, 32], 'RF15':[20, 32],
+'RF16':[21, 32], 'RF17':[22, 32], 'RF18':[23, 32], 'RF19':[24, 32], 'RF20':[25, 32], 'RF21':[26, 32], 'RF22':[27, 32],
+'RF23':[28, 32], 'RF24':[29, 32], 'RF25':[30, 32], 'RF26':[31, 32], 'RF27':[32, 32], 'RF28':[33, 32], 'RF29':[34, 32],
+'RF30':[35, 32], 'RF31':[36, 32], 'CoreCtrl':[37, 205]}
+
+def executeSimulation(workload, arguments):
+    devnull = open(os.devnull, 'w')
+    result = subprocess.run(['../cometFI.sim', '-f', workload] + arguments, stdout=subprocess.PIPE, stderr=devnull)
+    devnull.close()
+    return result.stdout.decode('unicode_escape')
+
+def doGoldenRun():
+    runStdOut = executeSimulation(benchmarkPath, ['-D', '/tmp/goldenSampleMemory'])
+    #get the cycle count
+    cycles = re.findall('in (.*) cycles', runStdOut)
+    cycles = int(cycles[0])
+    return cycles
+
+def doInjectionRun(referenceCycles, maxAllowedCycles):
+    #pick a cycle
+    injectionCycle = random.randint(0, referenceCycles)
+    #pick a place to inject
+    place = random.sample(list(places.items()), 1)
+    placeId = place[0][1][0]
+    #pick a bit
+    bitPosition = random.randint(0, place[0][1][1])
+    print("Injection cycle : " + str(injectionCycle) + ", place : " + place[0][0] + ", placeId : " + str(placeId) + ", bitPosition : " + str(bitPosition))
+
+def main():
+    random.seed()
+    referenceCycles = doGoldenRun()
+    maxCycles = 8*referenceCycles
+    print("Normal cycles : " + str(referenceCycles) + ", maxCycles : " + str(maxCycles))
+    doInjectionRun(referenceCycles, maxCycles)
+
+
+
+if __name__ == "__main__":
+    # execute only if run as a script
+    main()

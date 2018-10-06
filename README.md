@@ -86,7 +86,7 @@ At the end of the simulation, the line `Successfully executed 18050 instructions
 
 ## Fault Injection
 
-When the simulator is built with the \_\_FAULT_INJECTION\_\_ definition (`make faultInjection.sim`), a binary called `cometFI.sim` is created. This binary supports a new set of arguments relative to fault injection.
+When the simulator is built with the \_\_FAULT_INJECTION\_\_ definition (`make faultInjection`), a binary called `cometFI.sim` is created. This binary supports a new set of arguments relative to fault injection.
 The `-I <maxExecCycles> <injectionCycle> <coreLocation> <bitPosition>` switch enables the fault injection mechanisms.
 
 All the arguments are needed :
@@ -107,3 +107,5 @@ All the arguments are needed :
   |  37 	|  CoreCtrl 	|  205 	|
 
   - `bitPosition` : the flipflop position within the targetted register (please refer to  `core.h` to get the definition of each field). If the argument is greater than the width of the targetted register it's value is clipped so that the MSbit of the register is affected.
+
+The fault injection compilation flag also enables the `-D <dumpFileName>` switch. It allows the creation of a file that contains a full binary dump of the system's data memory at the end of the execution.
