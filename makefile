@@ -11,6 +11,9 @@ GENERIC=$(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -std=c++98
 all: $(S_FILES) $(I_HEADER)
 	g++ -O3 -o comet.sim $(GENERIC)
 
+nocache: $(S_FILES) $(I_HEADER)
+	g++ -O3 -o comet.nocache.sim $(GENERIC) -Dnocache
+
 dall: $(S_FILES) $(I_HEADER)
 	g++ -g -o comet.sim $(GENERIC)
 
@@ -38,5 +41,5 @@ vivado.sim: $(S_FILES) $(I_HEADER)
 clean:
 	rm -rf *.o comet.sim vivado.sim comet.cpp catapult.cpp 
 
-.PHONY: all catapult clean debug text textcatapult
+.PHONY: all catapult clean debug text textcatapult nocache
 
