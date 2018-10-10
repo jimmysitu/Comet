@@ -18,6 +18,7 @@
 #include "simulator.h"
 #include "multicycleoperator.h"
 
+#define __FAULT_INJECTION__
 #ifdef __FAULT_INJECTION__
 #include "fault_inj_support.h"
 #endif
@@ -256,7 +257,7 @@ CCS_MAIN(int argc, char** argv)
         std::cout << "EndType : Normal\n" << std::endl;
     }
     if(dataDumpFilenameIndex != -1) {
-        saveDataMemory(argv[dataDumpFilenameIndex], dm, DRAM_SIZE);
+        saveSystemSnapshot(argv[dataDumpFilenameIndex], dm, DRAM_SIZE, sim.getCore());
     }
 #endif
 

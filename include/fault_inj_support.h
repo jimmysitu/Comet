@@ -102,7 +102,7 @@ void faulInjection_setup_signals(void);
 void sigHandler_segfault(int sig);
 void sigHandler_assertFail(int sig);
 
-//To output the contents of memory at the end of an injection run
-void saveDataMemory(char* filename, unsigned int* memory, unsigned long int length);
+//To output the contents of memory and the different registers at the end of an injection run
+void saveSystemSnapshot(char* filename, unsigned int* memory, unsigned long int length, Core* core);
 
 #endif // FAULT_INJ_SUPPORT_H

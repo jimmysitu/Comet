@@ -6,6 +6,18 @@
 #include "cache.h"
 #include "multicycleoperator.h"
 
+
+#ifndef __HLS__
+#define FTODC_WIDTH 4
+#define DCTOEX_WIDTH 19
+#define EXTOMEM_WIDTH 10
+#define MEMTOWB_WIDTH 7
+#define CORECTRL_WIDTH 19
+#define COREREG_WIDTH 33
+#define TOTAL_REG_WIDTH 92
+#endif
+
+
 struct FtoDC
 {
     FtoDC()
@@ -15,6 +27,15 @@ struct FtoDC
     ac_int<32, false> instruction;  // Instruction to execute
     bool realInstruction;           // Increment for minstret
     ac_int<32, false> nextpc;       // Next pc to store for JAL & JALR
+
+#ifndef __HLS__
+    void dumpContents(int* array) {   //need 4 int -> 4*4=16 bytes
+        array[0] = (int)pc;
+        array[1] = (int)instruction;
+        array[2] = (int)realInstruction;
+        array[3] = (int)nextpc;
+    }
+#endif
 };
 
 struct DCtoEx
@@ -70,6 +91,30 @@ struct DCtoEx
     ac_int<32, true> datae;
     ac_int<32, true> memValue; //Second data, from register file or immediate value
 #endif
+
+#ifndef __HLS__
+    void dumpContents(int* array) { //need 19 int -> 19*4=76 bytes
+        array[0] = (int)pc;
+        array[1] = (int)opCode;
+        array[2] = (int)funct7;
+        array[3] = (int)funct3;
+        array[4] = (int)rd;
+        array[5] = (int)realInstruction;
+        array[6] = (int)lhs;
+        array[7] = (int)rhs;
+        array[8] = (int)datac;
+        array[9] = (int)forward_lhs;
+        array[10] = (int)forward_rhs;
+        array[11] = (int)forward_datac;
+        array[12] = (int)forward_mem_lhs;
+        array[13] = (int)forward_mem_rhs;
+        array[14] = (int)forward_mem_datac;
+        array[15] = (int)csr;
+        array[16] = (int)CSRid;
+        array[17] = (int)external;
+        array[18] = (int)op;
+    }
+#endif
 };
 
 struct ExtoMem
@@ -98,6 +143,22 @@ struct ExtoMem
     ac_int<12, false> CSRid;
 
     ac_int<32, true> datac;     // data to be stored in memory or csr result
+
+#ifndef __HLS__
+    void dumpContents(int* array) { //need 10 int -> 10*4=40 bytes
+        array[0] = (int)pc;
+        array[1] = (int)result;
+        array[2] = (int)rd;
+        array[3] = (int)opCode;
+        array[4] = (int)funct3;
+        array[5] = (int)realInstruction;
+        array[6] = (int)external;
+        array[7] = (int)csr;
+        array[8] = (int)CSRid;
+        array[9] = (int)datac;
+    }
+#endif
+
 };
 
 struct MemtoWB
@@ -121,6 +182,18 @@ struct MemtoWB
     bool csr;
     ac_int<12, false> CSRid;    // CSR to be written back
     ac_int<32, false> rescsr;   // Result for CSR instruction
+
+#ifndef __HLS__
+    void dumpContents(int* array) { //need 7 int -> 7*4=28 bytes
+        array[0] = (int)pc;
+        array[1] = (int)result;
+        array[2] = (int)rd;
+        array[3] = (int)realInstruction;
+        array[4] = (int)csr;
+        array[5] = (int)CSRid;
+        array[6] = (int)rescsr;
+    }
+#endif
 
 };
 
@@ -189,6 +262,31 @@ struct CoreCtrl
     ac_int<32, true> prev_res[3];
     bool branch[3];
     ac_int<32, true> jump_pc[2];
+
+#ifndef __HLS__
+    void dumpContents(int* array) { //need 19 int -> 19*4=76 bytes
+        array[0] = (int)prev_rds[0];
+        array[1] = (int)prev_rds[1];
+        array[2] = (int)prev_rds[2];
+        array[3] = (int)prev_opCode[0];
+        array[4] = (int)prev_opCode[1];
+        array[5] = (int)prev_opCode[2];
+        array[6] = (int)lock;
+        array[7] = (int)freeze_fetch;
+        array[8] = (int)cachelock;
+        array[9] = (int)init;
+        array[10] = (int)sleep;
+        array[11] = (int)prev_res[0];
+        array[12] = (int)prev_res[1];
+        array[13] = (int)prev_res[2];
+        array[14] = (int)branch[0];
+        array[15] = (int)branch[1];
+        array[16] = (int)branch[2];
+        array[17] = (int)jump_pc[0];
+        array[18] = (int)jump_pc[1];
+    }
+#endif
+
 };
 
 struct Core
@@ -229,6 +327,15 @@ struct Core
     //unsigned int ddata[Sets][Blocksize][Associativity];   // made external for modelsim
     DCacheRequest drequest;
     DCacheReply dreply;
+
+#ifndef __HLS__
+    void dumpContents(int* array) { //need 33 int -> 33*4=132 bytes
+        for(int i=0; i<32; i++) {
+            array[i] = (int)REG[i];
+        }
+        array[32] = (int)pc;
+    }
+#endif
 };
 
 class Simulator;

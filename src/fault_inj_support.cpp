@@ -264,8 +264,25 @@ void sigHandler_segfault(int sig) {
 }
 
 //no error checking...
-void saveDataMemory(char* filename, unsigned int *memory, unsigned long length) {
+void saveSystemSnapshot(char* filename, unsigned int *memory, unsigned long length, Core* core) {
     std::ofstream memDumpFile;
+    int regDumpArray[TOTAL_REG_WIDTH] = {0};
     memDumpFile.open(filename);
+    //write the memory
     memDumpFile.write(reinterpret_cast<const char *>(memory), length*sizeof(memory[0]));
+    //then write the contents of the registers
+    core->ftoDC.dumpContents(regDumpArray);
+    memDumpFile.write(reinterpret_cast<const char *>(regDumpArray), FTODC_WIDTH*sizeof(regDumpArray[0]));
+    core->dctoEx.dumpContents(regDumpArray);
+    memDumpFile.write(reinterpret_cast<const char *>(regDumpArray), DCTOEX_WIDTH*sizeof(regDumpArray[0]));
+    core->extoMem.dumpContents(regDumpArray);
+    memDumpFile.write(reinterpret_cast<const char *>(regDumpArray), EXTOMEM_WIDTH*sizeof(regDumpArray[0]));
+    core->memtoWB.dumpContents(regDumpArray);
+    memDumpFile.write(reinterpret_cast<const char *>(regDumpArray), MEMTOWB_WIDTH*sizeof(regDumpArray[0]));
+    core->ctrl.dumpContents(regDumpArray);
+    memDumpFile.write(reinterpret_cast<const char *>(regDumpArray), CORECTRL_WIDTH*sizeof(regDumpArray[0]));
+    core->dumpContents(regDumpArray);
+    memDumpFile.write(reinterpret_cast<const char *>(regDumpArray), COREREG_WIDTH*sizeof(regDumpArray[0]));
+    //close the fd
+    memDumpFile.close();
 }
