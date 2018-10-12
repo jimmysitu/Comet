@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 
-import subprocess, re, os, random, filecmp, argparse, colorama
+import subprocess, re, os, random, filecmp, argparse, colorama, collections
 
-benchmarkPath = '../benchmarks/build/matmul_int_4.riscv32'
+benchmarkPath = '../benchmarks/build/qsort_short_100.riscv32'
 
-'''
-places = {'FToDC':[0, 97], 'DCToEx':[1, 174], 'ExToMem':[2, 126], 'MemToWB':[3, 115], 'PC':[4, 32], 'RF0':[5, 32],
+places = collections.OrderedDict({'FToDC':[0, 97], 'DCToEx':[1, 174], 'ExToMem':[2, 126], 'MemToWB':[3, 115], 'PC':[4, 32], 'RF0':[5, 32],
 'RF1':[6, 32], 'RF2':[7, 32], 'RF3':[8, 32], 'RF4':[9, 32], 'RF5':[10, 32], 'RF6':[11, 32], 'RF7':[12, 32], 'RF8':[13, 32],
 'RF9':[14, 32], 'RF10':[15, 32], 'RF11':[16, 32], 'RF12':[17, 32], 'RF13':[18, 32], 'RF14':[19, 32], 'RF15':[20, 32],
 'RF16':[21, 32], 'RF17':[22, 32], 'RF18':[23, 32], 'RF19':[24, 32], 'RF20':[25, 32], 'RF21':[26, 32], 'RF22':[27, 32],
 'RF23':[28, 32], 'RF24':[29, 32], 'RF25':[30, 32], 'RF26':[31, 32], 'RF27':[32, 32], 'RF28':[33, 32], 'RF29':[34, 32],
-'RF30':[35, 32], 'RF31':[36, 32], 'CoreCtrl':[37, 205]}
+'RF30':[35, 32], 'RF31':[36, 32], 'CoreCtrl':[37, 205]})
+
 '''
-
 places = {'FToDC':[0, 97], 'DCToEx':[1, 174], 'ExToMem':[2, 126], 'MemToWB':[3, 115], 'PC':[4, 32], 'CoreCtrl':[37, 205]}
-
+'''
 
 results = {}
 
@@ -26,90 +25,142 @@ def initResults():
             results[key].append({}) #create a dict for each bit in the selected place
             results[key][bit]["nbInj"] = 0  #init the selected bit's stats
             results[key][bit]["Masked"] = 0
-            results[key][bit]["SDC"] = 0
+            results[key][bit]["ISM"] = 0
+            results[key][bit]["AOM"] = 0
+            results[key][bit]['ISM & AOM'] = 0
             results[key][bit]["Hang"] = 0
             results[key][bit]["Crash"] = 0
 
+#count the total number of bits we can use as injection points
+def getTotalNumberOfBits():
+    sum = 0
+    for key in places.keys():
+        sum += places[key][1]
+    return sum
+
+
+def getBitLocation(bitNumber):
+    sum = 0
+    for key in places.keys():
+        if (bitNumber >= sum) and (bitNumber < sum + places[key][1]):    #we're on the right register
+            return (key, bitNumber-sum)
+        else:
+            sum += places[key][1]
+    print("Bit #" + str(bitNumber) + " not found !")
+
+#runs the simulator with the given workload and arguments
 def executeSimulation(workload, arguments):
     devnull = open(os.devnull, 'w')
     result = subprocess.run(['../cometFI.sim', '-f', workload] + arguments, stdout=subprocess.PIPE, stderr=devnull)
     devnull.close()
     return result.stdout.decode('unicode_escape')
 
-def doGoldenRun(verbose):
-    runStdOut = executeSimulation(benchmarkPath, ['-o', '/tmp/goldenSampleMemory'])
+#collect the golden sample data : execution cycle count, stdout and memory+register dump
+def doGoldenRun(verbosity):
+    runStdOut = executeSimulation(benchmarkPath, ['-o', '/tmp/goldenSampleStdout', '-D', '/tmp/goldenSampleMemory'])
     #get the cycle count
     cycles = re.findall('in (.*) cycles', runStdOut)
     cycles = int(cycles[0])
-    if verbose == True:
-        subprocess.call(['cat', '/tmp/goldenSampleMemory'])
+    if verbosity > 1:
+        print("----------golden stdout----------")
+        subprocess.call(['cat', '/tmp/goldenSampleStdout'])
+        print("---------------------------------")
     return cycles
 
-def doInjectionRun(referenceCycles, maxAllowedCycles, verbose):
+#injects a fault at the given cycle, checks the workload termination type and populate the result base
+def doInjectionRun(referenceCycles, maxAllowedCycles, verbosity):
     #pick a cycle
     injectionCycle = random.randint(0, referenceCycles)
-    #pick a place to inject
-    place = random.sample(list(places.items()), 1)
-    placeId = place[0][1][0]
-    placeName = place[0][0]
-    #pick a bit
-    bitPosition = random.randint(0, place[0][1][1]-1)
-    if verbose == True:
-        print("Injection cycle : " + str(injectionCycle) + ", place : " + place[0][0] + ", placeId : " + str(placeId) + ", bitPosition : " + str(bitPosition))
+
+    #pick a bit between 0 and TotalNumberOfBits-1
+    bitNumber = random.randint(0, getTotalNumberOfBits()-1)
+    place, bitPosition = getBitLocation(bitNumber)
+    placeId = places[place][0]
+
+    if verbosity > 0:
+        print("Injection cycle : " + str(injectionCycle) + ", place : " + place + ", placeId : " + str(placeId) + ", bitPosition : " + str(bitPosition) + ", Bit Number : " + str(bitNumber))
     #run the simulator
-    runStdOut = executeSimulation(benchmarkPath, ['-o', '/tmp/injectionRunMemory', '-I', str(maxAllowedCycles), str(injectionCycle), str(placeId), str(bitPosition)])
+    runStdOut = executeSimulation(benchmarkPath, ['-o', '/tmp/injectionRunStdout', '-D', '/tmp/injectionRunMemory', '-I', str(maxAllowedCycles), str(injectionCycle), str(placeId), str(bitPosition)])
     #capture the end type
     endType = re.findall('EndType : (.*)', runStdOut)
-    #if necessary check memory contents
+
+    #if the workload execution terminated without a crash or a hang
     if endType[0] == 'Normal':
-        #check difference here
-        if filecmp.cmp('/tmp/goldenSampleMemory', '/tmp/injectionRunMemory', False) == False:
-            endType[0] = 'SDC'
+        #check the output and the memory dump against the golden sample
+        filecmp.clear_cache()   #really needed ?
+        inISMSpace = not filecmp.cmp('/tmp/goldenSampleMemory', '/tmp/injectionRunMemory', False)
+        inAOMSpace = not filecmp.cmp('/tmp/goldenSampleStdout', '/tmp/injectionRunStdout', False)
+
+        if (inISMSpace) and (inAOMSpace):
+            endType[0] = 'ISM & AOM'
+        elif (inISMSpace) and (not inAOMSpace):
+            endType[0] = 'ISM'
+        elif (not inISMSpace) and (inAOMSpace):
+            endType[0] = 'AOM'
         else:
             endType[0] = 'Masked'
-    if verbose == True:
-        print(endType[0])
+
+    if verbosity > 0:
+        print("endType : " + endType[0])
     #update results base
-    results[placeName][bitPosition]['nbInj'] += 1
-    results[placeName][bitPosition][endType[0]] += 1
-    if verbose == True:
-        subprocess.call(['cat', '/tmp/injectionRunMemory'])
-    if verbose == True:
-        print("------------------------")
+    results[place][bitPosition]['nbInj'] += 1
+    results[place][bitPosition][endType[0]] += 1
+    if verbosity > 1:
+        print("Run output :")
+        subprocess.call(['cat', '/tmp/injectionRunStdout'])
+    if verbosity > 0:
+        print("---------------------------------")
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("nbInj", type=int, help="number of injections to perform")
-    parser.add_argument("-v", "--verbose", action="store_true", help="verbose mode")
-    args = parser.parse_args()
-
-    #prepare the injeciton runs
-    random.seed()
-    initResults()
-    referenceCycles = doGoldenRun(args.verbose)
-    maxCycles = 8*referenceCycles
-    if args.verbose == True:
-        print("Normal cycles : " + str(referenceCycles) + ", maxCycles : " + str(maxCycles))
-    for i in range(args.nbInj):
-        doInjectionRun(referenceCycles, maxCycles, args.verbose)
-        if args.verbose == True:
-            print(str(i+1) + '/' + str(args.nbInj))
-
+def showFinalStats():
     #go through the results base and collect the needed stats
     sumMasked = 0
-    sumSDC = 0
+    sumISM = 0
+    sumAOM = 0
+    sumISMAOM = 0
     sumHang = 0
     sumCrash = 0
     for key in places.keys():
         for bit in range(0, places[key][1]):
             sumMasked += results[key][bit]["Masked"]
-            sumSDC += results[key][bit]["SDC"]
+            sumISM += results[key][bit]["ISM"]
+            sumAOM += results[key][bit]["AOM"]
+            sumISMAOM += results[key][bit]["ISM & AOM"]
             sumHang += results[key][bit]["Hang"]
             sumCrash += results[key][bit]["Crash"]
     print("Masked : " + str(sumMasked))
-    print("SDC : " + str(sumSDC))
+    print("ISM : " + str(sumISM))
+    print("AOM : " + str(sumAOM))
+    print("ISM & AOM : " + str(sumISMAOM))
     print("Hang : " + str(sumHang))
     print("Crash : " + str(sumCrash))
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("nbInj", type=int, help="number of injections to perform")
+    parser.add_argument("-v", "--verbose", action="count", help="verbose mode")
+    args = parser.parse_args()
+
+    #process verbosity number
+    verbosity = 0
+    if args.verbose is not None:
+        verbosity = args.verbose
+
+    #prepare the injeciton runs
+    random.seed()
+    initResults()
+    referenceCycles = doGoldenRun(verbosity)
+    maxCycles = 8*referenceCycles
+
+    '''
+    if args.verbose > 0:
+        print("Normal cycles : " + str(referenceCycles) + ", maxCycles : " + str(maxCycles))
+    '''
+    for i in range(args.nbInj):
+        if verbosity > 0:
+            print(str(i+1) + '/' + str(args.nbInj) + " :")
+        doInjectionRun(referenceCycles, maxCycles, verbosity)
+
+    showFinalStats()
 
 if __name__ == "__main__":
     # execute only if run as a script
