@@ -2,7 +2,7 @@
 
 import subprocess, re, os, random, filecmp, argparse, colorama, collections
 
-benchmarkPath = '../benchmarks/build/qsort_short_100.riscv32'
+#benchmarkPath = '../benchmarks/build/qsort_short_100.riscv32'
 
 places = collections.OrderedDict({'FToDC':[0, 97], 'DCToEx':[1, 174], 'ExToMem':[2, 126], 'MemToWB':[3, 115], 'PC':[4, 32], 'RF0':[5, 32],
 'RF1':[6, 32], 'RF2':[7, 32], 'RF3':[8, 32], 'RF4':[9, 32], 'RF5':[10, 32], 'RF6':[11, 32], 'RF7':[12, 32], 'RF8':[13, 32],
@@ -56,7 +56,7 @@ def executeSimulation(workload, arguments):
     return result.stdout.decode('unicode_escape')
 
 #collect the golden sample data : execution cycle count, stdout and memory+register dump
-def doGoldenRun(verbosity):
+def doGoldenRun(benchmarkPath, verbosity):
     runStdOut = executeSimulation(benchmarkPath, ['-o', '/tmp/goldenSampleStdout', '-D', '/tmp/goldenSampleMemory'])
     #get the cycle count
     cycles = re.findall('in (.*) cycles', runStdOut)
@@ -68,7 +68,7 @@ def doGoldenRun(verbosity):
     return cycles
 
 #injects a fault at the given cycle, checks the workload termination type and populate the result base
-def doInjectionRun(referenceCycles, maxAllowedCycles, verbosity):
+def doInjectionRun(benchmarkPath, referenceCycles, maxAllowedCycles, verbosity):
     #pick a cycle
     injectionCycle = random.randint(0, referenceCycles)
 
@@ -138,17 +138,20 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("nbInj", type=int, help="number of injections to perform")
     parser.add_argument("-v", "--verbose", action="count", help="verbose mode")
+    parser.add_argument("-b", "--benchmarkPath", type=str, help="path to the benchmark to execute")
     args = parser.parse_args()
 
-    #process verbosity number
+    #format arguments
     verbosity = 0
     if args.verbose is not None:
         verbosity = args.verbose
 
+    benchmarkPath = args.benchmarkPath
+
     #prepare the injeciton runs
     random.seed()
     initResults()
-    referenceCycles = doGoldenRun(verbosity)
+    referenceCycles = doGoldenRun(benchmarkPath, verbosity)
     maxCycles = 8*referenceCycles
 
     '''
@@ -158,7 +161,7 @@ def main():
     for i in range(args.nbInj):
         if verbosity > 0:
             print(str(i+1) + '/' + str(args.nbInj) + " :")
-        doInjectionRun(referenceCycles, maxCycles, verbosity)
+        doInjectionRun(benchmarkPath, referenceCycles, maxCycles, verbosity)
 
     showFinalStats()
 
