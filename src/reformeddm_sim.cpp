@@ -18,7 +18,6 @@
 #include "simulator.h"
 #include "multicycleoperator.h"
 
-#define __FAULT_INJECTION__
 #ifdef __FAULT_INJECTION__
 #include "fault_inj_support.h"
 #endif

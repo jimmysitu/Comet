@@ -127,6 +127,7 @@ struct ExtoMem
       result(0), rd(0), opCode(RISCV_OPI), funct3(RISCV_OPI_ADDI), realInstruction(false),
       datac(0), csr(false), CSRid(0)
     {}
+
     ac_int<32, false> pc;
 #ifndef __HLS__
     ac_int<32, false> instruction;
@@ -170,9 +171,9 @@ struct MemtoWB
   #endif
       result(0), rd(0), realInstruction(false), csr(false), CSRid(0), rescsr(0)
     {}
-    ac_int<32, false> pc;
+    ac_int<32, false> pc;           // !!!: only used for debug and tracing
 #ifndef __HLS__
-    ac_int<32, false> instruction;
+    ac_int<32, false> instruction;  // !!!: only used for debug and tracing
 #endif
 
     ac_int<32, true> result;    // Result to be written back

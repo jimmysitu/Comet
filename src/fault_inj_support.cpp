@@ -107,35 +107,32 @@ int injectFault_DCToEX(Core* core, int bitPosition) {
 int injectFault_EXToMEM(Core* core, int bitPosition) {
     int status = 1;
 
-    if(bitPosition < 32) {      //pc
-        core->extoMem.pc ^= (1 << bitPosition);
+    if(bitPosition < 32) { //result
+        core->extoMem.result ^= (1 << (bitPosition));
     }
-    else if(bitPosition < 64) { //result
-        core->extoMem.result ^= (1 << (bitPosition-32));
+    else if(bitPosition < 37) { //rd
+        core->extoMem.rd ^= (1 << (bitPosition-32));
     }
-    else if(bitPosition < 69) { //rd
-        core->extoMem.rd ^= (1 << (bitPosition-64));
+    else if(bitPosition < 44) { //opCode
+        core->extoMem.opCode ^= (1 << (bitPosition-37));
     }
-    else if(bitPosition < 76) { //opCode
-        core->extoMem.opCode ^= (1 << (bitPosition-69));
+    else if(bitPosition < 47) { //funct3
+        core->extoMem.funct3 ^= (1 << (bitPosition-44));
     }
-    else if(bitPosition < 79) { //funct3
-        core->extoMem.funct3 ^= (1 << (bitPosition-76));
-    }
-    else if(bitPosition < 80) { //realInstruction
+    else if(bitPosition < 48) { //realInstruction
         core->extoMem.realInstruction = !core->extoMem.realInstruction;
     }
-    else if(bitPosition < 81) { //external
+    else if(bitPosition < 49) { //external
         core->extoMem.external = !core->extoMem.external;
     }
-    else if(bitPosition < 82) { //csr
+    else if(bitPosition < 50) { //csr
         core->extoMem.csr = !core->extoMem.csr;
     }
-    else if(bitPosition < 94) { //CSRid
-        core->extoMem.CSRid ^= (1 << (bitPosition-82));
+    else if(bitPosition < 62) { //CSRid
+        core->extoMem.CSRid ^= (1 << (bitPosition-50));
     }
-    else if(bitPosition < 126) { //datac
-        core->extoMem.datac ^= (1 << (bitPosition-94));
+    else if(bitPosition < 94) { //datac
+        core->extoMem.datac ^= (1 << (bitPosition-62));
     }
     else {  //wrong bit position, should never happen
         status = 0;
@@ -146,26 +143,23 @@ int injectFault_EXToMEM(Core* core, int bitPosition) {
 int injectFault_MEMToWB(Core* core, int bitPosition) {
     int status = 1;
 
-    if(bitPosition < 32) {      //pc
-        core->memtoWB.pc ^= (1 << bitPosition);
+    if(bitPosition < 32) { //result
+        core->memtoWB.result ^= (1 << (bitPosition));
     }
-    else if(bitPosition < 64) { //result
-        core->memtoWB.result ^= (1 << (bitPosition-32));
+    else if(bitPosition < 37) { //rd
+        core->memtoWB.rd ^= (1 << (bitPosition-32));
     }
-    else if(bitPosition < 69) { //rd
-        core->memtoWB.rd ^= (1 << (bitPosition-64));
-    }
-    else if(bitPosition < 70) { //realInstruction
+    else if(bitPosition < 38) { //realInstruction
         core->memtoWB.realInstruction = !core->memtoWB.realInstruction;
     }
-    else if(bitPosition < 71) { //csr
+    else if(bitPosition < 39) { //csr
         core->memtoWB.csr = !core->memtoWB.csr;
     }
-    else if(bitPosition < 83) { //CSRid
-        core->memtoWB.CSRid ^= (1 << (bitPosition-71));
+    else if(bitPosition < 51) { //CSRid
+        core->memtoWB.CSRid ^= (1 << (bitPosition-39));
     }
-    else if(bitPosition < 115) { //CSRid
-        core->memtoWB.rescsr ^= (1 << (bitPosition-83));
+    else if(bitPosition < 83) { //CSRid
+        core->memtoWB.rescsr ^= (1 << (bitPosition-51));
     }
     else {  //wrong bit position, should never happen
         status = 0;
