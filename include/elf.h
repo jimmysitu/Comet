@@ -558,7 +558,8 @@ typedef struct
 #define ELF32_R_TYPE(val)		((val) & 0xff)
 #define ELF32_R_INFO(sym, type)		(((sym) << 8) + ((type) & 0xff))
 
-#define ELF64_R_SYM(i)			((i) >> 32)
+static constexpr uint64_t ELF64_R_SYM(uint64_t i){ return ((i) >> 32); };
+//#define ELF64_R_SYM(i)			((i) >> 32)
 #define ELF64_R_TYPE(i)			((i) & 0xffffffff)
 #define ELF64_R_INFO(sym,type)		((((Elf64_Xword) (sym)) << 32) + (type))
 

@@ -6,7 +6,7 @@ VARS_VIV=-D__VIVADO__=1
 DEFINES=
 S_FILES:=$(wildcard src/*.cpp)
 I_HEADER:=$(wildcard include/*.h)
-GENERIC=$(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -std=c++98
+GENERIC=$(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -std=c++11
 
 all: $(S_FILES) $(I_HEADER)
 	g++ -O3 -o comet.sim $(GENERIC)
