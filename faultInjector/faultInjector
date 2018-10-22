@@ -6,13 +6,11 @@ import pandas as pd
 
 results = {}
 
-dataFileName = "probaErrorDistrib.xls"
-
 ################################################################################
 #               input file parsing etc...
 ################################################################################
 def openDatafile(filename):
-    dfile = pd.read_excel(dataFileName, sheet_name=None)
+    dfile = pd.read_excel(filename, sheet_name=None)
     return dfile
 
 
@@ -170,6 +168,7 @@ def main():
     parser.add_argument("-v", "--verbose", action="count", help="verbose mode")
     parser.add_argument("-b", "--benchmarkPath", type=str, help="path to the benchmark to execute") #make that a mandatory argument
     parser.add_argument("-o", "--outputPath", type=str, help="path to the output csv file") #make that a mandatory argument
+    parser.add_argument("-d", "--distributionPath", type=str, help="path to the register probability distribution file") #make that a mandatory argument
     args = parser.parse_args()
 
     #format arguments
@@ -182,7 +181,7 @@ def main():
 
     #prepare the injeciton runs
     random.seed()
-    regInfo = openDatafile(dataFileName)
+    regInfo = openDatafile(args.distributionPath)
     overallProba = unifyProbabilities(regInfo)
     initResults(regInfo)
     referenceCycles, runTime = doGoldenRun(benchmarkPath, verbosity)
