@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 
-import subprocess, re, os, random, filecmp, argparse, colorama, collections, pickle, time
-
-
-
-places = collections.OrderedDict({'FToDC':[0, 97], 'DCToEx':[1, 174], 'ExToMem':[2, 94], 'MemToWB':[3, 83], 'PC':[4, 32], 'RF0':[5, 32],
-'RF1':[6, 32], 'RF2':[7, 32], 'RF3':[8, 32], 'RF4':[9, 32], 'RF5':[10, 32], 'RF6':[11, 32], 'RF7':[12, 32], 'RF8':[13, 32],
-'RF9':[14, 32], 'RF10':[15, 32], 'RF11':[16, 32], 'RF12':[17, 32], 'RF13':[18, 32], 'RF14':[19, 32], 'RF15':[20, 32],
-'RF16':[21, 32], 'RF17':[22, 32], 'RF18':[23, 32], 'RF19':[24, 32], 'RF20':[25, 32], 'RF21':[26, 32], 'RF22':[27, 32],
-'RF23':[28, 32], 'RF24':[29, 32], 'RF25':[30, 32], 'RF26':[31, 32], 'RF27':[32, 32], 'RF28':[33, 32], 'RF29':[34, 32],
-'RF30':[35, 32], 'RF31':[36, 32], 'CoreCtrl':[37, 205]})
-
+import subprocess, re, os, random, filecmp, argparse, collections, pickle, time
+import numpy as np
+import pandas as pd
 
 results = {}
+
+dataFileName = "probaErrorDistrib.xls"
+
+################################################################################
+#               input file parsing etc...
+################################################################################
+def openDatafile(filename):
+    dfile = pd.read_excel(dataFileName, sheet_name=None)
+    return dfile
 
 
 ################################################################################
@@ -21,20 +22,31 @@ results = {}
 
 
 #count the total number of bits we can use as injection points
-def getTotalNumberOfBits():
+def getTotalNumberOfBits(regInfo):
     sum = 0
-    for key in places.keys():
-        sum += places[key][1]
-    return sum
+    for reg in regInfo:
+        sum += regInfo[reg]['register width'][0]
+    return int(sum)
+
+def unifyProbabilities(regInfo):
+    #concatenate all the registers distributions
+    overallDistribArray = []
+    for reg in regInfo:
+        overallDistribArray.extend(regInfo[reg]['Error proba normalized'].tolist())
+    #normalize them
+    sumVal = sum(overallDistribArray)
+    for elt in range(len(overallDistribArray)): #Could be done in a much much nicer way
+        overallDistribArray[elt] = overallDistribArray[elt]/sumVal
+    return overallDistribArray
 
 
-def getBitLocation(bitNumber):
+def getBitLocation(regInfo, bitNumber):
     sum = 0
-    for key in places.keys():
-        if (bitNumber >= sum) and (bitNumber < sum + places[key][1]):    #we're on the right register
-            return (key, bitNumber-sum)
+    for reg in regInfo:
+        if (bitNumber >= sum) and (bitNumber < sum + regInfo[reg]['register width'][0]):    #On the right register
+            return (reg, int(bitNumber-sum))
         else:
-            sum += places[key][1]
+            sum += regInfo[reg]['register width'][0]
     print("Bit #" + str(bitNumber) + " not found !")
 
 #runs the simulator with the given workload and arguments
@@ -58,14 +70,14 @@ def doGoldenRun(benchmarkPath, verbosity):
     return cycles, elapsedTime
 
 #injects a fault at the given cycle, checks the workload termination type and populate the result base
-def doInjectionRun(benchmarkPath, referenceCycles, maxAllowedCycles, verbosity):
+def doInjectionRun(regInfo, benchmarkPath, referenceCycles, maxAllowedCycles, verbosity, errorDistrib):
     #pick a cycle
     injectionCycle = random.randint(0, referenceCycles)
 
     #pick a bit between 0 and TotalNumberOfBits-1
-    bitNumber = random.randint(0, getTotalNumberOfBits()-1)
-    place, bitPosition = getBitLocation(bitNumber)
-    placeId = places[place][0]
+    bitNumber = np.random.choice(range(getTotalNumberOfBits(regInfo)), p=errorDistrib)
+    place, bitPosition = getBitLocation(regInfo, bitNumber)
+    placeId = int(regInfo[place]['register id'][0])
 
     if verbosity > 0:
         print("Injection cycle : " + str(injectionCycle) + ", place : " + place + ", placeId : " + str(placeId) + ", bitPosition : " + str(bitPosition) + ", Bit Number : " + str(bitNumber))
@@ -107,10 +119,10 @@ def doInjectionRun(benchmarkPath, referenceCycles, maxAllowedCycles, verbosity):
 ################################################################################
 
 #sets up all the results data (creates an entry for each bit in the design and initializes it's stats)
-def initResults():
-    for key in places.keys():
+def initResults(regInfo):
+    for key in regInfo.keys():
         results[key] = []   #create places entries
-        for bit in range(0, places[key][1]):
+        for bit in range(0, int(regInfo[key]['register width'][0])):
             results[key].append({}) #create a dict for each bit in the selected place
             results[key][bit]["nbInj"] = 0  #init the selected bit's stats
             results[key][bit]["Masked"] = 0
@@ -128,8 +140,8 @@ def showFinalStats():
     sumISMAOM = 0
     sumHang = 0
     sumCrash = 0
-    for key in places.keys():
-        for bit in range(0, places[key][1]):
+    for key in results.keys():
+        for bit in range(0, len(results[key])):
             sumMasked += results[key][bit]["Masked"]
             sumISM += results[key][bit]["ISM"]
             sumAOM += results[key][bit]["AOM"]
@@ -170,7 +182,9 @@ def main():
 
     #prepare the injeciton runs
     random.seed()
-    initResults()
+    regInfo = openDatafile(dataFileName)
+    overallProba = unifyProbabilities(regInfo)
+    initResults(regInfo)
     referenceCycles, runTime = doGoldenRun(benchmarkPath, verbosity)
     maxCycles = 8*referenceCycles
 
@@ -183,7 +197,7 @@ def main():
     for i in range(args.nbInj):
         if verbosity > 0:
             print(str(i+1) + '/' + str(args.nbInj) + " :")
-        doInjectionRun(benchmarkPath, referenceCycles, maxCycles, verbosity)
+        doInjectionRun(regInfo, benchmarkPath, referenceCycles, maxCycles, verbosity, overallProba)
 
     showFinalStats()
 
