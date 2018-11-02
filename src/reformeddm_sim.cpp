@@ -18,8 +18,10 @@
 #include "simulator.h"
 #include "multicycleoperator.h"
 
+//#define __FAULT_INJECTION__ //XXX: remove that before commiting
 #ifdef __FAULT_INJECTION__
 #include "fault_inj_support.h"
+#include <sstream>
 #endif
 
 #define ptrtocache(mem) (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(mem))
@@ -36,18 +38,19 @@ CCS_MAIN(int argc, char** argv)
     const char* binaryFile = 0;
     const char* inputFile = 0;
     const char* outputFile = 0;
-    int dataDumpFilenameIndex = -1;
     int argstart = 0;
     char **benchargv = 0;
     int benchargc = 1;
 
 #ifdef __FAULT_INJECTION__
     //fault injection parameters
+    int dataDumpFilenameIndex = -1;
     bool injectionMode = false;
     InjRegisterLocation injectionLocation;
-    int injectionBitLocation;
+    vector<int> injectionBitLocations;
     long long int maxCycles;
     long long int injectionCycle;
+    FaultModel faultModel;
 
     faulInjection_setup_signals();
 #endif
@@ -75,21 +78,31 @@ CCS_MAIN(int argc, char** argv)
         }
 #ifdef __FAULT_INJECTION__
         //check fault injection arguments
-        else if(strcmp("-I",  argv[i]) == 0)  // Injection mode : -I <maxExecCycles> <injectionCycle> <coreLocation> <bitPosition>
+        else if(strcmp("-I",  argv[i]) == 0)  // Injection mode : -I <maxExecCycles> <injectionCycle> <coreLocation/registerID> <bitPositions, space seperated>
         {
             injectionMode = true;
             maxCycles = atol(argv[i+1]);    //max number of cycles to wait for the execution to end
             injectionCycle = atol(argv[i+2]);   //cycle at which the injection will occur
-            injectionLocation = static_cast<InjRegisterLocation>(atoi(argv[i+3])); //force the injection location
-            injectionBitLocation = atoi(argv[i+4]);
+            injectionLocation = static_cast<InjRegisterLocation>(atoi(argv[i+3])); //register ID
+            //extract the list of bits to be affected
+            stringstream ss(argv[i+4]);
+            int buffer;
+            while(ss >> buffer) {
+                injectionBitLocations.push_back(buffer);
+            }
 
             //verify bit position and clip it if necessary
-            if(injectionBitLocation > injRegisterWidth[static_cast<int>(injectionLocation)]-1) {
-                injectionBitLocation = injRegisterWidth[static_cast<int>(injectionLocation)]-1;
+            for(int i=0; i<injectionBitLocations.size(); i++)
+            if(injectionBitLocations[i] > injRegisterWidth[static_cast<int>(injectionLocation)]-1) {
+                injectionBitLocations[i] = injRegisterWidth[static_cast<int>(injectionLocation)]-1;
             }
         }
-        else if(strcmp("-D", argv[i]) == 0) {
+        else if(strcmp("-D", argv[i]) == 0) {   //internal state dump
             dataDumpFilenameIndex = i+1;
+        }
+
+        else if(strcmp("-M", argv[i]) == 0) {   //Fault model
+            faultModel = static_cast<FaultModel>(atoi(argv[i+1])); //Fault model (0:bitflip, 1:stuck at 1, 2:stuck at 0)
         }
 #endif
     }
@@ -177,7 +190,11 @@ CCS_MAIN(int argc, char** argv)
 
 
 #ifdef __FAULT_INJECTION__
-    printf("Injection will happen at cycle %lld in reg %d at bit %d\n", injectionCycle, (int)injectionLocation, injectionBitLocation);
+    printf("Injection will happen at cycle %lld in reg %d at bit(s) ", injectionCycle, (int)injectionLocation);
+    for(int i=0; i<injectionBitLocations.size(); i++) {
+        printf("%d ", injectionBitLocations[i]);
+    }
+    printf("\n");
 #endif
 
     bool exit = false;
@@ -207,29 +224,37 @@ CCS_MAIN(int argc, char** argv)
             {
                 int injStatus;
                 //perform injection
+                printf("Injection cycle reached\n");
                 switch(injectionLocation)
                 {
                 case FToDC_loc:
-                    injStatus = injectFault_FToDC(sim.getCore(), injectionBitLocation);
+                    printf("Injection in FToDC\n");
+                    injStatus = injectFault_FToDC(sim.getCore(), injectionBitLocations, faultModel);
                     break;
                 case DCToEX_loc:
-                    injStatus = injectFault_DCToEX(sim.getCore(), injectionBitLocation);
+                    printf("Injection in DCToEx\n");
+                    injStatus = injectFault_DCToEX(sim.getCore(), injectionBitLocations, faultModel);
                     break;
                 case EXToMEM_loc:
-                    injStatus = injectFault_EXToMEM(sim.getCore(), injectionBitLocation);
+                    printf("Injection in ExToMem\n");
+                    injStatus = injectFault_EXToMEM(sim.getCore(), injectionBitLocations, faultModel);
                     break;
                 case MEMToWB_loc:
-                    injStatus = injectFault_MEMToWB(sim.getCore(), injectionBitLocation);
+                    printf("Injection in MemToWB\n");
+                    injStatus = injectFault_MEMToWB(sim.getCore(), injectionBitLocations, faultModel);
                     break;
                 case PC_loc:
-                    injStatus = injectFault_PC(sim.getCore(), injectionBitLocation);
+                    printf("Injection in PC\n");
+                    injStatus = injectFault_PC(sim.getCore(), injectionBitLocations, faultModel);
                     break;
                 case CoreCtrl_loc:
-                    injStatus = injectFault_CoreCtrl(sim.getCore(), injectionBitLocation);
+                    printf("Injection in CoreCtrl\n");
+                    injStatus = injectFault_CoreCtrl(sim.getCore(), injectionBitLocations, faultModel);
                     break;
                 default:
+                    printf("Injection in RF\n");
                     if((injectionLocation > PC_loc) && (injectionLocation < CoreCtrl_loc)) {    //register file
-                        injectFault_RF(sim.getCore(), static_cast<int>(injectionLocation - RF0_loc), injectionBitLocation);
+                        injectFault_RF(sim.getCore(), static_cast<int>(injectionLocation - RF0_loc), injectionBitLocations, faultModel);
                     }
                     printf("Injection Failed : location unknown\n");
                     exit = true;

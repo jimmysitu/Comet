@@ -3,6 +3,13 @@
 
 #include "core.h"
 #include <signal.h>
+#include <vector>
+
+enum FaultModel {
+    BITFLIP = 0,
+    STUCK_AT_ONE = 1,
+    STUCK_AT_ZERO= 2
+};
 
 // The different places faults can be injected (all pipeline registers, the register file, accumulator
 // and the core controler
@@ -88,13 +95,13 @@ const int injRegisterWidth[NUM_REG_LOCATIONS] = {
     205     //CoreCtrl
 };
 
-int injectFault_FToDC(Core* core, int bitPosition);
-int injectFault_DCToEX(Core* core, int bitPosition);
-int injectFault_EXToMEM(Core* core, int bitPosition);
-int injectFault_MEMToWB(Core* core, int bitPosition);
-int injectFault_RF(Core* core, int registerNumber, int bitPosition);
-int injectFault_PC(Core* core, int bitPosition);
-int injectFault_CoreCtrl(Core* core, int bitPosition);
+int injectFault_FToDC(Core* core, std::vector<int> bitPositions, FaultModel faultModel);
+int injectFault_DCToEX(Core* core, std::vector<int> bitPositions, FaultModel faultModel);
+int injectFault_EXToMEM(Core* core, std::vector<int> bitPositions, FaultModel faultModel);
+int injectFault_MEMToWB(Core* core, std::vector<int> bitPositions, FaultModel faultModel);
+int injectFault_RF(Core* core, int registerNumber, std::vector<int> bitPositions, FaultModel faultModel);
+int injectFault_PC(Core* core, std::vector<int> bitPositions, FaultModel faultModel);
+int injectFault_CoreCtrl(Core* core, std::vector<int> bitPositions, FaultModel faultModel);
 
 //to catch segfaults cased by the fault injection
 void setGlobalCore(Core* core);
