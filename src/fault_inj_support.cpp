@@ -559,7 +559,7 @@ int injectFault_RF(Core* core, int registerNumber, std::vector<int> bitPositions
     int status = 1;
 
     for(int i=0; i<bitPositions.size(); i++) {
-        if((bitPositions[i] > 0) && (bitPositions[i] < 32) && (registerNumber > 0) && (registerNumber < 32)) {
+        if((bitPositions[i] >= 0) && (bitPositions[i] < 32) && (registerNumber > 0) && (registerNumber < 32)) {
             switch(faultModel) {
             case BITFLIP:
                 core->REG[registerNumber] ^= (1 << bitPositions[i]);
@@ -583,7 +583,7 @@ int injectFault_PC(Core* core, std::vector<int> bitPositions, FaultModel faultMo
     int status = 0;
 
     for(int i=0; i<bitPositions.size(); i++) {
-        if((bitPositions[i] > 0) && (bitPositions[i] < 32)) {
+        if((bitPositions[i] >= 0) && (bitPositions[i] < 32)) {
             switch(faultModel) {
             case BITFLIP:
                 core->pc ^= (1 << bitPositions[i]);

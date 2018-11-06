@@ -22,6 +22,7 @@
 #ifdef __FAULT_INJECTION__
 #include "fault_inj_support.h"
 #include <sstream>
+#include <algorithm>    //for std::find
 #endif
 
 #define ptrtocache(mem) (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(mem))
@@ -49,7 +50,7 @@ CCS_MAIN(int argc, char** argv)
     InjRegisterLocation injectionLocation;
     vector<int> injectionBitLocations;
     long long int maxCycles;
-    long long int injectionCycle;
+    vector<long long int> injectionCycles;
     FaultModel faultModel;
 
     faulInjection_setup_signals();
@@ -78,24 +79,32 @@ CCS_MAIN(int argc, char** argv)
         }
 #ifdef __FAULT_INJECTION__
         //check fault injection arguments
-        else if(strcmp("-I",  argv[i]) == 0)  // Injection mode : -I <maxExecCycles> <injectionCycle> <coreLocation/registerID> <bitPositions, space seperated>
+        else if(strcmp("-I",  argv[i]) == 0)  // Injection mode : -I <maxExecCycles> <injectionCycles, space seperated> <coreLocation/registerID> <bitPositions, space seperated>
         {
             injectionMode = true;
             maxCycles = atol(argv[i+1]);    //max number of cycles to wait for the execution to end
-            injectionCycle = atol(argv[i+2]);   //cycle at which the injection will occur
+            //extract the list of cycles to be injected in
+            stringstream cyclesSs(argv[i+2]);
+            long long int cycleBuf;
+            while(cyclesSs >> cycleBuf) {
+                injectionCycles.push_back(cycleBuf);
+            }
+
             injectionLocation = static_cast<InjRegisterLocation>(atoi(argv[i+3])); //register ID
             //extract the list of bits to be affected
-            stringstream ss(argv[i+4]);
-            int buffer;
-            while(ss >> buffer) {
-                injectionBitLocations.push_back(buffer);
+            stringstream bitSs(argv[i+4]);
+            int bitBuf;
+            while(bitSs >> bitBuf) {
+                injectionBitLocations.push_back(bitBuf);
             }
 
             //verify bit position and clip it if necessary
-            for(int i=0; i<injectionBitLocations.size(); i++)
+            /*for(int i=0; i<injectionBitLocations.size(); i++)
             if(injectionBitLocations[i] > injRegisterWidth[static_cast<int>(injectionLocation)]-1) {
                 injectionBitLocations[i] = injRegisterWidth[static_cast<int>(injectionLocation)]-1;
-            }
+            }*/
+
+            printf("injectionBitLocations.size() = %d\n", injectionBitLocations.size());
         }
         else if(strcmp("-D", argv[i]) == 0) {   //internal state dump
             dataDumpFilenameIndex = i+1;
@@ -190,7 +199,7 @@ CCS_MAIN(int argc, char** argv)
 
 
 #ifdef __FAULT_INJECTION__
-    printf("Injection will happen at cycle %lld in reg %d at bit(s) ", injectionCycle, (int)injectionLocation);
+    //printf("Injection will happen at cycle %lld in reg %d at bit(s) ", injectionCycle, (int)injectionLocation);
     for(int i=0; i<injectionBitLocations.size(); i++) {
         printf("%d ", injectionBitLocations[i]);
     }
@@ -220,7 +229,9 @@ CCS_MAIN(int argc, char** argv)
         //Check if we need to inject at this cycle
         if(injectionMode)
         {
-            if(sim.getCore()->csrs.mcycle.to_int64() == injectionCycle-1)
+            //if the current cycle is in the list
+            if(find(injectionCycles.begin(), injectionCycles.end(), sim.getCore()->csrs.mcycle.to_int64()+1) != injectionCycles.end())
+            //if(sim.getCore()->csrs.mcycle.to_int64() == injectionCycle-1)
             {
                 int injStatus;
                 //perform injection
