@@ -103,8 +103,6 @@ CCS_MAIN(int argc, char** argv)
             if(injectionBitLocations[i] > injRegisterWidth[static_cast<int>(injectionLocation)]-1) {
                 injectionBitLocations[i] = injRegisterWidth[static_cast<int>(injectionLocation)]-1;
             }*/
-
-            printf("injectionBitLocations.size() = %d\n", injectionBitLocations.size());
         }
         else if(strcmp("-D", argv[i]) == 0) {   //internal state dump
             dataDumpFilenameIndex = i+1;

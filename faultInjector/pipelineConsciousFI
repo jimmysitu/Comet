@@ -1,23 +1,9 @@
 #!/usr/bin/env python3
 
 import subprocess, re, os, random, filecmp, argparse, colorama, collections, pickle, time
+import numpy as np
 
-
-'''
-places = collections.OrderedDict({'FToDC':[0, 97], 'DCToEx':[1, 174], 'ExToMem':[2, 94], 'MemToWB':[3, 83], 'PC':[4, 32], 'RF0':[5, 32],
-'RF1':[6, 32], 'RF2':[7, 32], 'RF3':[8, 32], 'RF4':[9, 32], 'RF5':[10, 32], 'RF6':[11, 32], 'RF7':[12, 32], 'RF8':[13, 32],
-'RF9':[14, 32], 'RF10':[15, 32], 'RF11':[16, 32], 'RF12':[17, 32], 'RF13':[18, 32], 'RF14':[19, 32], 'RF15':[20, 32],
-'RF16':[21, 32], 'RF17':[22, 32], 'RF18':[23, 32], 'RF19':[24, 32], 'RF20':[25, 32], 'RF21':[26, 32], 'RF22':[27, 32],
-'RF23':[28, 32], 'RF24':[29, 32], 'RF25':[30, 32], 'RF26':[31, 32], 'RF27':[32, 32], 'RF28':[33, 32], 'RF29':[34, 32],
-'RF30':[35, 32], 'RF31':[36, 32], 'CoreCtrl':[37, 205]})
-'''
-
-places = collections.OrderedDict({'RF0':[5, 32],
-'RF1':[6, 32], 'RF2':[7, 32], 'RF3':[8, 32], 'RF4':[9, 32], 'RF5':[10, 32], 'RF6':[11, 32], 'RF7':[12, 32], 'RF8':[13, 32],
-'RF9':[14, 32], 'RF10':[15, 32], 'RF11':[16, 32], 'RF12':[17, 32], 'RF13':[18, 32], 'RF14':[19, 32], 'RF15':[20, 32],
-'RF16':[21, 32], 'RF17':[22, 32], 'RF18':[23, 32], 'RF19':[24, 32], 'RF20':[25, 32], 'RF21':[26, 32], 'RF22':[27, 32],
-'RF23':[28, 32], 'RF24':[29, 32], 'RF25':[30, 32], 'RF26':[31, 32], 'RF27':[32, 32], 'RF28':[33, 32], 'RF29':[34, 32],
-'RF30':[35, 32], 'RF31':[36, 32]})
+import FIRegInfo as ri  #register informations and useful functions
 
 results = {}
 
@@ -25,24 +11,6 @@ results = {}
 ################################################################################
 #               Injection support
 ################################################################################
-
-
-#count the total number of bits we can use as injection points
-def getTotalNumberOfBits():
-    sum = 0
-    for key in places.keys():
-        sum += places[key][1]
-    return sum
-
-
-def getBitLocation(bitNumber):
-    sum = 0
-    for key in places.keys():
-        if (bitNumber >= sum) and (bitNumber < sum + places[key][1]):    #we're on the right register
-            return (key, bitNumber-sum)
-        else:
-            sum += places[key][1]
-    print("Bit #" + str(bitNumber) + " not found !")
 
 #runs the simulator with the given workload and arguments
 def executeSimulation(workload, arguments):
@@ -65,19 +33,39 @@ def doGoldenRun(benchmarkPath, verbosity):
     return cycles, elapsedTime
 
 #injects a fault at the given cycle, checks the workload termination type and populate the result base
-def doInjectionRun(benchmarkPath, referenceCycles, maxAllowedCycles, verbosity):
+def doInjectionRun(runNumber, benchmarkPath, referenceCycles, maxAllowedCycles, patterns, verbosity):
     #pick a cycle
     injectionCycle = random.randint(0, referenceCycles)
 
-    #pick a bit between 0 and TotalNumberOfBits-1
-    bitNumber = random.randint(0, getTotalNumberOfBits()-1)
-    place, bitPosition = getBitLocation(bitNumber)
-    placeId = places[place][0]
+    #select a zone to inject in
+    place = ri.selectRegion()
+
+    if place=='sequential': #choose a random FF and flip it
+        #choose a register
+        place = ri.selectRegister() #only place where the PC can be hit
+        #select a random FF inside
+        bitPositions = ri.getrandomBitsinRegister(place, 1)
+
+    elif place == 'comb_other': #inject in one of the core ctrl FFs
+        place = 'CoreCtrl'
+        bitPositions = ri.getrandomBitsinRegister(place, 1)
+
+    elif place == 'WriteBack':   #inject in the register file
+        #see faultInjection.md for further details on the fault model
+        #select a random register (can be the one selected in the WB stage)
+        place = ri.selectRFRegister()
+        #fill it with a random number of errors
+        bitPositions = ri.getrandomBitsinRegister(place, random.randint(1,31))
+
+    else:  #selected region is a pipeline stage's combinational logic
+        bitPositions = ri.patternToBitPositions(ri.getPattern(place, patterns))   #select a pattern to inject
+
 
     if verbosity > 0:
-        print("Injection cycle : " + str(injectionCycle) + ", place : " + place + ", placeId : " + str(placeId) + ", bitPosition : " + str(bitPosition) + ", Bit Number : " + str(bitNumber))
+        print("Injection cycle : " + str(injectionCycle) + ", place : " + place + ", bitPositions : " + ' ' + '"' + ' '.join(map(str, bitPositions)) + '"')
     #run the simulator
-    runStdOut = executeSimulation(benchmarkPath, ['-o', '/tmp/injectionRunStdout', '-D', '/tmp/injectionRunMemory', '-I', str(maxAllowedCycles), str(injectionCycle), str(placeId), str(bitPosition)])
+    placeId = ri.getRegisterID(place)
+    runStdOut = executeSimulation(benchmarkPath, ['-o', '/tmp/injectionRunStdout', '-D', '/tmp/injectionRunMemory', '-I', str(maxAllowedCycles), str(injectionCycle), str(placeId), '"' + ' '.join(map(str, bitPositions)) + '"'])
     #capture the end type
     endType = re.findall('EndType : (.*)', runStdOut)
 
@@ -100,8 +88,11 @@ def doInjectionRun(benchmarkPath, referenceCycles, maxAllowedCycles, verbosity):
     if verbosity > 0:
         print("endType : " + endType[0])
     #update results base
-    results[place][bitPosition]['nbInj'] += 1
-    results[place][bitPosition][endType[0]] += 1
+    for bit in bitPositions:
+        results[place][bit]['nbInj'] += 1
+        results[place][bit][endType[0]] += 1
+        results[place][bit]['cycles'].append(injectionCycle)
+        results[place][bit]["runNumber"].append(runNumber)
     if verbosity > 1:
         print("Run output :")
         subprocess.call(['cat', '/tmp/injectionRunStdout'])
@@ -115,10 +106,12 @@ def doInjectionRun(benchmarkPath, referenceCycles, maxAllowedCycles, verbosity):
 
 #sets up all the results data (creates an entry for each bit in the design and initializes it's stats)
 def initResults():
-    for key in places.keys():
-        results[key] = []   #create places entries
-        for bit in range(0, places[key][1]):
+    for key in ri.getRegisterList():
+        results[key] = []
+        for bit in range(ri.getRegisterWidth(key)):
             results[key].append({}) #create a dict for each bit in the selected place
+            results[key][bit]["cycles"] =  []
+            results[key][bit]["runNumber"] = []
             results[key][bit]["nbInj"] = 0  #init the selected bit's stats
             results[key][bit]["Masked"] = 0
             results[key][bit]["ISM"] = 0
@@ -135,8 +128,8 @@ def showFinalStats():
     sumISMAOM = 0
     sumHang = 0
     sumCrash = 0
-    for key in places.keys():
-        for bit in range(0, places[key][1]):
+    for key in ri.getRegisterList():
+        for bit in range(ri.getRegisterWidth(key)):
             sumMasked += results[key][bit]["Masked"]
             sumISM += results[key][bit]["ISM"]
             sumAOM += results[key][bit]["AOM"]
@@ -164,7 +157,8 @@ def main():
     parser.add_argument("nbInj", type=int, help="number of injections to perform")
     parser.add_argument("-v", "--verbose", action="count", help="verbose mode")
     parser.add_argument("-b", "--benchmarkPath", type=str, help="path to the benchmark to execute") #make that a mandatory argument
-    parser.add_argument("-o", "--outputPath", type=str, help="path to the output csv file") #make that a mandatory argument
+    parser.add_argument("-p", "--patternsBasePath", type=str, help="path to the extracted gate level patterns base pickle file") #make that a mandatory argument
+    parser.add_argument("-o", "--outputPath", type=str, help="path to the output pickle file") #make that a mandatory argument
     args = parser.parse_args()
 
     #format arguments
@@ -174,12 +168,18 @@ def main():
 
     benchmarkPath = args.benchmarkPath
     outputPath = args.outputPath
+    patternsPath = args.patternsBasePath
 
     #prepare the injeciton runs
     random.seed()
     initResults()
     referenceCycles, runTime = doGoldenRun(benchmarkPath, verbosity)
     maxCycles = 8*referenceCycles
+
+    #load the patterns histograms
+    patterns = pickle.load(open(patternsPath, 'rb'))
+    #normalize the pattern histograms
+    ri.unifyPatternProbas(patterns)
 
 
     if verbosity > 1:
@@ -190,7 +190,7 @@ def main():
     for i in range(args.nbInj):
         if verbosity > 0:
             print(str(i+1) + '/' + str(args.nbInj) + " :")
-        doInjectionRun(benchmarkPath, referenceCycles, maxCycles, verbosity)
+        doInjectionRun(i, benchmarkPath, referenceCycles, maxCycles, patterns, verbosity)
 
     showFinalStats()
 

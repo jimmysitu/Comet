@@ -18,8 +18,8 @@ enum InjRegisterLocation {
     DCToEX_loc,
     EXToMEM_loc,
     MEMToWB_loc,
-    PC_loc,
-    RF0_loc,
+    PC_loc, //4
+    RF0_loc,    //5
     RF1_loc,
     RF2_loc,
     RF3_loc,
@@ -50,8 +50,8 @@ enum InjRegisterLocation {
     RF28_loc,
     RF29_loc,
     RF30_loc,
-    RF31_loc,
-    CoreCtrl_loc,
+    RF31_loc,   //36
+    CoreCtrl_loc,   //37
     NUM_REG_LOCATIONS
 };
 
