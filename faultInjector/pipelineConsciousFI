@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 import subprocess, re, os, random, filecmp, argparse, colorama, collections, pickle, time
+from multiprocessing import Pool
+from functools import partial
 import numpy as np
 
 import FIRegInfo as ri  #register informations and useful functions
 
-results = {}
-
+PartialResult = collections.namedtuple('PartialResult', ['endType', 'cycle', 'runNumber'])
 
 ################################################################################
 #               Injection support
@@ -18,6 +19,7 @@ def executeSimulation(workload, arguments):
     result = subprocess.run(['../cometFI.sim', '-f', workload] + arguments, stdout=subprocess.PIPE, stderr=devnull)
     devnull.close()
     return result.stdout.decode('unicode_escape')
+
 
 #collect the golden sample data : execution cycle count, stdout and memory+register dump
 def doGoldenRun(benchmarkPath, verbosity):
@@ -32,8 +34,12 @@ def doGoldenRun(benchmarkPath, verbosity):
         subprocess.call(['cat', '/tmp/goldenSampleStdout'])
     return cycles, elapsedTime
 
+
 #injects a fault at the given cycle, checks the workload termination type and populate the result base
-def doInjectionRun(runNumber, benchmarkPath, referenceCycles, maxAllowedCycles, patterns, verbosity):
+def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosity):
+    #compute the maximum cycle count
+    maxAllowedCycles = 8*referenceCycles
+
     #pick a cycle
     injectionCycle = random.randint(0, referenceCycles)
 
@@ -69,6 +75,9 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, maxAllowedCycles, 
     #capture the end type
     endType = re.findall('EndType : (.*)', runStdOut)
 
+    #declare the result dict
+    resDict = {place : dict(dict())}
+
     #if the workload execution terminated without a crash or a hang
     if endType[0] == 'Normal':
         #check the output and the memory dump against the golden sample
@@ -87,17 +96,18 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, maxAllowedCycles, 
 
     if verbosity > 0:
         print("endType : " + endType[0])
-    #update results base
+
     for bit in bitPositions:
-        results[place][bit]['nbInj'] += 1
-        results[place][bit][endType[0]] += 1
-        results[place][bit]['cycles'].append(injectionCycle)
-        results[place][bit]["runNumber"].append(runNumber)
+        nt = PartialResult(endType[0], injectionCycle, runNumber)
+        resDict[place][bit] = nt
+
     if verbosity > 1:
         print("Run output :")
         subprocess.call(['cat', '/tmp/injectionRunStdout'])
     if verbosity > 0:
         print("---------------------------------")
+
+    return resDict
 
 
 ################################################################################
@@ -105,22 +115,22 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, maxAllowedCycles, 
 ################################################################################
 
 #sets up all the results data (creates an entry for each bit in the design and initializes it's stats)
-def initResults():
+def initResults(dic):
     for key in ri.getRegisterList():
-        results[key] = []
+        dic[key] = []
         for bit in range(ri.getRegisterWidth(key)):
-            results[key].append({}) #create a dict for each bit in the selected place
-            results[key][bit]["cycles"] =  []
-            results[key][bit]["runNumber"] = []
-            results[key][bit]["nbInj"] = 0  #init the selected bit's stats
-            results[key][bit]["Masked"] = 0
-            results[key][bit]["ISM"] = 0
-            results[key][bit]["AOM"] = 0
-            results[key][bit]["ISM & AOM"] = 0
-            results[key][bit]["Hang"] = 0
-            results[key][bit]["Crash"] = 0
+            dic[key].append({}) #create a dict for each bit in the selected place
+            dic[key][bit]["cycles"] =  []
+            dic[key][bit]["runNumber"] = []
+            dic[key][bit]["nbInj"] = 0  #init the selected bit's stats
+            dic[key][bit]["Masked"] = 0
+            dic[key][bit]["ISM"] = 0
+            dic[key][bit]["AOM"] = 0
+            dic[key][bit]["ISM & AOM"] = 0
+            dic[key][bit]["Hang"] = 0
+            dic[key][bit]["Crash"] = 0
 
-def showFinalStats():
+def showFinalStats(results):
     #go through the results base and collect the needed stats
     sumMasked = 0
     sumISM = 0
@@ -144,7 +154,7 @@ def showFinalStats():
     print("Crash : " + str(sumCrash))
 
 
-def saveResults(filename):
+def saveResults(filename, results):
     with open(filename, 'wb') as of:
         pickle.dump(results, of)
 
@@ -170,32 +180,42 @@ def main():
     outputPath = args.outputPath
     patternsPath = args.patternsBasePath
 
-    #prepare the injeciton runs
+    #prepare the injection runs
+    results = {}
     random.seed()
-    initResults()
+    initResults(results)
     referenceCycles, runTime = doGoldenRun(benchmarkPath, verbosity)
-    maxCycles = 8*referenceCycles
+
 
     #load the patterns histograms
     patterns = pickle.load(open(patternsPath, 'rb'))
     #normalize the pattern histograms
     ri.unifyPatternProbas(patterns)
 
+    pool = Pool()
 
     if verbosity > 1:
-        print("Error free cycle count : " + str(referenceCycles) + ", maxCycles : " + str(maxCycles))
+        print("Error free cycle count : " + str(referenceCycles))
         print("Golden run execution time : " + str(runTime) + "s, estimated injection time : " + str(args.nbInj*runTime) + "s")
         print("---------------------------------")
 
-    for i in range(args.nbInj):
-        if verbosity > 0:
-            print(str(i+1) + '/' + str(args.nbInj) + " :")
-        doInjectionRun(i, benchmarkPath, referenceCycles, maxCycles, patterns, verbosity)
+    #make the fucking thing partial
+    doInjectionPartial = partial(doInjectionRun, benchmarkPath=benchmarkPath, referenceCycles=referenceCycles, patterns=patterns, verbosity=verbosity)
+    resultIterator = pool.imap_unordered(doInjectionPartial, range(args.nbInj))
 
-    showFinalStats()
+    ##Merge the result dicts to the main one
+    for res in resultIterator:
+        place = list(res.keys())[0]
+        for bit in res[place]:
+            results[place][bit]['nbInj'] += 1
+            results[place][bit]['cycles'].append(res[place][bit].cycle)
+            results[place][bit]['runNumber'].append(res[place][bit].runNumber)
+            results[place][bit][res[place][bit].endType] += 1
+
+    showFinalStats(results)
 
     print("Creating output file")
-    saveResults(outputPath)
+    saveResults(outputPath, results)
 
 if __name__ == "__main__":
     # execute only if run as a script
