@@ -1,14 +1,15 @@
 #include <core.h>
 #include <ac_int.h>
+#include <portability.h>
 
 #ifndef __HLS__
 #include "simulator.h"
 #endif  // __HLS__
 
 
-void fetch(ac_int<32, false> pc,
+void fetch(CORE_UINT(32) pc,
            struct FtoDC &ftoDC,
-           ac_int<32, false> instructionMemory[DRAM_SIZE])
+           CORE_UINT(32) instructionMemory[DRAM_SIZE])
 {
     ftoDC.instruction = instructionMemory[pc/4];
     ftoDC.pc = pc;
@@ -20,54 +21,54 @@ void fetch(ac_int<32, false> pc,
 
 void decode(struct FtoDC ftoDC,
             struct DCtoEx &dctoEx,
-            ac_int<32, true> registerFile[32])
+            CORE_INT(32) registerFile[32])
 {
-    ac_int<32, false> pc = ftoDC.pc;
-    ac_int<32, false> instruction = ftoDC.instruction;
+    CORE_UINT(32) pc = ftoDC.pc;
+    CORE_UINT(32) instruction = ftoDC.instruction;
 
     // R-type instruction
-    ac_int<7, false> funct7 = instruction.slc<7>(25);
-    ac_int<5, false> rs2 = instruction.slc<5>(20);
-    ac_int<5, false> rs1 = instruction.slc<5>(15);
-    ac_int<3, false> funct3 = instruction.slc<3>(12);
-    ac_int<5, false> rd = instruction.slc<5>(7);
-    ac_int<7, false> opCode = instruction.slc<7>(0);    // could be reduced to 5 bits because 1:0 is always 11
+    CORE_UINT(7) funct7 = instruction.SLC(7, 25);
+    CORE_UINT(5) rs2 = instruction.SLC(5, 20);
+    CORE_UINT(5) rs1 = instruction.SLC(5, 15);
+    CORE_UINT(3) funct3 = instruction.SLC(3, 12);
+    CORE_UINT(5) rd = instruction.SLC(5, 7);
+    CORE_UINT(7) opCode = instruction.SLC(7, 0);    // could be reduced to 5 bits because 1:0 is always 11
 
     //Construction of different immediate values
-    ac_int<12, false> imm12_I = instruction.slc<12>(20);
-    ac_int<12, false> imm12_S = 0;
-    imm12_S.set_slc(5, instruction.slc<7>(25));
-    imm12_S.set_slc(0, instruction.slc<5>(7));
+    CORE_UINT(12) imm12_I = instruction.SLC(12, 20);
+    CORE_UINT(12) imm12_S = 0;
+    imm12_S.SET_SLC(5, instruction.SLC(7, 25));
+    imm12_S.SET_SLC(0, instruction.SLC(5, 7));
 
-    ac_int<12, true> imm12_I_signed = instruction.slc<12>(20);
-    ac_int<12, true> imm12_S_signed = 0;
-    imm12_S_signed.set_slc(0, imm12_S.slc<12>(0));
+    CORE_INT(12) imm12_I_signed = instruction.SLC(12, 20);
+    CORE_INT(12) imm12_S_signed = 0;
+    imm12_S_signed.SET_SLC(0, imm12_S.SLC(12, 0));
 
-    ac_int<13, false> imm13 = 0;
+    CORE_UINT(13) imm13 = 0;
     imm13[12] = instruction[31];
-    imm13.set_slc(5, instruction.slc<6>(25));
-    imm13.set_slc(1, instruction.slc<4>(8));
+    imm13.SET_SLC(5, instruction.SLC(6, 25));
+    imm13.SET_SLC(1, instruction.SLC(4, 8));
     imm13[11] = instruction[7];
 
-    ac_int<13, true> imm13_signed = 0;
-    imm13_signed.set_slc(0, imm13);
+    CORE_INT(13) imm13_signed = 0;
+    imm13_signed.SET_SLC(0, imm13);
 
-    ac_int<32, true> imm31_12 = 0;
-    imm31_12.set_slc(12, instruction.slc<20>(12));
+    CORE_INT(32) imm31_12 = 0;
+    imm31_12.SET_SLC(12, instruction.SLC(20, 12));
 
-    ac_int<21, false> imm21_1 = 0;
-    imm21_1.set_slc(12, instruction.slc<8>(12));
+    CORE_UINT(21) imm21_1 = 0;
+    imm21_1.SET_SLC(12, instruction.SLC(8, 12));
     imm21_1[11] = instruction[20];
-    imm21_1.set_slc(1, instruction.slc<10>(21));
+    imm21_1.SET_SLC(1, instruction.SLC(10, 21));
     imm21_1[20] = instruction[31];
 
-    ac_int<21, true> imm21_1_signed = 0;
-    imm21_1_signed.set_slc(0, imm21_1);
+    CORE_INT(21) imm21_1_signed = 0;
+    imm21_1_signed.SET_SLC(0, imm21_1);
 
 
     //Register access
-    ac_int<32, false> valueReg1 = registerFile[rs1];
-    ac_int<32, false> valueReg2 = registerFile[rs2];
+    CORE_UINT(32) valueReg1 = registerFile[rs1];
+    CORE_UINT(32) valueReg2 = registerFile[rs2];
 
 
     dctoEx.rs1 = rs1;
@@ -207,16 +208,16 @@ void execute(struct DCtoEx dctoEx,
     extoMem.isBranch = 0;
     extoMem.useRd = dctoEx.useRd;
 
-    ac_int<13, false> imm13 = 0;
+    CORE_UINT(13) imm13 = 0;
     imm13[12] = dctoEx.instruction[31];
-    imm13.set_slc(5, dctoEx.instruction.slc<6>(25));
-    imm13.set_slc(1, dctoEx.instruction.slc<4>(8));
+    imm13.SET_SLC(5, dctoEx.instruction.SLC(6, 25));
+    imm13.SET_SLC(1, dctoEx.instruction.SLC(4, 8));
     imm13[11] = dctoEx.instruction[7];
 
-    ac_int<13, true> imm13_signed = 0;
-    imm13_signed.set_slc(0, imm13);
+    CORE_INT(13) imm13_signed = 0;
+    imm13_signed.SET_SLC(0, imm13);
 
-    ac_int<5, false> shamt = dctoEx.instruction.slc<5>(20);
+    CORE_UINT(5) shamt = dctoEx.instruction.SLC(5, 20);
 
 
     // switch must be in the else, otherwise external op may trigger default case
@@ -259,10 +260,10 @@ void execute(struct DCtoEx dctoEx,
             extoMem.isBranch = (dctoEx.lhs >= dctoEx.rhs);
             break;
         case RISCV_BR_BLTU:
-            extoMem.isBranch = ((ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs);
+            extoMem.isBranch = ((CORE_UINT(32))dctoEx.lhs < (CORE_UINT(32))dctoEx.rhs);
             break;
         case RISCV_BR_BGEU:
-            extoMem.isBranch = ((ac_int<32, false>)dctoEx.lhs >= (ac_int<32, false>)dctoEx.rhs);
+            extoMem.isBranch = ((CORE_UINT(32))dctoEx.lhs >= (CORE_UINT(32))dctoEx.rhs);
             break;
         }
         break;
@@ -282,7 +283,7 @@ void execute(struct DCtoEx dctoEx,
             extoMem.result = dctoEx.lhs < dctoEx.rhs;
             break;
         case RISCV_OPI_SLTIU:
-            extoMem.result = (ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs;
+            extoMem.result = (CORE_UINT(32))dctoEx.lhs < (CORE_UINT(32))dctoEx.rhs;
             break;
         case RISCV_OPI_XORI:
             extoMem.result = dctoEx.lhs ^ dctoEx.rhs;
@@ -295,22 +296,22 @@ void execute(struct DCtoEx dctoEx,
             break;
         case RISCV_OPI_SLLI: // cast rhs as 5 bits, otherwise generated hardware is 32 bits
             // & shift amount held in the lower 5 bits (riscv spec)
-            extoMem.result = dctoEx.lhs << (ac_int<5, false>)dctoEx.rhs;
+            extoMem.result = dctoEx.lhs << (CORE_UINT(5))dctoEx.rhs;
             break;
         case RISCV_OPI_SRI:
-            if (dctoEx.funct7.slc<1>(5)) //SRAI
-                extoMem.result = dctoEx.lhs >> (ac_int<5, false>)shamt;
+            if (dctoEx.funct7.SLC(1, 5)) //SRAI
+                extoMem.result = dctoEx.lhs >> (CORE_UINT(5))shamt;
             else //SRLI
-                extoMem.result = (ac_int<32, false>)dctoEx.lhs >> (ac_int<5, false>)shamt;
+                extoMem.result = (CORE_UINT(32))dctoEx.lhs >> (CORE_UINT(5))shamt;
             break;
         }
         break;
     case RISCV_OP:
-        if(dctoEx.funct7.slc<1>(0))     // M Extension
+        if(dctoEx.funct7.SLC(1, 0))     // M Extension
         {
-            ac_int<33, true> mul_reg_a = dctoEx.lhs;
-            ac_int<33, true> mul_reg_b = dctoEx.rhs;
-            ac_int<66, true> longResult = 0;
+            CORE_INT(33) mul_reg_a = dctoEx.lhs;
+            CORE_INT(33) mul_reg_b = dctoEx.rhs;
+            CORE_INT(66) longResult = 0;
             switch (dctoEx.funct3)  //Switch case for multiplication operations (RV32M)
             {
             case RISCV_OP_M_MULHSU:
@@ -323,35 +324,35 @@ void execute(struct DCtoEx dctoEx,
             }
             longResult = mul_reg_a * mul_reg_b;
             if(dctoEx.funct3 == RISCV_OP_M_MULH || dctoEx.funct3 == RISCV_OP_M_MULHSU || dctoEx.funct3 == RISCV_OP_M_MULHU)
-                extoMem.result = longResult.slc<32>(32);
+                extoMem.result = longResult.SLC(32, 32);
             else
-                extoMem.result = longResult.slc<32>(0);
+                extoMem.result = longResult.SLC(32, 0);
         }
         else{
             switch(dctoEx.funct3){
             case RISCV_OP_ADD:
-                if (dctoEx.funct7.slc<1>(5))   // SUB
+                if (dctoEx.funct7.SLC(1, 5))   // SUB
                     extoMem.result = dctoEx.lhs - dctoEx.rhs;
                 else   // ADD
                     extoMem.result = dctoEx.lhs + dctoEx.rhs;
                 break;
             case RISCV_OP_SLL:
-                extoMem.result = dctoEx.lhs << (ac_int<5, false>)dctoEx.rhs;
+                extoMem.result = dctoEx.lhs << (CORE_UINT(5))dctoEx.rhs;
                 break;
             case RISCV_OP_SLT:
                 extoMem.result = dctoEx.lhs < dctoEx.rhs;
                 break;
             case RISCV_OP_SLTU:
-                extoMem.result = (ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs;
+                extoMem.result = (CORE_UINT(32))dctoEx.lhs < (CORE_UINT(32))dctoEx.rhs;
                 break;
             case RISCV_OP_XOR:
                 extoMem.result = dctoEx.lhs ^ dctoEx.rhs;
                 break;
             case RISCV_OP_SR:
-                if(dctoEx.funct7.slc<1>(5))   // SRA
-                    extoMem.result = dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
+                if(dctoEx.funct7.SLC(1, 5))   // SRA
+                    extoMem.result = dctoEx.lhs >> (CORE_UINT(5))dctoEx.rhs;
                 else  // SRL
-                    extoMem.result = (ac_int<32, false>)dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
+                    extoMem.result = (CORE_UINT(32))dctoEx.lhs >> (CORE_UINT(5))dctoEx.rhs;
                 break;
             case RISCV_OP_OR:
                 extoMem.result = dctoEx.lhs | dctoEx.rhs;
@@ -383,7 +384,7 @@ void execute(struct DCtoEx dctoEx,
             extoMem.result = dctoEx.lhs;
             break;
         case RISCV_SYSTEM_CSRRC:
-            extoMem.datac = dctoEx.lhs & ((ac_int<32, false>)~dctoEx.rhs);
+            extoMem.datac = dctoEx.lhs & ((CORE_UINT(32))~dctoEx.rhs);
             extoMem.result = dctoEx.lhs;
             break;
         case RISCV_SYSTEM_CSRRWI:
@@ -395,7 +396,7 @@ void execute(struct DCtoEx dctoEx,
             extoMem.result = dctoEx.lhs;
             break;
         case RISCV_SYSTEM_CSRRCI:
-            extoMem.datac = dctoEx.lhs & ((ac_int<32, false>)~dctoEx.rhs);
+            extoMem.datac = dctoEx.lhs & ((CORE_UINT(32))~dctoEx.rhs);
             extoMem.result = dctoEx.lhs;
             break;
         }
@@ -409,15 +410,15 @@ void execute(struct DCtoEx dctoEx,
 
 void memory(struct ExtoMem extoMem,
             struct MemtoWB &memtoWB,
-            ac_int<32, true> data_memory[DRAM_SIZE])
+            CORE_INT(32) data_memory[DRAM_SIZE])
 {
 
-    ac_int<2, false> datasize = extoMem.funct3.slc<2>(0);
-    ac_int<1, false> signenable = !extoMem.funct3.slc<1>(2);
+    CORE_UINT(2) datasize = extoMem.funct3.SLC(2, 0);
+    CORE_UINT(1) signenable = !extoMem.funct3.SLC(1, 2);
     memtoWB.we = extoMem.we;
     memtoWB.useRd = extoMem.useRd;
 
-    ac_int<32, false> mem_read;
+    CORE_UINT(32) mem_read;
 
     switch(extoMem.opCode)
     {
@@ -457,14 +458,14 @@ void writeback(struct MemtoWB memtoWB,
     }
 }
 
-void branchUnit(ac_int<32, false> nextPC_fetch,
-		ac_int<32, false> nextPC_decode,
-		ac_int<1, false> isBranch_decode,
-		ac_int<32, false> nextPC_execute,
-		ac_int<1, false> isBranch_execute,
-		ac_int<32, false> &pc,
-		ac_int<1, false> &we_fetch,
-		ac_int<1, false> &we_decode){
+void branchUnit(CORE_UINT(32) nextPC_fetch,
+		CORE_UINT(32) nextPC_decode,
+		CORE_UINT(1) isBranch_decode,
+		CORE_UINT(32) nextPC_execute,
+		CORE_UINT(1) isBranch_execute,
+		CORE_UINT(32) &pc,
+		CORE_UINT(1) &we_fetch,
+		CORE_UINT(1) &we_decode){
 
 	if (isBranch_execute){
 		we_fetch = 0;
@@ -481,24 +482,24 @@ void branchUnit(ac_int<32, false> nextPC_fetch,
 }
 
 void forwardUnit(
-		ac_int<5, false> decodeRs1,
-		ac_int<1, false> decodeUseRs1,
-		ac_int<5, false> decodeRs2,
-		ac_int<1, false> decodeUseRs2,
-		ac_int<5, false> decodeRs3,
-		ac_int<1, false> decodeUseRs3,
+		CORE_UINT(5) decodeRs1,
+		CORE_UINT(1) decodeUseRs1,
+		CORE_UINT(5) decodeRs2,
+		CORE_UINT(1) decodeUseRs2,
+		CORE_UINT(5) decodeRs3,
+		CORE_UINT(1) decodeUseRs3,
 
-		ac_int<5, false> executeRd,
-		ac_int<1, false> executeUseRd,
-		ac_int<1, false> executeIsLongComputation,
+		CORE_UINT(5) executeRd,
+		CORE_UINT(1) executeUseRd,
+		CORE_UINT(1) executeIsLongComputation,
 
-		ac_int<5, false> memoryRd,
-		ac_int<1, false> memoryUseRd,
+		CORE_UINT(5) memoryRd,
+		CORE_UINT(1) memoryUseRd,
 
-		ac_int<5, false> writebackRd,
-		ac_int<1, false> writebackUseRd,
+		CORE_UINT(5) writebackRd,
+		CORE_UINT(1) writebackUseRd,
 
-		ac_int<1, false> stall[5],
+		CORE_UINT(1) stall[5],
 		struct ForwardReg &forwardRegisters){
 
 	if (decodeUseRs1){
@@ -636,12 +637,12 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
 
 
 void doCycle(struct Core &core, 		 //Core containing all values
-		ac_int<32, false> im[DRAM_SIZE], //Instruction memory
-		ac_int<32, true> dm[DRAM_SIZE],  //Data memory
-		ac_int<1, false> globalStall)  
+		CORE_UINT(32) im[DRAM_SIZE], //Instruction memory
+		CORE_INT(32) dm[DRAM_SIZE],  //Data memory
+		CORE_UINT(1) globalStall)
 {
 
-    ac_int<1, false> stallSignals[5] = {0, 0, 0, 0, 0};
+    CORE_UINT(1) stallSignals[5] = {0, 0, 0, 0, 0};
     
     //declare temporary structs
     struct FtoDC ftoDC_temp; ftoDC_temp.pc = 0; ftoDC_temp.instruction = 0; ftoDC_temp.nextPCFetch = 0; ftoDC_temp.we = 0; ftoDC_temp.stall = 0;
@@ -718,7 +719,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
 }
 
-void doCore(ac_int<32, false> im[DRAM_SIZE], ac_int<32, true> dm[DRAM_SIZE], ac_int<1, false> globalStall)
+void doCore(CORE_UINT(32) im[DRAM_SIZE], CORE_INT(32) dm[DRAM_SIZE], CORE_UINT(1) globalStall)
 {
     //declare a core
     Core core;

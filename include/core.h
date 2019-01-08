@@ -2,6 +2,7 @@
 #define CORE_H
 
 #include <ac_int.h>
+#include <portability.h>
 #include "riscvISA.h"
 
 
@@ -16,115 +17,115 @@
  */
 
 struct ForwardReg {
-	ac_int<1, false> forwardWBtoVal1;
-	ac_int<1, false> forwardWBtoVal2;
-	ac_int<1, false> forwardWBtoVal3;
+	CORE_UINT(1) forwardWBtoVal1;
+	CORE_UINT(1) forwardWBtoVal2;
+	CORE_UINT(1) forwardWBtoVal3;
 
-	ac_int<1, false> forwardMemtoVal1;
-	ac_int<1, false> forwardMemtoVal2;
-	ac_int<1, false> forwardMemtoVal3;
+	CORE_UINT(1) forwardMemtoVal1;
+	CORE_UINT(1) forwardMemtoVal2;
+	CORE_UINT(1) forwardMemtoVal3;
 
-	ac_int<1, false> forwardExtoVal1;
-	ac_int<1, false> forwardExtoVal2;
-	ac_int<1, false> forwardExtoVal3;
+	CORE_UINT(1) forwardExtoVal1;
+	CORE_UINT(1) forwardExtoVal2;
+	CORE_UINT(1) forwardExtoVal3;
 };
 
 struct FtoDC
 {
     FtoDC() : pc(0), instruction(0x13), we(1), stall(0)
     {}
-    ac_int<32, false> pc;           	// PC where to fetch
-    ac_int<32, false> instruction;  	// Instruction to execute
-    ac_int<32, false> nextPCFetch;      // Next pc according to fetch
+    CORE_UINT(32) pc;           	// PC where to fetch
+    CORE_UINT(32) instruction;  	// Instruction to execute
+    CORE_UINT(32) nextPCFetch;      // Next pc according to fetch
 
     //Register for all stages
-    ac_int<1, false> we;
-    ac_int<1, false> stall;
+    CORE_UINT(1) we;
+    CORE_UINT(1) stall;
 };
 
 struct DCtoEx
 {
-    ac_int<32, false> pc;       // used for branch
-    ac_int<32, false> instruction;
+    CORE_UINT(32) pc;       // used for branch
+    CORE_UINT(32) instruction;
 
-    ac_int<7, false> opCode;    // opCode = instruction[6:0]
-    ac_int<7, false> funct7;    // funct7 = instruction[31:25]
-    ac_int<3, false> funct3;    // funct3 = instruction[14:12]
+    CORE_UINT(7) opCode;    // opCode = instruction[6:0]
+    CORE_UINT(7) funct7;    // funct7 = instruction[31:25]
+    CORE_UINT(3) funct3;    // funct3 = instruction[14:12]
 
-    ac_int<32, true> lhs;   //  left hand side : operand 1
-    ac_int<32, true> rhs;   // right hand side : operand 2
-    ac_int<32, true> datac; // ST, BR, JAL/R,
+    CORE_INT(32) lhs;   //  left hand side : operand 1
+    CORE_INT(32) rhs;   // right hand side : operand 2
+    CORE_INT(32) datac; // ST, BR, JAL/R,
 
     // syscall only
-    ac_int<32, true> datad;
-    ac_int<32, true> datae;
+    CORE_INT(32) datad;
+    CORE_INT(32) datae;
 
     //For branch unit
-    ac_int<32, false> nextPCDC;
-    ac_int<1, false> isBranch;
+    CORE_UINT(32) nextPCDC;
+    CORE_UINT(1) isBranch;
 
     //Information for forward/stall unit
-    ac_int<1, false> useRs1;
-    ac_int<1, false> useRs2;
-    ac_int<1, false> useRs3;
-    ac_int<1, false> useRd;
-    ac_int<5, false> rs1;       // rs1    = instruction[19:15]
-    ac_int<5, false> rs2;       // rs2    = instruction[24:20]
-    ac_int<5, false> rs3;
-    ac_int<5, false> rd;        // rd     = instruction[11:7]
+    CORE_UINT(1) useRs1;
+    CORE_UINT(1) useRs2;
+    CORE_UINT(1) useRs3;
+    CORE_UINT(1) useRd;
+    CORE_UINT(5) rs1;       // rs1    = instruction[19:15]
+    CORE_UINT(5) rs2;       // rs2    = instruction[24:20]
+    CORE_UINT(5) rs3;
+    CORE_UINT(5) rd;        // rd     = instruction[11:7]
 
     //Register for all stages
-    ac_int<1, false> we;
-    ac_int<1, false> stall; //TODO add that
+    CORE_UINT(1) we;
+    CORE_UINT(1) stall; //TODO add that
 };
 
 struct ExtoMem
 {
-    ac_int<32, false> pc;
-    ac_int<32, false> instruction;
+    CORE_UINT(32) pc;
+    CORE_UINT(32) instruction;
 
-    ac_int<32, true> result;    // result of the EX stage
-    ac_int<5, false> rd;        // destination register
-    ac_int<1, false> useRd;
-    ac_int<1, false> isLongInstruction;
-    ac_int<7, false> opCode;    // LD or ST (can be reduced to 2 bits)
-    ac_int<3, false> funct3;    // datasize and sign extension bit
+    CORE_INT(32) result;    // result of the EX stage
+    CORE_UINT(5) rd;        // destination register
+    CORE_UINT(1) useRd;
+    CORE_UINT(1) isLongInstruction;
+    CORE_UINT(7) opCode;    // LD or ST (can be reduced to 2 bits)
+    CORE_UINT(3) funct3;    // datasize and sign extension bit
 
-    ac_int<32, true> datac;     // data to be stored in memory or csr result
+    CORE_INT(32) datac;     // data to be stored in memory or csr result
 
     //For branch unit
-    ac_int<32, false> nextPC;
-    ac_int<1, false> isBranch;
+    CORE_UINT(32) nextPC;
+    CORE_UINT(1) isBranch;
 
     //Register for all stages
-    ac_int<1, false> we;
-    ac_int<1, false> stall; //TODO add that
+    CORE_UINT(1) we;
+    CORE_UINT(1) stall; //TODO add that
 };
 
 struct MemtoWB
 {
-    ac_int<32, true> result;    // Result to be written back
-    ac_int<5, false> rd;        // destination register
-    ac_int<1, false> useRd;
+    CORE_INT(32) result;    // Result to be written back
+    CORE_UINT(5) rd;        // destination register
+    CORE_UINT(1) useRd;
 
-    ac_int<32, true> address;
-    ac_int<32, true> valueToWrite;
-    ac_int<4, false> byteEnable;
-    ac_int<1, true> isStore;
-    ac_int<1, true> isLoad;
+    CORE_INT(32) address;
+    CORE_INT(32) valueToWrite;
+    CORE_UINT(4) byteEnable;
+    CORE_INT(1) isStore;
+    CORE_INT(1) isLoad;
     
     //Register for all stages
-    ac_int<1, false> we;
-    ac_int<1, false> stall;
+    CORE_UINT(1) we;
+    CORE_UINT(1) stall;
 
 };
 
 struct WBOut
 {
-	ac_int<32, false> value;
-	ac_int<5, false> rd;
-	ac_int<1, false> useRd;
-    ac_int<1, false> we;
+	CORE_UINT(32) value;
+	CORE_UINT(5) rd;
+	CORE_UINT(1) useRd;
+    CORE_UINT(1) we;
 };
 
 struct Core
@@ -136,8 +137,8 @@ struct Core
 
     //CoreCtrl ctrl;
 
-    ac_int<32, true> REG[32];
-    ac_int<32, false> pc;
+    CORE_INT(32) REG[32];
+    CORE_UINT(32) pc;
 
     /// Multicycle operation
 
