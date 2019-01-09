@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import subprocess, re, os, random, filecmp, argparse, colorama, collections, pickle, time
+import subprocess, re, os, random, filecmp, argparse, colorama, collections, pickle, time, pdb
 from multiprocessing import Pool
 from functools import partial
 import numpy as np
@@ -130,7 +130,7 @@ def initResults(dic):
             dic[key][bit]["Hang"] = 0
             dic[key][bit]["Crash"] = 0
 
-def showFinalStats(results):
+def showFinalStats_bitwise(results):
     #go through the results base and collect the needed stats
     sumMasked = 0
     sumISM = 0
@@ -153,10 +153,50 @@ def showFinalStats(results):
     print("Hang : " + str(sumHang))
     print("Crash : " + str(sumCrash))
 
+def showFinalStats_runwise(results):
+    #go through the results base and collect the needed stats
+    place_counters = {}
+    end_counters = {}
 
-def saveResults(filename, results):
-    with open(filename, 'wb') as of:
-        pickle.dump(results, of)
+    for run in results:
+        #log places
+        if run[0] not in place_counters:
+            place_counters[run[0]] = 1
+        else:
+            place_counters[run[0]] += 1
+        #log outcomes
+        if run[1] not in end_counters:
+            end_counters[run[1]] = 1
+        else:
+            end_counters[run[1]] += 1
+
+    #display the counters
+    print('\nInjection spots :')
+    for place in place_counters:
+        print('{0} : {1}'.format(place, place_counters[place]))
+    print('\nInjection results :')
+    for end in end_counters:
+        print('{0} : {1}'.format(end, end_counters[end]))
+
+
+def saveResults(path, results_bitwise, results_runwise):
+    if os.path.isdir(path):
+        #output the results
+        with open(path+'/bitwise.pkl', 'wb') as of:
+            pickle.dump(results_bitwise, of)
+        with open(path+'/runwise.pkl', 'wb') as of:
+            pickle.dump(results_runwise, of)
+
+    else: #path doesn't exist, create the directory and output the results
+        try:
+            os.mkdir(path)
+        except OSError:
+            print ("Output directory ({0}) creation has failed".format(path))
+        with open(path+'/bitwise.pkl', 'wb') as of:
+            pickle.dump(results_bitwise, of)
+        with open(path+'/runwise.pkl', 'wb') as of:
+            pickle.dump(results_runwise, of)
+
 
 ################################################################################
 #               Main
@@ -168,7 +208,7 @@ def main():
     parser.add_argument("-v", "--verbose", action="count", help="verbose mode")
     parser.add_argument("-b", "--benchmarkPath", type=str, help="path to the benchmark to execute") #make that a mandatory argument
     parser.add_argument("-p", "--patternsBasePath", type=str, help="path to the extracted gate level patterns base pickle file") #make that a mandatory argument
-    parser.add_argument("-o", "--outputPath", type=str, help="path to the output pickle file") #make that a mandatory argument
+    parser.add_argument("-o", "--outputPath", type=str, help="path to the output directory that will contain the output pickle files") #make that a mandatory argument
     args = parser.parse_args()
 
     #format arguments
@@ -181,9 +221,9 @@ def main():
     patternsPath = args.patternsBasePath
 
     #prepare the injection runs
-    results = {}
+    results_bitwise = {}
     random.seed()
-    initResults(results)
+    initResults(results_bitwise)
     referenceCycles, runTime = doGoldenRun(benchmarkPath, verbosity)
 
 
@@ -199,23 +239,29 @@ def main():
         print("Golden run execution time : " + str(runTime) + "s, estimated injection time : " + str(args.nbInj*runTime) + "s")
         print("---------------------------------")
 
-    #make the fucking thing partial
+    #make the thing partial
     doInjectionPartial = partial(doInjectionRun, benchmarkPath=benchmarkPath, referenceCycles=referenceCycles, patterns=patterns, verbosity=verbosity)
     resultIterator = pool.imap_unordered(doInjectionPartial, range(args.nbInj))
 
     ##Merge the result dicts to the main one
+    results_runwise = []
     for res in resultIterator:
         place = list(res.keys())[0]
+        firstBit = True
         for bit in res[place]:
-            results[place][bit]['nbInj'] += 1
-            results[place][bit]['cycles'].append(res[place][bit].cycle)
-            results[place][bit]['runNumber'].append(res[place][bit].runNumber)
-            results[place][bit][res[place][bit].endType] += 1
+            results_bitwise[place][bit]['nbInj'] += 1
+            results_bitwise[place][bit]['cycles'].append(res[place][bit].cycle)
+            results_bitwise[place][bit]['runNumber'].append(res[place][bit].runNumber)
+            results_bitwise[place][bit][res[place][bit].endType] += 1
+            if firstBit:
+                #log per run
+                results_runwise.append([place, res[place][bit].endType])
+                firstBit = False
 
-    showFinalStats(results)
+    showFinalStats_runwise(results_runwise)
 
-    print("Creating output file")
-    saveResults(outputPath, results)
+    print("Creating output files")
+    saveResults(outputPath, results_bitwise, results_runwise)
 
 if __name__ == "__main__":
     # execute only if run as a script
