@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import subprocess, re, os, random, filecmp, argparse, colorama, collections, pickle, time, pdb
+import subprocess, re, os, random, filecmp, argparse, colorama, collections, pickle, time, pdb, math
 from multiprocessing import Pool
 from functools import partial
 import numpy as np
@@ -197,6 +197,12 @@ def saveResults(path, results_bitwise, results_runwise):
         with open(path+'/runwise.pkl', 'wb') as of:
             pickle.dump(results_runwise, of)
 
+def getNumberOfNeededRuns(workloadCycles, numberOfInjectionPoints):
+    N = workloadCycles*numberOfInjectionPoints
+    div = 1+( ((0.01**2)*(N-1)) / (0.25*(3.0902**2)) )
+    return math.ceil(N/div)
+
+
 
 ################################################################################
 #               Main
@@ -204,7 +210,7 @@ def saveResults(path, results_bitwise, results_runwise):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("nbInj", type=int, help="number of injections to perform")
+    parser.add_argument("-i", "--nbInj", type=int, help="number of injections to perform")
     parser.add_argument("-v", "--verbose", action="count", help="verbose mode")
     parser.add_argument("-b", "--benchmarkPath", type=str, help="path to the benchmark to execute") #make that a mandatory argument
     parser.add_argument("-p", "--patternsBasePath", type=str, help="path to the extracted gate level patterns base pickle file") #make that a mandatory argument
@@ -226,6 +232,13 @@ def main():
     initResults(results_bitwise)
     referenceCycles, runTime = doGoldenRun(benchmarkPath, verbosity)
 
+    #compute the number of injections needed for 99.8% accuracy and 1% error margin
+    recommendedInjCount = getNumberOfNeededRuns(referenceCycles, ri.getTotalWidth())
+    if args.nbInj:
+        nbInj = args.nbInj
+    else :
+        nbInj = recommendedInjCount
+        print('Default 99.8% confidence, 1% error margin -> {0} injections'.format(nbInj))
 
     #load the patterns histograms
     patterns = pickle.load(open(patternsPath, 'rb'))
@@ -236,12 +249,12 @@ def main():
 
     if verbosity > 1:
         print("Error free cycle count : " + str(referenceCycles))
-        print("Golden run execution time : " + str(runTime) + "s, estimated injection time : " + str(args.nbInj*runTime) + "s")
+        print("Golden run execution time : " + str(runTime) + "s")
         print("---------------------------------")
 
     #make the thing partial
     doInjectionPartial = partial(doInjectionRun, benchmarkPath=benchmarkPath, referenceCycles=referenceCycles, patterns=patterns, verbosity=verbosity)
-    resultIterator = pool.imap_unordered(doInjectionPartial, range(args.nbInj))
+    resultIterator = pool.imap_unordered(doInjectionPartial, range(nbInj))
 
     ##Merge the result dicts to the main one
     results_runwise = []

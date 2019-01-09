@@ -65,6 +65,12 @@ def getRegisterList():
 def getRegisterID(name):
     return registerInfo[name]['id']
 
+def getTotalWidth():
+    total = 0
+    for reg in registerInfo:
+        total += getRegisterWidth(reg)
+    return total
+
 def getFieldPosition(registerName, fieldName):  #returns the position in the given register, returns -1 if field not found
     for i in range(len(registerInfo[registerName]['fields'])):
         if fieldName == list(registerInfo[registerName]['fields'].keys())[i]:
