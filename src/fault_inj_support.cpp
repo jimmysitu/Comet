@@ -581,7 +581,6 @@ int injectFault_RF(Core* core, int registerNumber, std::vector<int> bitPositions
 
 int injectFault_PC(Core* core, std::vector<int> bitPositions, FaultModel faultModel) {
     int status = 0;
-
     for(int i=0; i<bitPositions.size(); i++) {
         if((bitPositions[i] >= 0) && (bitPositions[i] < 32)) {
             switch(faultModel) {

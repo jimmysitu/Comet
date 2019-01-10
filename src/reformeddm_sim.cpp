@@ -51,7 +51,7 @@ CCS_MAIN(int argc, char** argv)
     vector<int> injectionBitLocations;
     long long int maxCycles;
     vector<long long int> injectionCycles;
-    FaultModel faultModel;
+    FaultModel faultModel=BITFLIP;
 
     faulInjection_setup_signals();
 #endif
@@ -198,8 +198,9 @@ CCS_MAIN(int argc, char** argv)
 
 #ifdef __FAULT_INJECTION__
     //printf("Injection will happen at cycle %lld in reg %d at bit(s) ", injectionCycle, (int)injectionLocation);
+    printf("InjectionBits[%d] = ", injectionBitLocations.size());
     for(int i=0; i<injectionBitLocations.size(); i++) {
-        printf("%d ", injectionBitLocations[i]);
+        printf("%d, ", injectionBitLocations[i]);
     }
     printf("\n");
 #endif
@@ -265,13 +266,15 @@ CCS_MAIN(int argc, char** argv)
                     if((injectionLocation > PC_loc) && (injectionLocation < CoreCtrl_loc)) {    //register file
                         injectFault_RF(sim.getCore(), static_cast<int>(injectionLocation - RF0_loc), injectionBitLocations, faultModel);
                     }
-                    printf("Injection Failed : location unknown\n");
-                    exit = true;
+                    else {
+                        printf("Injection Failed : location unknown\n");
+                        exit = true;
+                    }
                     break;
                 }
             }
         }
-        //Check fo hang
+        //Check for hang
         if(injectionMode)
         {
             if(sim.getCore()->csrs.mcycle.to_int64() >= maxCycles) {

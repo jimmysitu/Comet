@@ -171,7 +171,7 @@ struct MemtoWB
   #endif
       result(0), rd(0), realInstruction(false), csr(false), CSRid(0), rescsr(0)
     {}
-    //ac_int<32, false> pc;           // !!!: only used for debug and tracing
+    ac_int<32, false> pc;           // !!!: only used for debug and tracing
 #ifndef __HLS__
     ac_int<32, false> instruction;  // !!!: only used for debug and tracing
 #endif
