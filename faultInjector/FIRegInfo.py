@@ -50,7 +50,7 @@ registerInfo = {
 'RF29': {'width':32, 'id':34},
 'RF30': {'width':32, 'id':35},
 'RF31': {'width':32, 'id':36},
-'CoreCtrl': {'width':84, 'id':37}
+'CoreCtrl': {'width':206, 'id':37}
 }
 
 coreAreas_names = ['sequential', 'comb_pipeline', 'comb_other']    #comb_other -> coreCtrl, cache control
