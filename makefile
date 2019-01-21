@@ -4,7 +4,8 @@ INC_PARAMS=$(foreach d, $(INC), -I$d)
 VARS_CAT=-D__CATAPULT__=1
 VARS_VIV=-D__VIVADO__=1
 DEFINES=
-S_FILES:=$(wildcard src/*.cpp)
+DEFINES_NOCACHE=-Dnocache -DMEMORY_WRITE_LATENCY=1 -DMEMORY_READ_LATENCY=1
+S_FILES=$(wildcard src/*.cpp)
 I_HEADER:=$(wildcard include/*.h)
 GENERIC=$(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -std=c++11
 
@@ -12,7 +13,7 @@ all: $(S_FILES) $(I_HEADER)
 	g++ -O3 -o comet.sim $(GENERIC)
 
 nocache: $(S_FILES) $(I_HEADER)
-	g++ -O3 -o comet.nocache.sim $(GENERIC) -Dnocache
+	g++ -O3 -o comet.nocache.sim $(GENERIC) $(DEFINES_NOCACHE) 
 
 dall: $(S_FILES) $(I_HEADER)
 	g++ -g -o comet.sim $(GENERIC)
