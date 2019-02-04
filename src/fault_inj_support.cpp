@@ -602,6 +602,12 @@ int injectFault_PC(Core* core, std::vector<int> bitPositions, FaultModel faultMo
 
 int injectFault_CoreCtrl(Core* core, std::vector<int> bitPositions, FaultModel faultModel) {
     int status = 1;
+    std::cout << "This is the size : " << bitPositions.size() << std::endl;
+    printf("injecting in CoreCtrl using FM : %d, bits [ ", faultModel);
+    for(int i=0; i<bitPositions.size()-1; i++) {
+        printf("%d, ", bitPositions[i]);
+    }
+    printf("%d]\n", bitPositions[bitPositions.size()-1]);
 
     for(int i=0; i<bitPositions.size(); i++) {
         if(bitPositions[i] < 15) {  //prev_rds
@@ -617,10 +623,12 @@ int injectFault_CoreCtrl(Core* core, std::vector<int> bitPositions, FaultModel f
                 break;
             }
         }
-        if(bitPositions[i] < 36) {  //prev_opCode
+        else if(bitPositions[i] < 36) {  //prev_opCode
             switch(faultModel) {
             case BITFLIP:
+                printf("field %d, bit %d, before : %d\n", (int)((bitPositions[i]-15)/7), bitPositions[i], core->ctrl.prev_opCode[(int)((bitPositions[i]-15)/7)]);
                 core->ctrl.prev_opCode[(int)((bitPositions[i]-15)/7)] ^= (1 << ((bitPositions[i]-15)%7));
+                printf("after : %d\n", core->ctrl.prev_opCode[(int)((bitPositions[i]-15)/7)]);
                 break;
             case STUCK_AT_ONE:
                 core->ctrl.prev_opCode[(int)((bitPositions[i]-15)/7)] |= (1 << ((bitPositions[i]-15)%7));
@@ -630,7 +638,7 @@ int injectFault_CoreCtrl(Core* core, std::vector<int> bitPositions, FaultModel f
                 break;
             }
         }
-        if(bitPositions[i] < 38) {  //lock
+        else if(bitPositions[i] < 38) {  //lock
             switch(faultModel) {
             case BITFLIP:
                 core->ctrl.lock ^= (1 << (bitPositions[i]-36));
@@ -643,7 +651,7 @@ int injectFault_CoreCtrl(Core* core, std::vector<int> bitPositions, FaultModel f
                 break;
             }
         }
-        if(bitPositions[i] < 39) {  //freeze_fetch
+        else if(bitPositions[i] < 39) {  //freeze_fetch
             switch(faultModel) {
             case BITFLIP:
                 core->ctrl.freeze_fetch = !core->ctrl.freeze_fetch;
@@ -656,7 +664,7 @@ int injectFault_CoreCtrl(Core* core, std::vector<int> bitPositions, FaultModel f
                 break;
             }
         }
-        if(bitPositions[i] < 40) {  //cachelock
+        else if(bitPositions[i] < 40) {  //cachelock
             switch(faultModel) {
             case BITFLIP:
                 core->ctrl.cachelock = !core->ctrl.cachelock;
@@ -669,7 +677,7 @@ int injectFault_CoreCtrl(Core* core, std::vector<int> bitPositions, FaultModel f
                 break;
             }
         }
-        if(bitPositions[i] < 41) {  //init
+        else if(bitPositions[i] < 41) {  //init
             switch(faultModel) {
             case BITFLIP:
                 core->ctrl.init = !core->ctrl.init;
@@ -682,7 +690,7 @@ int injectFault_CoreCtrl(Core* core, std::vector<int> bitPositions, FaultModel f
                 break;
             }
         }
-        if(bitPositions[i] < 42) {  //sleep
+        else if(bitPositions[i] < 42) {  //sleep
             switch(faultModel) {
             case BITFLIP:
                 core->ctrl.sleep = !core->ctrl.sleep;
@@ -695,7 +703,7 @@ int injectFault_CoreCtrl(Core* core, std::vector<int> bitPositions, FaultModel f
                 break;
             }
         }
-        if(bitPositions[i] < 138) {  //prev_res
+        else if(bitPositions[i] < 138) {  //prev_res
             switch(faultModel) {
             case BITFLIP:
                 core->ctrl.prev_res[(bitPositions[i]-42)/32] ^= (1 << ((bitPositions[i]-42)%32));
@@ -708,7 +716,7 @@ int injectFault_CoreCtrl(Core* core, std::vector<int> bitPositions, FaultModel f
                 break;
             }
         }
-        if(bitPositions[i] < 141) {  //branch
+        else if(bitPositions[i] < 141) {  //branch
             switch(faultModel) {
             case BITFLIP:
                 core->ctrl.branch[(bitPositions[i]-138)] = !core->ctrl.branch[(bitPositions[i]-138)];
@@ -721,8 +729,7 @@ int injectFault_CoreCtrl(Core* core, std::vector<int> bitPositions, FaultModel f
                 break;
             }
         }
-        if(bitPositions[i] < 205) { //jump_pc
-
+        else if(bitPositions[i] < 205) { //jump_pc
             switch(faultModel) {
             case BITFLIP:
                 core->ctrl.prev_res[(bitPositions[i]-141)/32] ^= (1 << ((bitPositions[i]-141)%32));
@@ -767,7 +774,7 @@ void sigHandler_assertFail(int sig) {
 }
 
 void sigHandler_segfault(int sig) {
-    std::cout << "EndType : Crash\n" << std::endl;
+    std::cout << "EndType : Crash" << std::endl;
     exit(0);
 }
 

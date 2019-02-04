@@ -50,13 +50,15 @@ registerInfo = {
 'RF29': {'width':32, 'id':34},
 'RF30': {'width':32, 'id':35},
 'RF31': {'width':32, 'id':36},
-'CoreCtrl': {'width':206, 'id':37}
+'CoreCtrl': {'width':205, 'id':37}
 }
 
 coreAreas_names = ['sequential', 'comb_pipeline', 'comb_other']    #comb_other -> coreCtrl, cache control
-coreAreas_probas = [0.338581382365307417, 0.49667440581689906891, 0.16474421181779351409]
+#coreAreas_probas = [0.338581382365307417, 0.49667440581689906891, 0.16474421181779351409]
+coreAreas_probas = [0.302387984, 0.647612016, 0.05]
+
 pipelineAreas_names = ['FToDC', 'DCToEX', 'EXToMEM', 'MEMToWB', 'WriteBack']
-pipelineAreas_probas = [0.03625341175093407517, 0.08098203857095698237, 0.38372216141938297037, 0.02767263331886768811, 0.47136975493985828398] #WB is way too big...
+pipelineAreas_probas = [0.065232138, 0.145714051, 0.690445829, 0.049792418, 0.048815564]
 
 
 def getRegisterList():
