@@ -3,7 +3,7 @@
 import pickle, argparse, pdb
 import matplotlib.pyplot as plt
 
-def buildHistogram(patternList):
+def buildHistogram_bits(patternList):
     #define a list of the different bit counters
     bitCounters = [0]*len(patternList[0][0])
     for p, c in zip(patternList[0], patternList[1]):    #pattern per pattern
@@ -12,6 +12,16 @@ def buildHistogram(patternList):
                 bitCounters[bitPosition] += c
     for i in range(len(bitCounters)):
         bitCounters[i] /= 1000000
+    return bitCounters
+
+def buildHistogram_size(patternList):
+    #define a list of the different bit counters
+    bitCounters = [0]*(len(patternList[0][0])+1)
+    s = 0
+    for p, c in zip(patternList[0], patternList[1]):    #pattern per pattern
+        bitCounters[p.count('1')] += c
+        s += c
+    bitCounters[0] = 1000000-s
     return bitCounters
 
 
@@ -26,14 +36,28 @@ def main():
 
     #build histgrams per region
     for region in patterns.keys():
-        hist = buildHistogram(patterns[region])
+        hist_bits = buildHistogram_bits(patterns[region])
+        hist_size = buildHistogram_size(patterns[region])
+        #bit probas
         plt.figure()
-        #plt.step(range(len(hist)), weights=hist, histtype='bar', rwidth=0.8)
-        plt.bar(range(len(hist)), hist)
-        plt.title(region)
+        '''
+        plt.subplot(2, 1, 1)
+        '''
+        plt.bar(range(len(hist_bits)), hist_bits)
+        plt.title(region + ' per bit error probability, 1e6 injections')
         plt.xlabel('bit position')
         plt.ylabel('error probability')
         plt.grid(color='k', linestyle=':', linewidth=0.5)
+        '''
+        #erronous bits number
+        plt.subplot(2, 1, 2)
+        plt.bar(range(len(hist_size)), hist_size)
+        plt.title(region + ' erroneous bits per pattern')
+        plt.xlabel('bit count')
+        plt.ylabel('number of patterns')
+        plt.yscale('log')
+        plt.grid(color='k', linestyle=':', linewidth=0.5)
+        '''
     plt.show()
 
 

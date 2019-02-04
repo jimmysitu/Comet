@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+
+import pickle, argparse, pdb
+import matplotlib.pyplot as plt
+
+
+
+'''
+
+names = ['Masked', 'ISM', 'AOM', 'ISM & AOM', 'Hang', 'Crash']
+
+if run[1] == 'Masked':
+    endCounters[0] += 1/numRuns
+elif run[1] == 'ISM':
+    endCounters[1] += 1/numRuns
+elif run[1] == 'AOM':
+    endCounters[2] += 1/numRuns
+elif run[1] == 'ISM & AOM':
+    endCounters[3] += 1/numRuns
+elif run[1] == 'Hang':
+    endCounters[4] += 1/numRuns
+elif run[1] == 'Crash':
+    endCounters[5] += 1/numRuns
+else :
+    print('ERROR')
+'''
+
+def createHistogram_ends(runs):
+    numRuns = len(runs)
+    endCounters = {}
+
+    for run in runs:
+        if run[1] not in endCounters:
+            endCounters[run[1]] = 1
+        else :
+            endCounters[run[1]] += 1
+
+    names = []
+    counters = []
+    for k in endCounters:
+        names.append(k)
+        counters.append(endCounters[k]/numRuns)
+
+    return names, counters
+
+def createHistogram_zones(runs):
+    numRuns = len(runs)
+    zoneCounters = {}
+
+    for run in runs:
+        if run[0] not in zoneCounters:
+            zoneCounters[run[0]] = 1
+        else :
+            zoneCounters[run[0]] += 1
+
+    names = []
+    counters = []
+    for k in zoneCounters:
+        names.append(k)
+        counters.append(zoneCounters[k]/numRuns)
+
+    return names, counters
+
+
+def createHistogram_AVF(runs):
+    numRuns = len(runs)
+    zoneCounters = {}
+
+    for run in runs:
+        if (run[0] not in zoneCounters) and ('RF' not in run[0]) and (run[0] != 'CoreCtrl'):  #name of the zone
+            zoneCounters[run[0]] = [0, 0]
+        if ('RF' not in run[0]) and (run[0] != 'CoreCtrl'):
+            zoneCounters[run[0]][0] += 1    #Add new inj to total
+            #pdb.set_trace()
+            if run[1] in ['AOM', 'Crash', 'Hang', 'ISM & AOM']:
+                zoneCounters[run[0]][1] += 1    #Add new ACE fault
+    names = []
+    avfs = []
+    for k in zoneCounters:
+        names.append(k)
+        avfs.append(zoneCounters[k][1]/numRuns)
+
+    return names, avfs
+
+################################################################################
+
+def main():
+    #parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("inputFile", type=str, help="path to the patterns base")
+    args = parser.parse_args()
+
+    #load the patterns data
+    runs = pickle.load(open(args.inputFile, 'rb'))
+
+    numRuns = len(runs)
+
+    names, hist = createHistogram_ends(runs)
+    plt.figure()
+    plt.bar(names, hist)
+    plt.title('Error occurences, matmul_int_8, ' + str(numRuns) + ' injections, area aware')
+    plt.xlabel('Error class')
+    plt.ylabel('Error occurence probability')
+    plt.grid(color='k', linestyle=':', linewidth=0.5)
+
+    names, hist = createHistogram_zones(runs)
+    plt.figure()
+    plt.bar(names, hist)
+    plt.grid(color='k', linestyle=':', linewidth=0.5)
+
+    names, hist = createHistogram_AVF(runs)
+    plt.figure()
+    plt.bar(names, hist)
+    plt.title('Pipeline registers AVF, matmul_int_8, ' + str(numRuns) + ' injections, area aware')
+    plt.xlabel('Register name')
+    plt.ylabel('AVF')
+    plt.grid(color='k', linestyle=':', linewidth=0.5)
+    plt.show()
+
+if __name__ == "__main__":
+    main()
