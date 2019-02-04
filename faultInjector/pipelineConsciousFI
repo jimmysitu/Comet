@@ -16,7 +16,11 @@ PartialResult = collections.namedtuple('PartialResult', ['endType', 'cycle', 'ru
 #runs the simulator with the given workload and arguments
 def executeSimulation(workload, arguments):
     devnull = open(os.devnull, 'w')
-    result = subprocess.run(['../cometFI.sim', '-f', workload] + arguments, stdout=subprocess.PIPE, stderr=devnull)
+    runList = ['../cometFI.sim', '-f', workload]
+    runList.extend(arguments)
+    #print(' '.join(runList))
+    #result = subprocess.run(['../cometFI.sim', '-f', workload] + arguments, stdout=subprocess.PIPE, stderr=devnull)
+    result = subprocess.run(runList, stdout=subprocess.PIPE, stderr=devnull)
     devnull.close()
     return result.stdout.decode('unicode_escape')
 
@@ -61,17 +65,23 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosit
         #select a random register (can be the one selected in the WB stage)
         place = ri.selectRFRegister()
         #fill it with a random number of errors
-        bitPositions = ri.getrandomBitsinRegister(place, random.randint(1,31))
+        #bitPositions = ri.getrandomBitsinRegister(place, random.randint(1,31))
+        bitPositions = ri.getrandomBitsinRegister(place, 1)
 
+    else:
+        bitPositions = ri.getrandomBitsinRegister(place, 1)
+
+    ''' USE THIS IF YOU WANT TO INJECT ERROR PATTERNS
     else:  #selected region is a pipeline stage's combinational logic
         bitPositions = ri.patternToBitPositions(ri.getPattern(place, patterns))   #select a pattern to inject
-
+    '''
 
     if verbosity > 0:
         print("Injection cycle : " + str(injectionCycle) + ", place : " + place + ", bitPositions : " + ' ' + '"' + ' '.join(map(str, bitPositions)) + '"')
     #run the simulator
     placeId = ri.getRegisterID(place)
-    runStdOut = executeSimulation(benchmarkPath, ['-o', '/tmp/injectionRunStdout', '-D', '/tmp/injectionRunMemory', '-I', str(maxAllowedCycles), str(injectionCycle), str(placeId), '"' + ' '.join(map(str, bitPositions)) + '"'])
+    #runStdOut = executeSimulation(benchmarkPath, ['-o', '/tmp/injectionRunStdout', '-D', '/tmp/injectionRunMemory', '-I', str(maxAllowedCycles), str(injectionCycle), str(placeId), '"' + ' '.join(map(str, bitPositions)) + '"'])
+    runStdOut = executeSimulation(benchmarkPath, ['-o', '/tmp/injectionRunStdout_'+str(runNumber), '-D', '/tmp/injectionRunMemory_'+str(runNumber), '-I', str(maxAllowedCycles), str(injectionCycle), str(placeId), ' '.join(map(str, bitPositions))])
     #capture the end type
     endType = re.findall('EndType : (.*)', runStdOut)
 
@@ -82,8 +92,11 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosit
     if endType[0] == 'Normal':
         #check the output and the memory dump against the golden sample
         filecmp.clear_cache()   #really needed ?
-        inISMSpace = not filecmp.cmp('/tmp/goldenSampleMemory', '/tmp/injectionRunMemory', False)
-        inAOMSpace = not filecmp.cmp('/tmp/goldenSampleStdout', '/tmp/injectionRunStdout', False)
+        inISMSpace = not filecmp.cmp('/tmp/goldenSampleMemory', '/tmp/injectionRunMemory_'+str(runNumber), shallow=False)
+        inAOMSpace = not filecmp.cmp('/tmp/goldenSampleStdout', '/tmp/injectionRunStdout_'+str(runNumber), shallow=False)
+
+        #print('ISM : ' + str(inISMSpace))
+        #print('AOM : ' + str(inAOMSpace))
 
         if (inISMSpace) and (inAOMSpace):
             endType[0] = 'ISM & AOM'
@@ -93,6 +106,11 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosit
             endType[0] = 'AOM'
         else:
             endType[0] = 'Masked'
+
+    if os.path.isfile('/tmp/injectionRunMemory_'+str(runNumber)):
+        os.remove('/tmp/injectionRunMemory_'+str(runNumber))
+    if os.path.isfile('/tmp/injectionRunStdout_'+str(runNumber)):
+        os.remove('/tmp/injectionRunStdout_'+str(runNumber))
 
     if verbosity > 0:
         print("endType : " + endType[0])
