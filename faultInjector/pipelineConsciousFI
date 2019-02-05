@@ -7,6 +7,8 @@ import numpy as np
 
 import FIRegInfo as ri  #register informations and useful functions
 
+nBitPerInj = 3
+
 PartialResult = collections.namedtuple('PartialResult', ['endType', 'cycle', 'runNumber'])
 
 ################################################################################
@@ -68,8 +70,9 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosit
         #bitPositions = ri.getrandomBitsinRegister(place, random.randint(1,31))
         bitPositions = ri.getrandomBitsinRegister(place, 1)
 
+    #only inject 1 bit if a pipeline stage comb logic is hit
     else:
-        bitPositions = ri.getrandomBitsinRegister(place, 1)
+        bitPositions = ri.getrandomBitsinRegister(place, nBitPerInj)
 
     ''' USE THIS IF YOU WANT TO INJECT ERROR PATTERNS
     else:  #selected region is a pipeline stage's combinational logic
