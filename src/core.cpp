@@ -87,7 +87,8 @@ void decode(struct FtoDC ftoDC,
     dctoEx.we = ftoDC.we;
     dctoEx.isBranch = 0;
 
-
+    dctoEx.isSub = 0;
+    dctoEx.isArith = 0;
 
     switch (opCode)
     {
@@ -97,6 +98,7 @@ void decode(struct FtoDC ftoDC,
         dctoEx.useRs2 = 0;
         dctoEx.useRs3 = 0;
         dctoEx.useRd = 1;
+        dctoEx.aluop = ALU_PASS1;
 
         break;
     case RISCV_AUIPC:
@@ -106,6 +108,9 @@ void decode(struct FtoDC ftoDC,
         dctoEx.useRs2 = 0;
         dctoEx.useRs3 = 0;
         dctoEx.useRd = 1;
+        dctoEx.aluop = ALU_ADD;
+        dctoEx.isSub = 0;
+
         break;
     case RISCV_JAL:
         dctoEx.lhs = ftoDC.pc+4;
@@ -116,6 +121,7 @@ void decode(struct FtoDC ftoDC,
         dctoEx.useRs3 = 0;
         dctoEx.useRd = 1;
         dctoEx.isBranch = 1;
+        dctoEx.aluop = ALU_PASS1;
 
         break;
     case RISCV_JALR:
@@ -125,6 +131,7 @@ void decode(struct FtoDC ftoDC,
         dctoEx.useRs2 = 0;
         dctoEx.useRs3 = 0;
         dctoEx.useRd = 1;
+        dctoEx.aluop = ALU_ADD;
         break;
     case RISCV_BR:
 
@@ -144,6 +151,7 @@ void decode(struct FtoDC ftoDC,
         dctoEx.useRs2 = 0;
         dctoEx.useRs3 = 0;
         dctoEx.useRd = 1;
+        dctoEx.aluop = ALU_ADD;
 
         break;
 
@@ -158,6 +166,7 @@ void decode(struct FtoDC ftoDC,
         dctoEx.useRs3 = 1;
         dctoEx.useRd = 0;
         dctoEx.rd = 0;
+        dctoEx.aluop = ALU_ADD;
         break;
     case RISCV_OPI:
         dctoEx.lhs = valueReg1;
@@ -166,19 +175,25 @@ void decode(struct FtoDC ftoDC,
         dctoEx.useRs2 = 0;
         dctoEx.useRs3 = 0;
         dctoEx.useRd = 1;
+        dctoEx.aluop = (AluOp)((int)funct3); 
+        dctoEx.isSub = 0;
+        dctoEx.isArith = funct7[5];
         break;
 
     case RISCV_OP:
-
         dctoEx.lhs = valueReg1;
         dctoEx.rhs = valueReg2;
         dctoEx.useRs1 = 1;
         dctoEx.useRs2 = 1;
         dctoEx.useRs3 = 0;
         dctoEx.useRd = 1;
-
+        dctoEx.aluop = (AluOp)((int)funct3); 
+        dctoEx.isSub = funct7[5];
+        dctoEx.isArith = funct7[5];
         break;
+
     case RISCV_SYSTEM:
+        dctoEx.aluop = ALU_PASS1; 
         //TODO
 
         break;
@@ -204,6 +219,49 @@ void decode(struct FtoDC ftoDC,
 
 }
 
+void alu(AluOp op,
+         bool sub,
+         bool sharith,
+         ac_int<32, true> operand1, 
+         ac_int<32, true> operand2, 
+         ac_int<5, false> shamt,
+         ac_int<32, true> &alu_out)
+{
+    switch(op){
+    default: 
+    case ALU_ADD: 
+        alu_out = sub ? (operand1 - operand2) : (operand1 + operand2); 
+        break;
+    case ALU_AND: 
+        alu_out = operand1 & operand2; 
+        break;
+    case ALU_OR:     
+        alu_out = operand1 | operand2;
+        break;
+    case ALU_XOR:
+        alu_out = operand1 ^ operand2;
+        break;
+    case ALU_SLT: 
+        alu_out = operand1 < operand2;
+        break;
+    case ALU_SLTU: 
+        alu_out = (ac_int<32,false>)operand1 < (ac_int<32,false>)operand2;
+        break;
+    case ALU_SLL: 
+        alu_out = (ac_int<32,false>)operand1 << shamt; 
+        break;
+    case ALU_SR: 
+        if(sharith) 
+            alu_out = operand1 >> shamt;
+        else
+            alu_out = (ac_int<32,false>)operand1 >> shamt; 
+        break;
+    case ALU_PASS1: 
+        alu_out = operand1; 
+        break;
+    }
+}
+
 void execute(struct DCtoEx dctoEx,
              struct ExtoMem &extoMem)
 {
@@ -226,23 +284,21 @@ void execute(struct DCtoEx dctoEx,
     ac_int<13, true> imm13_signed = 0;
     imm13_signed.set_slc(0, imm13);
 
-    ac_int<5, false> shamt = dctoEx.instruction.slc<5>(20);
+    ac_int<5, false> shamt; 
+    if(dctoEx.opCode == RISCV_OPI) {
+        shamt = dctoEx.instruction.slc<5>(20); 
+    }else {
+        shamt = (ac_int<5,false>) dctoEx.rhs.slc<5>(0);
+    }
 
+    ac_int<32, true> aluOut;
 
-    // switch must be in the else, otherwise external op may trigger default case
+    alu(dctoEx.aluop, dctoEx.isSub, dctoEx.isArith, dctoEx.lhs, dctoEx.rhs, shamt, aluOut);
+
+    extoMem.result = aluOut;
+
     switch(dctoEx.opCode)
     {
-    case RISCV_LUI:
-        extoMem.result = dctoEx.lhs;
-        break;
-    case RISCV_AUIPC:
-        extoMem.result = dctoEx.lhs + dctoEx.rhs;
-        break;
-    case RISCV_JAL:
-        //Note: in current version, the addition is made in the decode stage
-        //The value to store in rd (pc+4) is stored in lhs
-        extoMem.result = dctoEx.lhs;
-        break;
     case RISCV_JALR:
         //Note: in current version, the addition is made in the decode stage
         //The value to store in rd (pc+4) is stored in lhs
@@ -278,44 +334,9 @@ void execute(struct DCtoEx dctoEx,
         break;
     case RISCV_LD:
         extoMem.isLongInstruction = 1;
-        extoMem.result = dctoEx.lhs + dctoEx.rhs;
         break;
     case RISCV_ST:
     	extoMem.datac = dctoEx.datac;
-        extoMem.result = dctoEx.lhs + dctoEx.rhs;
-        break;
-    case RISCV_OPI:
-        switch(dctoEx.funct3)
-        {
-        case RISCV_OPI_ADDI:
-            extoMem.result = dctoEx.lhs + dctoEx.rhs;
-            break;
-        case RISCV_OPI_SLTI:
-            extoMem.result = dctoEx.lhs < dctoEx.rhs;
-            break;
-        case RISCV_OPI_SLTIU:
-            extoMem.result = (ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs;
-            break;
-        case RISCV_OPI_XORI:
-            extoMem.result = dctoEx.lhs ^ dctoEx.rhs;
-            break;
-        case RISCV_OPI_ORI:
-            extoMem.result = dctoEx.lhs | dctoEx.rhs;
-            break;
-        case RISCV_OPI_ANDI:
-            extoMem.result = dctoEx.lhs & dctoEx.rhs;
-            break;
-        case RISCV_OPI_SLLI: // cast rhs as 5 bits, otherwise generated hardware is 32 bits
-            // & shift amount held in the lower 5 bits (riscv spec)
-            extoMem.result = dctoEx.lhs << (ac_int<5, false>)dctoEx.rhs;
-            break;
-        case RISCV_OPI_SRI:
-            if (dctoEx.funct7.slc<1>(5)) //SRAI
-                extoMem.result = dctoEx.lhs >> (ac_int<5, false>)shamt;
-            else //SRLI
-                extoMem.result = (ac_int<32, false>)dctoEx.lhs >> (ac_int<5, false>)shamt;
-            break;
-        }
         break;
     case RISCV_OP:
         if(dctoEx.funct7.slc<1>(0))     // M Extension
@@ -339,40 +360,6 @@ void execute(struct DCtoEx dctoEx,
             else
                 extoMem.result = longResult.slc<32>(0);
         }
-        else{
-            switch(dctoEx.funct3){
-            case RISCV_OP_ADD:
-                if (dctoEx.funct7.slc<1>(5))   // SUB
-                    extoMem.result = dctoEx.lhs - dctoEx.rhs;
-                else   // ADD
-                    extoMem.result = dctoEx.lhs + dctoEx.rhs;
-                break;
-            case RISCV_OP_SLL:
-                extoMem.result = dctoEx.lhs << (ac_int<5, false>)dctoEx.rhs;
-                break;
-            case RISCV_OP_SLT:
-                extoMem.result = dctoEx.lhs < dctoEx.rhs;
-                break;
-            case RISCV_OP_SLTU:
-                extoMem.result = (ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs;
-                break;
-            case RISCV_OP_XOR:
-                extoMem.result = dctoEx.lhs ^ dctoEx.rhs;
-                break;
-            case RISCV_OP_SR:
-                if(dctoEx.funct7.slc<1>(5))   // SRA
-                    extoMem.result = dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
-                else  // SRL
-                    extoMem.result = (ac_int<32, false>)dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
-                break;
-            case RISCV_OP_OR:
-                extoMem.result = dctoEx.lhs | dctoEx.rhs;
-                break;
-            case RISCV_OP_AND:
-                extoMem.result = dctoEx.lhs & dctoEx.rhs;
-                break;
-            }
-        }
         break;
     case RISCV_MISC_MEM:    // this does nothing because all memory accesses are ordered and we have only one core
         break;
@@ -388,27 +375,21 @@ void execute(struct DCtoEx dctoEx,
             break;
         case RISCV_SYSTEM_CSRRW:    // lhs is from csr, rhs is from reg[rs1]
             extoMem.datac = dctoEx.rhs;       // written back to csr
-            extoMem.result = dctoEx.lhs;      // written back to rd
             break;
         case RISCV_SYSTEM_CSRRS:
             extoMem.datac = dctoEx.lhs | dctoEx.rhs;
-            extoMem.result = dctoEx.lhs;
             break;
         case RISCV_SYSTEM_CSRRC:
             extoMem.datac = dctoEx.lhs & ((ac_int<32, false>)~dctoEx.rhs);
-            extoMem.result = dctoEx.lhs;
             break;
         case RISCV_SYSTEM_CSRRWI:
             extoMem.datac = dctoEx.rhs;
-            extoMem.result = dctoEx.lhs;
             break;
         case RISCV_SYSTEM_CSRRSI:
             extoMem.datac = dctoEx.lhs | dctoEx.rhs;
-            extoMem.result = dctoEx.lhs;
             break;
         case RISCV_SYSTEM_CSRRCI:
             extoMem.datac = dctoEx.lhs & ((ac_int<32, false>)~dctoEx.rhs);
-            extoMem.result = dctoEx.lhs;
             break;
         }
         break;
@@ -438,20 +419,14 @@ void memory(struct ExtoMem extoMem,
     {
     case RISCV_LD:
         memtoWB.rd = extoMem.rd;
-
        	memtoWB.address = extoMem.result;
         memtoWB.isLoad = 1;
-    //    formatread(extoMem.result, datasize, signenable, mem_read); //TODO
         break;
     case RISCV_ST:
-//        mem_read = dataMemory[extoMem.result >> 2];
-       // if(extoMem.we) //TODO0: We do not handle non 32bit writes
-//        	dataMemory[extoMem.result >> 2] = extoMem.datac;
-        	memtoWB.isStore = 1;
-        	memtoWB.address = extoMem.result;
-        	memtoWB.valueToWrite = extoMem.datac;
-        	memtoWB.byteEnable = 0xf;
-
+        memtoWB.isStore = 1;
+        memtoWB.address = extoMem.result;
+        memtoWB.valueToWrite = extoMem.datac;
+        memtoWB.byteEnable = 0xf;
         break;
     }
 }
@@ -589,6 +564,10 @@ void copyDCtoEx(struct DCtoEx &dest, struct DCtoEx src){
     dest.lhs = src.lhs;   //  left hand side : operand 1
     dest.rhs = src.rhs;   // right hand side : operand 2
     dest.datac = src.datac; // ST, BR, JAL/R,
+
+    dest.aluop = src.aluop;
+    dest.isSub = src.isSub;
+    dest.isArith = src.isArith;
 
     // syscall only
     dest.datad = src.datad;

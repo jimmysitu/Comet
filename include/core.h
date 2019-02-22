@@ -60,6 +60,22 @@ struct FtoDC
     bool stall;
 };
 
+/******************************************************************************************
+* Alu opcode enum
+* ****************************************************************************************
+*/
+typedef enum {
+    ALU_ADD = RISCV_OP_ADD,    
+    ALU_AND = RISCV_OP_AND,    
+    ALU_OR = RISCV_OP_OR,     
+    ALU_XOR = RISCV_OP_XOR,    
+    ALU_SLT = RISCV_OP_SLT,    
+    ALU_SLTU = RISCV_OP_SLTU,    
+    ALU_SLL = RISCV_OP_SLL,    
+    ALU_SR = RISCV_OP_SR,
+    ALU_PASS1 = 8
+} AluOp;
+
 struct DCtoEx
 {
     ac_int<32, false> pc;       // used for branch
@@ -72,6 +88,10 @@ struct DCtoEx
     ac_int<32, true> lhs;   //  left hand side : operand 1
     ac_int<32, true> rhs;   // right hand side : operand 2
     ac_int<32, true> datac; // ST, BR, JAL/R,
+
+    AluOp aluop;
+    bool isSub;
+    bool isArith;
 
     // syscall only
     ac_int<32, true> datad;
