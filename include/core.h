@@ -1,7 +1,10 @@
 #ifndef CORE_H
 #define CORE_H
 
+#ifndef __VIVADO__
 #include <ac_int.h>
+#endif
+
 #include <portability.h>
 #include "riscvISA.h"
 
@@ -52,9 +55,9 @@ struct DCtoEx
     CORE_UINT(7) funct7;    // funct7 = instruction[31:25]
     CORE_UINT(3) funct3;    // funct3 = instruction[14:12]
 
-    CORE_INT(32) lhs;   //  left hand side : operand 1
-    CORE_INT(32) rhs;   // right hand side : operand 2
-    CORE_INT(32) datac; // ST, BR, JAL/R,
+    CORE_INT(32) regVal1;   //  left hand side : operand 1
+    CORE_INT(32) regVal2;   // right hand side : operand 2
+    CORE_INT(32) imm; // ST, BR, JAL/R,
 
     // syscall only
     CORE_INT(32) datad;
@@ -134,10 +137,13 @@ struct Core
     DCtoEx dctoEx;
     ExtoMem extoMem;
     MemtoWB memtoWB;
+    struct WBOut wbOut;
 
     //CoreCtrl ctrl;
 
-    CORE_INT(32) REG[32];
+    CORE_INT(32) REG1[32];
+    CORE_INT(32) REG2[32];
+
     CORE_UINT(32) pc;
 
     /// Multicycle operation
@@ -157,7 +163,7 @@ void copyDCtoEx(struct DCtoEx &dest, struct DCtoEx src);
 void copyExtoMem(struct ExtoMem &dest, struct ExtoMem src);
 void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src);
 
-
+int doCore(CORE_UINT(32) im[DRAM_SIZE], CORE_INT(32) dm[DRAM_SIZE]);
 
 class Simulator;
 

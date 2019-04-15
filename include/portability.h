@@ -3,11 +3,6 @@
 
 #define STRINGIFY(a) #a
 
-#ifdef __SYNTHESIS__
-#define __HLS__
-#elif CCS_DUT_RTL || CCS_DUT_SYSC   // modelsim defines
-#define __HLS__
-#endif
 
 #ifdef __VIVADO__
 #include <ap_int.h>
@@ -77,26 +72,7 @@
 #define dbglog(...)
 #endif
 
-#define DRAM_WIDTH  32
-#ifndef __HLS__
-#define DRAM_SIZE   ((size_t)1 << 24)
-#else
-#define DRAM_SIZE   16384
-#endif
-
 #define STACK_INIT  (4*DRAM_SIZE-0x1000)
-
-#ifndef MEMORY_READ_LATENCY
-#define MEMORY_READ_LATENCY     5
-#endif
-
-#ifndef MEMORY_WRITE_LATENCY
-#define MEMORY_WRITE_LATENCY    5
-#endif
-
-
-void formatread (ac_int<32, false> address, ac_int<2, false> datasize, bool sign, ac_int<32, false>& read);
-void formatwrite(ac_int<32, false> address, ac_int<2, false> datasize, ac_int<32, false>& mem, ac_int<32, false> write);
 
 
 #endif /* For PORTABILITY_H_ */

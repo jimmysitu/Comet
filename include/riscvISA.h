@@ -7,7 +7,6 @@
 */
 #ifndef INCLUDES_ISA_RISCVISA_H_
 #define INCLUDES_ISA_RISCVISA_H_
-#include <string.h>
 
 // Major opcodes
 #define RISCV_LUI               0x37    //0x0D

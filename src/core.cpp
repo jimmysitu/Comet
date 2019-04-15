@@ -1,5 +1,9 @@
 #include <core.h>
+
+#ifndef __VIVADO__
 #include <ac_int.h>
+#endif
+
 #include <portability.h>
 
 #ifndef __HLS__
@@ -7,22 +11,26 @@
 #endif  // __HLS__
 
 
-void fetch(CORE_UINT(32) pc,
-           struct FtoDC &ftoDC,
+struct FtoDC fetch(CORE_UINT(32) pc,
            CORE_UINT(32) instructionMemory[DRAM_SIZE])
 {
+	struct FtoDC ftoDC;
+#pragma HLS INLINE
     ftoDC.instruction = instructionMemory[pc/4];
     ftoDC.pc = pc;
     ftoDC.nextPCFetch = pc + 4;
 
     ftoDC.stall = 0;
     ftoDC.we = 1;
+
+    return ftoDC;
 }
 
-void decode(struct FtoDC ftoDC,
-            struct DCtoEx &dctoEx,
-            CORE_INT(32) registerFile[32])
+struct DCtoEx decode(struct FtoDC ftoDC)
 {
+
+	struct DCtoEx dctoEx;
+#pragma HLS INLINE
     CORE_UINT(32) pc = ftoDC.pc;
     CORE_UINT(32) instruction = ftoDC.instruction;
 
@@ -66,10 +74,15 @@ void decode(struct FtoDC ftoDC,
     imm21_1_signed.SET_SLC(0, imm21_1);
 
 
-    //Register access
-    CORE_UINT(32) valueReg1 = registerFile[rs1];
-    CORE_UINT(32) valueReg2 = registerFile[rs2];
 
+	dctoEx.datad = 0; //TODO remove
+	dctoEx.datae = 0; //TODO remove
+
+	dctoEx.regVal1 = 0;//registerFile1[rs1];
+	dctoEx.regVal2 = 0;//registerFile1[rs2];
+	dctoEx.imm = 0;
+
+    dctoEx.nextPCDC = 0;
 
     dctoEx.rs1 = rs1;
     dctoEx.rs2 = rs2;
@@ -84,8 +97,10 @@ void decode(struct FtoDC ftoDC,
     //Initialization of control bits
     dctoEx.useRs1 = 0;
     dctoEx.useRs2 = 0;
+    dctoEx.useRs3 = 0;
     dctoEx.useRd = 0;
     dctoEx.we = ftoDC.we;
+    dctoEx.stall = 0;
     dctoEx.isBranch = 0;
 
 
@@ -93,7 +108,7 @@ void decode(struct FtoDC ftoDC,
     switch (opCode)
     {
     case RISCV_LUI:
-        dctoEx.lhs = imm31_12;
+        dctoEx.imm = imm31_12;
         dctoEx.useRs1 = 0;
         dctoEx.useRs2 = 0;
         dctoEx.useRs3 = 0;
@@ -101,16 +116,13 @@ void decode(struct FtoDC ftoDC,
 
         break;
     case RISCV_AUIPC:
-        dctoEx.lhs = ftoDC.pc;
-        dctoEx.rhs = imm31_12;
+        dctoEx.imm = imm31_12;
         dctoEx.useRs1 = 0;
         dctoEx.useRs2 = 0;
         dctoEx.useRs3 = 0;
         dctoEx.useRd = 1;
         break;
     case RISCV_JAL:
-        dctoEx.lhs = ftoDC.pc+4;
-        dctoEx.rhs = 0;
         dctoEx.nextPCDC = ftoDC.pc + imm21_1_signed;
         dctoEx.useRs1 = 0;
         dctoEx.useRs2 = 0;
@@ -120,8 +132,7 @@ void decode(struct FtoDC ftoDC,
 
         break;
     case RISCV_JALR:
-        dctoEx.lhs = valueReg1;
-        dctoEx.rhs = imm12_I_signed;
+        dctoEx.imm = imm12_I_signed;
         dctoEx.useRs1 = 1;
         dctoEx.useRs2 = 0;
         dctoEx.useRs3 = 0;
@@ -129,9 +140,6 @@ void decode(struct FtoDC ftoDC,
 
         break;
     case RISCV_BR:
-
-        dctoEx.lhs = valueReg1;
-        dctoEx.rhs = valueReg2;
         dctoEx.useRs1 = 1;
         dctoEx.useRs2 = 1;
         dctoEx.useRs3 = 0;
@@ -139,9 +147,7 @@ void decode(struct FtoDC ftoDC,
 
         break;
     case RISCV_LD:
-
-        dctoEx.lhs = valueReg1;
-        dctoEx.rhs = imm12_I_signed;
+        dctoEx.imm = imm12_I_signed;
         dctoEx.useRs1 = 1;
         dctoEx.useRs2 = 0;
         dctoEx.useRs3 = 0;
@@ -152,17 +158,14 @@ void decode(struct FtoDC ftoDC,
         //******************************************************************************************
         //Treatment for: STORE INSTRUCTIONS
     case RISCV_ST:
-        dctoEx.lhs = valueReg1;
-        dctoEx.rhs = imm12_S_signed;
-        dctoEx.datac = valueReg2; //Value to store in memory
+        dctoEx.imm = imm12_S_signed;
         dctoEx.useRs1 = 1;
         dctoEx.useRs2 = 0;
         dctoEx.useRs3 = 1;
         dctoEx.useRd = 0;
         break;
     case RISCV_OPI:
-        dctoEx.lhs = valueReg1;
-        dctoEx.rhs = imm12_I_signed;
+        dctoEx.imm = imm12_I_signed;
         dctoEx.useRs1 = 1;
         dctoEx.useRs2 = 0;
         dctoEx.useRs3 = 0;
@@ -171,8 +174,6 @@ void decode(struct FtoDC ftoDC,
 
     case RISCV_OP:
 
-        dctoEx.lhs = valueReg1;
-        dctoEx.rhs = valueReg2;
         dctoEx.useRs1 = 1;
         dctoEx.useRs2 = 1;
         dctoEx.useRs3 = 0;
@@ -194,11 +195,14 @@ void decode(struct FtoDC ftoDC,
     if (!ftoDC.we)
     	dctoEx.isBranch = 0;
 
+    return dctoEx;
+
 }
 
-void execute(struct DCtoEx dctoEx,
-             struct ExtoMem &extoMem)
+struct ExtoMem execute(struct DCtoEx dctoEx)
 {
+	struct ExtoMem extoMem;
+#pragma HLS INLINE
 
     extoMem.pc = dctoEx.pc;
     extoMem.opCode = dctoEx.opCode;
@@ -207,6 +211,10 @@ void execute(struct DCtoEx dctoEx,
     extoMem.we = dctoEx.we;
     extoMem.isBranch = 0;
     extoMem.useRd = dctoEx.useRd;
+
+    extoMem.result = 0;
+    extoMem.datac = 0;
+    extoMem.nextPC = 0;
 
     CORE_UINT(13) imm13 = 0;
     imm13[12] = dctoEx.instruction[31];
@@ -224,20 +232,20 @@ void execute(struct DCtoEx dctoEx,
     switch(dctoEx.opCode)
     {
     case RISCV_LUI:
-        extoMem.result = dctoEx.lhs;
+        extoMem.result = dctoEx.imm;
         break;
     case RISCV_AUIPC:
-        extoMem.result = dctoEx.lhs + dctoEx.rhs;
+        extoMem.result = dctoEx.pc + dctoEx.imm;
         break;
     case RISCV_JAL:
         //Note: in current version, the addition is made in the decode stage
         //The value to store in rd (pc+4) is stored in lhs
-        extoMem.result = dctoEx.lhs;
+        extoMem.result = dctoEx.pc + 4;
         break;
     case RISCV_JALR:
         //Note: in current version, the addition is made in the decode stage
         //The value to store in rd (pc+4) is stored in lhs
-    	extoMem.nextPC = dctoEx.rhs + dctoEx.lhs;
+    	extoMem.nextPC = dctoEx.regVal1 + dctoEx.imm;
     	extoMem.isBranch = 1;
 
         extoMem.result = dctoEx.pc+4;
@@ -248,69 +256,70 @@ void execute(struct DCtoEx dctoEx,
         switch(dctoEx.funct3)
         {
         case RISCV_BR_BEQ:
-            extoMem.isBranch = (dctoEx.lhs == dctoEx.rhs);
+            extoMem.isBranch = (dctoEx.regVal1 == dctoEx.regVal2);
             break;
         case RISCV_BR_BNE:
-            extoMem.isBranch = (dctoEx.lhs != dctoEx.rhs);
+            extoMem.isBranch = (dctoEx.regVal1 != dctoEx.regVal2);
             break;
         case RISCV_BR_BLT:
-            extoMem.isBranch = (dctoEx.lhs < dctoEx.rhs);
+            extoMem.isBranch = (dctoEx.regVal1 < dctoEx.regVal2);
             break;
         case RISCV_BR_BGE:
-            extoMem.isBranch = (dctoEx.lhs >= dctoEx.rhs);
+            extoMem.isBranch = (dctoEx.regVal1 >= dctoEx.regVal2);
             break;
         case RISCV_BR_BLTU:
-            extoMem.isBranch = ((CORE_UINT(32))dctoEx.lhs < (CORE_UINT(32))dctoEx.rhs);
+            extoMem.isBranch = ((CORE_UINT(32))dctoEx.regVal1 < (CORE_UINT(32))dctoEx.regVal2);
             break;
         case RISCV_BR_BGEU:
-            extoMem.isBranch = ((CORE_UINT(32))dctoEx.lhs >= (CORE_UINT(32))dctoEx.rhs);
+            extoMem.isBranch = ((CORE_UINT(32))dctoEx.regVal1 >= (CORE_UINT(32))dctoEx.regVal2);
             break;
         }
         break;
     case RISCV_LD:
-        extoMem.result = dctoEx.lhs + dctoEx.rhs;
+        extoMem.result = dctoEx.regVal1 + dctoEx.imm;
         break;
     case RISCV_ST:
-        extoMem.result = dctoEx.lhs + dctoEx.rhs;
+        extoMem.result = dctoEx.regVal1 + dctoEx.imm;
+        extoMem.datac = dctoEx.regVal2;
         break;
     case RISCV_OPI:
         switch(dctoEx.funct3)
         {
         case RISCV_OPI_ADDI:
-            extoMem.result = dctoEx.lhs + dctoEx.rhs;
+            extoMem.result = dctoEx.regVal1 + dctoEx.imm;
             break;
         case RISCV_OPI_SLTI:
-            extoMem.result = dctoEx.lhs < dctoEx.rhs;
+            extoMem.result = dctoEx.regVal1 < dctoEx.imm;
             break;
         case RISCV_OPI_SLTIU:
-            extoMem.result = (CORE_UINT(32))dctoEx.lhs < (CORE_UINT(32))dctoEx.rhs;
+            extoMem.result = (CORE_UINT(32))dctoEx.regVal1 < (CORE_UINT(32))dctoEx.imm;
             break;
         case RISCV_OPI_XORI:
-            extoMem.result = dctoEx.lhs ^ dctoEx.rhs;
+            extoMem.result = dctoEx.regVal1 ^ dctoEx.imm;
             break;
         case RISCV_OPI_ORI:
-            extoMem.result = dctoEx.lhs | dctoEx.rhs;
+            extoMem.result = dctoEx.regVal1 | dctoEx.imm;
             break;
         case RISCV_OPI_ANDI:
-            extoMem.result = dctoEx.lhs & dctoEx.rhs;
+            extoMem.result = dctoEx.regVal1 & dctoEx.imm;
             break;
         case RISCV_OPI_SLLI: // cast rhs as 5 bits, otherwise generated hardware is 32 bits
             // & shift amount held in the lower 5 bits (riscv spec)
-            extoMem.result = dctoEx.lhs << (CORE_UINT(5))dctoEx.rhs;
+            extoMem.result = dctoEx.regVal1 << (CORE_UINT(5))shamt;
             break;
         case RISCV_OPI_SRI:
             if (dctoEx.funct7.SLC(1, 5)) //SRAI
-                extoMem.result = dctoEx.lhs >> (CORE_UINT(5))shamt;
+                extoMem.result = dctoEx.regVal1 >> (CORE_UINT(5))shamt;
             else //SRLI
-                extoMem.result = (CORE_UINT(32))dctoEx.lhs >> (CORE_UINT(5))shamt;
+                extoMem.result = (CORE_UINT(32))dctoEx.regVal1 >> (CORE_UINT(5))shamt;
             break;
         }
         break;
     case RISCV_OP:
         if(dctoEx.funct7.SLC(1, 0))     // M Extension
         {
-            CORE_INT(33) mul_reg_a = dctoEx.lhs;
-            CORE_INT(33) mul_reg_b = dctoEx.rhs;
+            CORE_INT(33) mul_reg_a = dctoEx.regVal1;
+            CORE_INT(33) mul_reg_b = dctoEx.regVal2;
             CORE_INT(66) longResult = 0;
             switch (dctoEx.funct3)  //Switch case for multiplication operations (RV32M)
             {
@@ -332,33 +341,33 @@ void execute(struct DCtoEx dctoEx,
             switch(dctoEx.funct3){
             case RISCV_OP_ADD:
                 if (dctoEx.funct7.SLC(1, 5))   // SUB
-                    extoMem.result = dctoEx.lhs - dctoEx.rhs;
+                    extoMem.result = dctoEx.regVal1 - dctoEx.regVal2;
                 else   // ADD
-                    extoMem.result = dctoEx.lhs + dctoEx.rhs;
+                    extoMem.result = dctoEx.regVal1 + dctoEx.regVal2;
                 break;
             case RISCV_OP_SLL:
-                extoMem.result = dctoEx.lhs << (CORE_UINT(5))dctoEx.rhs;
+                extoMem.result = dctoEx.regVal1 << (CORE_UINT(5))dctoEx.regVal2;
                 break;
             case RISCV_OP_SLT:
-                extoMem.result = dctoEx.lhs < dctoEx.rhs;
+                extoMem.result = dctoEx.regVal1 < dctoEx.regVal2;
                 break;
             case RISCV_OP_SLTU:
-                extoMem.result = (CORE_UINT(32))dctoEx.lhs < (CORE_UINT(32))dctoEx.rhs;
+                extoMem.result = (CORE_UINT(32))dctoEx.regVal1 < (CORE_UINT(32))dctoEx.regVal2;
                 break;
             case RISCV_OP_XOR:
-                extoMem.result = dctoEx.lhs ^ dctoEx.rhs;
+                extoMem.result = dctoEx.regVal1 ^ dctoEx.regVal2;
                 break;
             case RISCV_OP_SR:
                 if(dctoEx.funct7.SLC(1, 5))   // SRA
-                    extoMem.result = dctoEx.lhs >> (CORE_UINT(5))dctoEx.rhs;
+                    extoMem.result = dctoEx.regVal1 >> (CORE_UINT(5))dctoEx.regVal2;
                 else  // SRL
-                    extoMem.result = (CORE_UINT(32))dctoEx.lhs >> (CORE_UINT(5))dctoEx.rhs;
+                    extoMem.result = (CORE_UINT(32))dctoEx.regVal1 >> (CORE_UINT(5))dctoEx.regVal2;
                 break;
             case RISCV_OP_OR:
-                extoMem.result = dctoEx.lhs | dctoEx.rhs;
+                extoMem.result = dctoEx.regVal1 | dctoEx.regVal2;
                 break;
             case RISCV_OP_AND:
-                extoMem.result = dctoEx.lhs & dctoEx.rhs;
+                extoMem.result = dctoEx.regVal1 & dctoEx.regVal2;
                 break;
             }
         }
@@ -376,28 +385,28 @@ void execute(struct DCtoEx dctoEx,
 #endif
             break;
         case RISCV_SYSTEM_CSRRW:    // lhs is from csr, rhs is from reg[rs1]
-            extoMem.datac = dctoEx.rhs;       // written back to csr
-            extoMem.result = dctoEx.lhs;      // written back to rd
+            extoMem.datac = dctoEx.regVal2;       // written back to csr
+            extoMem.result = dctoEx.regVal1;      // written back to rd
             break;
         case RISCV_SYSTEM_CSRRS:
-            extoMem.datac = dctoEx.lhs | dctoEx.rhs;
-            extoMem.result = dctoEx.lhs;
+            extoMem.datac = dctoEx.regVal1 | dctoEx.regVal2;
+            extoMem.result = dctoEx.regVal1;
             break;
         case RISCV_SYSTEM_CSRRC:
-            extoMem.datac = dctoEx.lhs & ((CORE_UINT(32))~dctoEx.rhs);
-            extoMem.result = dctoEx.lhs;
+            extoMem.datac = dctoEx.regVal1 & ((CORE_UINT(32))~dctoEx.regVal2);
+            extoMem.result = dctoEx.regVal1;
             break;
         case RISCV_SYSTEM_CSRRWI:
-            extoMem.datac = dctoEx.rhs;
-            extoMem.result = dctoEx.lhs;
+            extoMem.datac = dctoEx.regVal2;
+            extoMem.result = dctoEx.regVal1;
             break;
         case RISCV_SYSTEM_CSRRSI:
-            extoMem.datac = dctoEx.lhs | dctoEx.rhs;
-            extoMem.result = dctoEx.lhs;
+            extoMem.datac = dctoEx.regVal1 | dctoEx.regVal2;
+            extoMem.result = dctoEx.regVal1;
             break;
         case RISCV_SYSTEM_CSRRCI:
-            extoMem.datac = dctoEx.lhs & ((CORE_UINT(32))~dctoEx.rhs);
-            extoMem.result = dctoEx.lhs;
+            extoMem.datac = dctoEx.regVal1 & ((CORE_UINT(32))~dctoEx.regVal2);
+            extoMem.result = dctoEx.regVal1;
             break;
         }
         break;
@@ -406,56 +415,58 @@ void execute(struct DCtoEx dctoEx,
     //If the instruction was dropped, we ensure that isBranch is at zero
     if (!dctoEx.we)
     	extoMem.isBranch = 0;
+
+    return extoMem;
 }
 
-void memory(struct ExtoMem extoMem,
-            struct MemtoWB &memtoWB,
-            CORE_INT(32) data_memory[DRAM_SIZE])
+struct MemtoWB memory(struct ExtoMem extoMem)
 {
+	struct MemtoWB memtoWB;
+#pragma HLS INLINE
 
     CORE_UINT(2) datasize = extoMem.funct3.SLC(2, 0);
     CORE_UINT(1) signenable = !extoMem.funct3.SLC(1, 2);
     memtoWB.we = extoMem.we;
     memtoWB.useRd = extoMem.useRd;
+    memtoWB.rd = extoMem.rd;
 
-    CORE_UINT(32) mem_read;
+	memtoWB.address = extoMem.result;
+	memtoWB.valueToWrite = extoMem.datac;
+	memtoWB.byteEnable = 0xf; //TODO Handle that
+    memtoWB.result = extoMem.result;
 
     switch(extoMem.opCode)
     {
     case RISCV_LD:
-        memtoWB.rd = extoMem.rd;
-        
-       	memtoWB.address = extoMem.result;
         memtoWB.isLoad = 1;
-    //    formatread(extoMem.result, datasize, signenable, mem_read); //TODO
         break;
     case RISCV_ST:
-//        mem_read = data_memory[extoMem.result >> 2];
-       // if(extoMem.we) //TODO0: We do not handle non 32bit writes
-//        	data_memory[extoMem.result >> 2] = extoMem.datac;
         	memtoWB.isStore = 1;
-        	memtoWB.address = extoMem.result;
-        	memtoWB.valueToWrite = extoMem.datac;
-        	memtoWB.byteEnable = 0xf;
-
         break;
     default:
-        memtoWB.result = extoMem.result;
-        memtoWB.rd = extoMem.rd;
         break;
     }
+
+    return memtoWB;
 }
 
 
-void writeback(struct MemtoWB memtoWB,
-				struct WBOut &wbOut)
+struct WBOut writeback(struct MemtoWB memtoWB,
+				CORE_INT(32) valueRead)
 {
+	struct WBOut wbOut;
+#pragma HLS INLINE
 	wbOut.we = memtoWB.we;
+	wbOut.rd = 0;
+	wbOut.value = memtoWB.isLoad ? valueRead : memtoWB.result;
+	wbOut.useRd = 0;
+
     if((memtoWB.rd != 0) && (memtoWB.we) && memtoWB.useRd){
     	wbOut.rd = memtoWB.rd;
     	wbOut.useRd = 1;
-    	wbOut.value = memtoWB.result;
+
     }
+    return wbOut;
 }
 
 void branchUnit(CORE_UINT(32) nextPC_fetch,
@@ -466,6 +477,7 @@ void branchUnit(CORE_UINT(32) nextPC_fetch,
 		CORE_UINT(32) &pc,
 		CORE_UINT(1) &we_fetch,
 		CORE_UINT(1) &we_decode){
+#pragma HLS INLINE
 
 	if (isBranch_execute){
 		we_fetch = 0;
@@ -501,6 +513,7 @@ void forwardUnit(
 
 		CORE_UINT(1) stall[5],
 		struct ForwardReg &forwardRegisters){
+#pragma HLS INLINE
 
 	if (decodeUseRs1){
 		if (writebackUseRd && decodeRs1 == writebackRd)
@@ -552,6 +565,7 @@ void forwardUnit(
 }
 
 void copyFtoDC(struct FtoDC &dest, struct FtoDC src){
+#pragma HLS INLINE
     dest.pc = src.pc;           	
     dest.instruction = src.instruction;  
     dest.nextPCFetch = src.nextPCFetch;      
@@ -560,6 +574,7 @@ void copyFtoDC(struct FtoDC &dest, struct FtoDC src){
 }
 
 void copyDCtoEx(struct DCtoEx &dest, struct DCtoEx src){
+#pragma HLS INLINE
     dest.pc = src.pc;       // used for branch
     dest.instruction = src.instruction;
 
@@ -567,9 +582,9 @@ void copyDCtoEx(struct DCtoEx &dest, struct DCtoEx src){
     dest.funct7 = src.funct7;    // funct7 = instruction[31:25]
     dest.funct3 = src.funct3;    // funct3 = instruction[14:12]
 
-    dest.lhs = src.lhs;   //  left hand side : operand 1
-    dest.rhs = src.rhs;   // right hand side : operand 2
-    dest.datac = src.datac; // ST, BR, JAL/R,
+    dest.regVal1 = src.regVal1;   //  left hand side : operand 1
+    dest.regVal2 = src.regVal2;   // right hand side : operand 2
+    dest.imm = src.imm; // ST, BR, JAL/R,
 
     // syscall only
     dest.datad = src.datad;
@@ -595,6 +610,7 @@ void copyDCtoEx(struct DCtoEx &dest, struct DCtoEx src){
 }
 
 void copyExtoMem(struct ExtoMem &dest, struct ExtoMem src){
+#pragma HLS INLINE
     dest.pc = src.pc;
     dest.instruction = src.instruction;
 
@@ -617,6 +633,7 @@ void copyExtoMem(struct ExtoMem &dest, struct ExtoMem src){
 }
 
 void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
+#pragma HLS INLINE
     dest.result = src.result;    // Result to be written back
     dest.rd = src.rd;        // destination register
     dest.useRd = src.useRd;
@@ -632,7 +649,13 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
     dest.stall = src.stall;
 }
 
-
+void copyWBOut(struct WBOut &dest, struct WBOut src){
+#pragma HLS INLINE
+    dest.value = src.value;    // Result to be written back
+    dest.rd = src.rd;        // destination register
+    dest.useRd = src.useRd;
+    dest.we = src.we;
+}
 
 
 
@@ -642,24 +665,65 @@ void doCycle(struct Core &core, 		 //Core containing all values
 		CORE_UINT(1) globalStall)
 {
 
+}
+
+
+
+void doCore(CORE_UINT(32) im[DRAM_SIZE], CORE_INT(32) dm[DRAM_SIZE])
+{
+#pragma HLS INLINE recursive
+#pragma HLS INTERFACE bram port=dm
+#pragma HLS INTERFACE bram port=im
+    //declare a core
+    CORE_UINT(1) globalStall = 0;
+
+    struct ForwardReg forwardRegisters;
+
+
+
+    FtoDC ftoDC;
+	DCtoEx dctoEx;
+	ExtoMem extoMem;
+	MemtoWB memtoWB;
+	struct WBOut wbOut;
+	CORE_UINT(32) valueRead;
+	int cnt = 0;
+	CORE_UINT(32) regVal1;
+	CORE_UINT(32) regVal2;
+
+	//CoreCtrl ctrl;
+
+	CORE_INT(32) REG1[32];
+#pragma HLS ARRAY_PARTITION variable=REG1 complete dim=1
+
+	CORE_UINT(32) pc;
+
+
+    while(1) {
+#pragma HLS latency max=2
+
+#pragma HLS DEPENDENCE array inter RAW false
+#pragma HLS DEPENDENCE array inter WAR false
+
+		#pragma HLS PIPELINE II=1
+#pragma HLS INLINE
+
     CORE_UINT(1) stallSignals[5] = {0, 0, 0, 0, 0};
-    
-    //declare temporary structs
-    struct FtoDC ftoDC_temp; ftoDC_temp.pc = 0; ftoDC_temp.instruction = 0; ftoDC_temp.nextPCFetch = 0; ftoDC_temp.we = 0; ftoDC_temp.stall = 0;
-    struct DCtoEx dctoEx_temp; dctoEx_temp.isBranch = 0; dctoEx_temp.useRs1 = 0; dctoEx_temp.useRs2 = 0; dctoEx_temp.useRs3 = 0; dctoEx_temp.useRd = 0; dctoEx_temp.we = 0; dctoEx_temp.stall = 0;
-    struct ExtoMem extoMem_temp; extoMem_temp.useRd = 0; extoMem_temp.isBranch = 0; extoMem_temp.we = 0; extoMem_temp.stall = 0;
-    struct MemtoWB memtoWB_temp; memtoWB_temp.useRd = 0; memtoWB_temp.isStore = 0; memtoWB_temp.we = 0; memtoWB_temp.stall = 0;
-    struct WBOut wbOut_temp; wbOut_temp.useRd = 0; wbOut_temp.we = 0;
-    struct ForwardReg forwardRegisters; forwardRegisters.forwardExtoVal1 = 0; forwardRegisters.forwardExtoVal2 = 0; forwardRegisters.forwardExtoVal3 = 0; forwardRegisters.forwardMemtoVal1 = 0; forwardRegisters.forwardMemtoVal2 = 0; forwardRegisters.forwardMemtoVal3 = 0; forwardRegisters.forwardWBtoVal1 = 0; forwardRegisters.forwardWBtoVal2 = 0; forwardRegisters.forwardWBtoVal3 = 0;
+#pragma HLS ARRAY_PARTITION variable=stallSignals complete dim=1
+
+
 
     //declare temporary register file
 
+    struct FtoDC ftoDC_temp = fetch(pc, im);
+    struct DCtoEx dctoEx_temp = decode(ftoDC);
 
-    fetch(core.pc, ftoDC_temp, im);
-    decode(core.ftoDC, dctoEx_temp, core.REG);
-    execute(core.dctoEx, extoMem_temp);
-    memory(core.extoMem, memtoWB_temp, dm);
-    writeback(core.memtoWB, wbOut_temp);
+    dctoEx.regVal1 = regVal1;
+    dctoEx.regVal2 = regVal2;
+    struct ExtoMem extoMem_temp = execute(dctoEx);
+    struct MemtoWB memtoWB_temp = memory(extoMem);
+    struct WBOut wbOut_temp = writeback(memtoWB, valueRead);
+
 
     //resolve stalls, forwards
     forwardUnit(dctoEx_temp.rs1, dctoEx_temp.useRs1,
@@ -671,61 +735,77 @@ void doCycle(struct Core &core, 		 //Core containing all values
 			stallSignals, forwardRegisters);
 
     //commit the changes to the pipeline register
-    if (!stallSignals[0] && !globalStall)
-    	copyFtoDC(core.ftoDC, ftoDC_temp);
 
-    if (!stallSignals[1] && !globalStall){
-    	copyDCtoEx(core.dctoEx, dctoEx_temp);
 
-    	if (forwardRegisters.forwardExtoVal1 && extoMem_temp.we)
-    		core.dctoEx.lhs = extoMem_temp.result;
-    	else if (forwardRegisters.forwardMemtoVal1 && memtoWB_temp.we)
-    		core.dctoEx.lhs = memtoWB_temp.result;
-    	else if (forwardRegisters.forwardWBtoVal1 && wbOut_temp.we)
-    		core.dctoEx.lhs = wbOut_temp.value;
 
-    	if (forwardRegisters.forwardExtoVal2 && extoMem_temp.we)
-    		core.dctoEx.rhs = extoMem_temp.result;
-    	else if (forwardRegisters.forwardMemtoVal2 && memtoWB_temp.we)
-    		core.dctoEx.rhs = memtoWB_temp.result;
-    	else if (forwardRegisters.forwardWBtoVal2 && wbOut_temp.we)
-    		core.dctoEx.rhs = wbOut_temp.value;
 
-    	if (forwardRegisters.forwardExtoVal3 && extoMem_temp.we)
-    		core.dctoEx.datac = extoMem_temp.result;
-    	else if (forwardRegisters.forwardMemtoVal3 && memtoWB_temp.we)
-    		core.dctoEx.datac = memtoWB_temp.result;
-    	else if (forwardRegisters.forwardWBtoVal3 && wbOut_temp.we)
-    		core.dctoEx.datac = wbOut_temp.value;
-    }
 
-    if (!stallSignals[2] && !globalStall)
-    	copyExtoMem(core.extoMem, extoMem_temp);
-
-    if (!stallSignals[3] && !globalStall){
-    	copyMemtoWB(core.memtoWB, memtoWB_temp);
-
-    	if (memtoWB_temp.we && memtoWB_temp.isStore)
-    		dm[memtoWB_temp.address >> 2] = memtoWB_temp.valueToWrite;
-  	 else if (memtoWB_temp.we && memtoWB_temp.isLoad)
-  	     core.memtoWB.result = dm[memtoWB_temp.address >> 2];
-    }
+	regVal1 = REG1[dctoEx_temp.rs1];
+	regVal2 = REG1[dctoEx_temp.rs2];
+	if (memtoWB_temp.we && memtoWB_temp.isStore)
+		dm[memtoWB_temp.address >> 2] = memtoWB_temp.valueToWrite;
+	else
+	    valueRead = dm[memtoWB_temp.address >> 2];
 
     if (wbOut_temp.we && wbOut_temp.useRd){
-    	core.REG[wbOut_temp.rd] = wbOut_temp.value;
+
+    	REG1[wbOut_temp.rd] = wbOut_temp.value;
+
     }
 
-    branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC, extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we);
 
-}
+    if (!stallSignals[0] && !globalStall)
+    	copyFtoDC(ftoDC, ftoDC_temp);
 
-void doCore(CORE_UINT(32) im[DRAM_SIZE], CORE_INT(32) dm[DRAM_SIZE], CORE_UINT(1) globalStall)
-{
-    //declare a core
-    Core core;
-    core.pc = 0;
+    if (!stallSignals[1] && !globalStall)
+    	copyDCtoEx(dctoEx, dctoEx_temp);
 
-    while(1) {
-        doCycle(core, im, dm, globalStall);
+
+    if (!stallSignals[2] && !globalStall)
+    	copyExtoMem(extoMem, extoMem_temp);
+
+	copyMemtoWB(memtoWB, memtoWB_temp);
+
+    copyWBOut(wbOut, wbOut_temp);
+
+
+    if (!stallSignals[1] && !globalStall){
+
+
+
+      	if (forwardRegisters.forwardExtoVal1 && extoMem.we)
+      		regVal1 = extoMem.result;
+      	else if (forwardRegisters.forwardMemtoVal1 && memtoWB.we)
+			regVal1 = memtoWB.result;
+      	else if (forwardRegisters.forwardWBtoVal1 && wbOut.we)
+      		regVal1 = wbOut.value;
+
+      	if (forwardRegisters.forwardExtoVal2 && extoMem.we)
+      		regVal2 = extoMem.result;
+      	else if (forwardRegisters.forwardMemtoVal2 && memtoWB.we)
+			regVal2 = memtoWB.result;
+      	else if (forwardRegisters.forwardWBtoVal2 && wbOut.we)
+      		regVal2 = wbOut.value;
+
+      	if (forwardRegisters.forwardExtoVal3 && extoMem.we)
+      		regVal2 = extoMem.result;
+      	else if (forwardRegisters.forwardMemtoVal3 && memtoWB.we)
+			regVal2 = memtoWB.result;
+      	else if (forwardRegisters.forwardWBtoVal3 && wbOut.we)
+      		regVal2 = wbOut.value;
+
+      }
+
+    forwardRegisters.forwardExtoVal1 = 0; forwardRegisters.forwardExtoVal2 = 0; forwardRegisters.forwardExtoVal3 = 0; forwardRegisters.forwardMemtoVal1 = 0; forwardRegisters.forwardMemtoVal2 = 0; forwardRegisters.forwardMemtoVal3 = 0; forwardRegisters.forwardWBtoVal1 = 0; forwardRegisters.forwardWBtoVal2 = 0; forwardRegisters.forwardWBtoVal3 = 0;
+    branchUnit(ftoDC.nextPCFetch, dctoEx.nextPCDC, dctoEx.isBranch, extoMem.nextPC, extoMem.isBranch, pc, ftoDC.we, dctoEx.we);
+
+
+
+    cnt++;
+
+
+
+
+
     }
 }
