@@ -28,6 +28,10 @@ void decode(struct FtoDC ftoDC,
     ac_int<7, false> funct7 = instruction.slc<7>(25);
     ac_int<6, false> rs2 = (ac_int<6,false>) instruction.slc<5>(20);
     ac_int<6, false> rs1 = (ac_int<6,false>) instruction.slc<5>(15);
+    ac_int<6, false> frs1 = rs1;
+    ac_int<6, false> frs2 = rs2;
+    frs1[5]=1;   // In the case we use the float register 
+    frs2[5]=1;	
     ac_int<3, false> funct3 = instruction.slc<3>(12);
     ac_int<6, false> rd = (ac_int<6,false>) instruction.slc<5>(7);
     ac_int<7, false> opCode = instruction.slc<7>(0);    // could be reduced to 5 bits because 1:0 is always 11
@@ -65,9 +69,26 @@ void decode(struct FtoDC ftoDC,
 
 
     //Register access
-    ac_int<32, false> valueReg1 = registerFile[rs1];
-    ac_int<32, false> valueReg2 = registerFile[rs2];
+    ac_int<32, false> valueReg1;
+    ac_int<32, false> valueReg2;
 
+    if (funct7[3] & funct7[7]) 
+	{
+    		valueReg1 = registerFile[rs1];
+	}
+    else
+	{
+		valueReg1 = registerFile[frs1];
+	}
+
+     if (opCode[6]) 
+	{
+     		valueReg2 = registerFile[frs2];
+	}
+     else
+	{
+     		valueReg2 = registerFile[rs2];
+	}
 
     dctoEx.rs1 = rs1;
     dctoEx.rs2 = rs2;
@@ -181,6 +202,89 @@ void decode(struct FtoDC ftoDC,
         //TODO
 
         break;
+	//******************************************************************************************
+	// Treatment for F instructions
+	
+    case RISCV_FLOAT_OP:
+        dctoEx.useRs1 = 1;
+        dctoEx.useRs3 = 0;
+        dctoEx.useRd = 1;
+	switch(funct7)
+	{
+		case RISCV_FLOAT_OP_ADD :
+			dctoEx.lhs = valueReg1;
+			dctoEx.rhs = valueReg2; 
+			dctoEx.useRs2 = 1;
+			dctoEx.rd[5] = 1;
+			break;
+	
+		case RISCV_FLOAT_OP_SUB : 
+			dctoEx.lhs = valueReg1;
+			dctoEx.rhs = valueReg2; 
+			dctoEx.useRs2 = 1;
+			dctoEx.rd[5] = 1;
+			break;
+	
+		case RISCV_FLOAT_OP_MUL : 
+			dctoEx.lhs = valueReg1;
+			dctoEx.rhs = valueReg2; 
+			dctoEx.useRs2 = 1;
+			dctoEx.rd[5] = 1;
+			break;
+	
+		case RISCV_FLOAT_OP_DIV :
+			dctoEx.lhs = valueReg1;
+			dctoEx.rhs = valueReg2; 
+			dctoEx.useRs2 = 1;
+			dctoEx.rd[5] = 1;
+			break;
+	
+		case RISCV_FLOAT_OP_SQRT : 
+			dctoEx.lhs = valueReg1;
+			dctoEx.useRs2 = 0;
+			dctoEx.rd[5] = 1;
+			break;
+	
+		case RISCV_FLOAT_OP_SGN : 
+			dctoEx.lhs = valueReg1;
+			dctoEx.rhs = valueReg2; 
+			dctoEx.useRs2 = 1;
+			dctoEx.rd[5] = 1;
+			break;
+	
+		case RISCV_FLOAT_OP_MINMAX : 
+			dctoEx.lhs = valueReg1;
+			dctoEx.rhs = valueReg2; 
+			dctoEx.useRs2 = 1;
+			dctoEx.rd[5] = 1;
+			break;
+	
+		case RISCV_FLOAT_OP_CVTWS : 
+			dctoEx.lhs = valueReg1;
+			dctoEx.useRs2 = 0;
+			break;
+	
+		case RISCV_FLOAT_OP_CMP : 
+			dctoEx.lhs = valueReg1;
+			dctoEx.rhs = valueReg2; 
+			dctoEx.useRs2 = 1;
+			break;
+	
+		case RISCV_FLOAT_OP_CLASSMVXW :
+			dctoEx.lhs = valueReg1;
+			dctoEx.useRs2 = 0;
+			break;
+	
+		default :  
+			dctoEx.lhs = valueReg1;
+			dctoEx.useRs2 = 0;
+			dctoEx.rd[5] = 1;
+			break;
+	
+	}
+	break;
+
+
     default:
 
         break;
@@ -463,6 +567,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
     decode(core.ftoDC, dctoEx_temp, core.regFile);
 	core.basicALU.process(core.dctoEx, extoMem_temp, core.stallAlu);	//calling ALU: execute stage
  	core.multALU.process(core.dctoEx, extoMem_temp, core.stallAlu);	//calling ALU: execute stage
+	core.floatALU.process(core.dctoEx, extoMem_temp, core.stallAlu); // calling ALU : execute stage 
 
     memory(core.extoMem, memtoWB_temp);
     writeback(core.memtoWB, wbOut_temp);
@@ -576,3 +681,4 @@ void doCore(bool globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32,
         doCycle(core, globalStall);
     }
 }
+
