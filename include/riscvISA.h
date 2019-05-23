@@ -205,6 +205,30 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction);
 #define RISCV_ATOMIC_MAXU       0x1C
 
 
+/******************************************************************************************************
+* Specification of the standard F extension
+********************************************
+
+*****************************************************************************************************/
+
+// Opcode 
+#define RISCV_FLOAT_LD 		0x7 
+#define RISCV_FLOAT_ST		0x27
+#define RISCV_FLOAT_MADD	0x43
+#define RISCV_FLOAT_MSUB	0x47
+#define RISCV_FLOAT_NMADD	0x4F	
+#define RISCV_FLOAT_NMSUB	0x4B	
+#define RISCV_FLOAT_OP 		0x53
+
+// funct7
+#define RISCV_FLOAT_OP_ADD	0x0
+#define RISCV_FLOAT_OP_SUB	0x4
+#define RISCV_FLOAT_OP_MUL	0x8
+#define RISCV_FLOAT_OP_DIV	0xC
+//TODO
+
+// funct3
+//TODO
 
 
 #ifndef __CATAPULT
@@ -279,6 +303,9 @@ extern const char* riscvNames[8];
 #define SYS_O_SYNC              0x2000
 #define SYS_O_NONBLOCK          0x4000
 #define SYS_O_NOCTTY            0x8000
+
+
+
 
 
 
