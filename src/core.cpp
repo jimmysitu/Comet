@@ -19,17 +19,17 @@ void fetch(ac_int<32, false> pc,
 
 void decode(struct FtoDC ftoDC,
             struct DCtoEx &dctoEx,
-            ac_int<32, true> registerFile[32])
+            ac_int<32, true> registerFile[64])
 {
     ac_int<32, false> pc = ftoDC.pc;
     ac_int<32, false> instruction = ftoDC.instruction;
 
     // R-type instruction
     ac_int<7, false> funct7 = instruction.slc<7>(25);
-    ac_int<5, false> rs2 = instruction.slc<5>(20);
-    ac_int<5, false> rs1 = instruction.slc<5>(15);
+    ac_int<6, false> rs2 = (ac_int<6,false>) instruction.slc<5>(20);
+    ac_int<6, false> rs1 = (ac_int<6,false>) instruction.slc<5>(15);
     ac_int<3, false> funct3 = instruction.slc<3>(12);
-    ac_int<5, false> rd = instruction.slc<5>(7);
+    ac_int<6, false> rd = (ac_int<6,false>) instruction.slc<5>(7);
     ac_int<7, false> opCode = instruction.slc<7>(0);    // could be reduced to 5 bits because 1:0 is always 11
 
     //Construction of different immediate values
