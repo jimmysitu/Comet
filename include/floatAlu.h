@@ -17,6 +17,8 @@
 
 class FloatAlu : public ALU
 {
+private :
+	ac_int<23,false> tmp = 0;
 public :
 	void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall)
 {
@@ -46,7 +48,16 @@ public :
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_DIV  :                                      
-			  	
+                          extoMem.result.set_slc(31, dctoEx.lhs.slc<1>(31) ^ dctoEx.rhs.slc<1>(31));
+                          extoMem.result.set_slc(23, dctoEx.lhs.slc<8>(23) - dctoEx.rhs.slc<8>(23));
+			  extoMem.result.set_slc(0,(ac_int<23, false>) 0); 
+			  tmp = dctoEx.lhs.slc<23>(0);
+			  while(tmp > 0) 
+			  {
+				tmp -= dctoEx.rhs.slc<23>(0);
+				extoMem.result.set_slc(0, 1 + extoMem.result.slc<23>(0));	
+			  }
+			  stall = false;
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_SQRT :                                      
