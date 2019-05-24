@@ -212,8 +212,8 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction);
 *****************************************************************************************************/
 
 // Opcode 
-#define RISCV_FLOAT_LD 		0x7 
-#define RISCV_FLOAT_ST		0x27
+#define RISCV_FLOAT_LW 		0x7 
+#define RISCV_FLOAT_SW		0x27
 #define RISCV_FLOAT_MADD	0x43
 #define RISCV_FLOAT_MSUB	0x47
 #define RISCV_FLOAT_NMADD	0x4F	
@@ -225,7 +225,15 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction);
 #define RISCV_FLOAT_OP_SUB	0x4
 #define RISCV_FLOAT_OP_MUL	0x8
 #define RISCV_FLOAT_OP_DIV	0xC
-//TODO
+#define RISCV_FLOAT_OP_SQRT	0x2C
+#define RISCV_FLOAT_OP_SGN	0x10
+#define RISCV_FLOAT_OP_MINMAX	0x14	
+#define RISCV_FLOAT_OP_CVTWS	0x60
+#define RISCV_FLOAT_OP_CMP	0x50
+#define RISCV_FLOAT_OP_CVTSW	0x68
+#define RISCV_FLOAT_OP_MVWX	0x78
+#define RISCV_FLOAT_OP_CLASSMVXW 0x70
+
 
 // funct3
 //TODO

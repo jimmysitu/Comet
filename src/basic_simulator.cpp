@@ -246,13 +246,13 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 void BasicSimulator::printCycle(){
     // Use the trace file to separate program output from simulator output
 
-  if(!core.stallSignals[0] && 0) {
+  if(!core.stallSignals[0]) {
    
 	if (!core.stallSignals[0] && ! core.stallIm && !core.stallDm){
-	printf("Debug trace : %x ",(unsigned int) core.ftoDC.pc);
+	printf("Debug trace : %x ",(unsigned int) core.ftoDC.instruction);
 	std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
 
-	for (int oneReg = 0; oneReg < 32; oneReg++){
+	for (int oneReg = 0; oneReg < 64; oneReg++){
 		printf("%x  ", (unsigned int) core.regFile[oneReg]); //TODO use cout everywhere (had trouble printing them as hexa
 	}
 	std::cout << std::endl;

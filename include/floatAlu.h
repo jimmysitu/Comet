@@ -22,7 +22,7 @@ private :
 public :
 	void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall)
 {
-          stall = true;                                                          
+          stall =false;                                                          
           extoMem.opCode = dctoEx.opCode;                                         
           extoMem.rd = dctoEx.rd;                                                 
           extoMem.funct3 = dctoEx.funct3;                                         
@@ -33,10 +33,10 @@ public :
                                                                                     
           switch(dctoEx.opCode)                                                   
           {                                                                       
-           case RISCV_FLOAT_LD:
+           case RISCV_FLOAT_LW:
 		break; 
 
-	   case RISCV_FLOAT_ST:
+	   case RISCV_FLOAT_SW:
 		break;
  
 	   case RISCV_FLOAT_MADD :
@@ -65,12 +65,12 @@ public :
                           extoMem.result.set_slc(23, dctoEx.lhs.slc<8>(23) + dctoEx.rhs.slc<8>(23));
                           extoMem.result.set_slc(0, (dctoEx.lhs.slc<23>(0)        
                                               * dctoEx.rhs.slc<23>(0)).slc<23>(0) );
-			  stall = false;
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_DIV  :                                      
                           extoMem.result.set_slc(31, dctoEx.lhs.slc<1>(31) ^ dctoEx.rhs.slc<1>(31));
                           extoMem.result.set_slc(23, dctoEx.lhs.slc<8>(23) - dctoEx.rhs.slc<8>(23));
+				// write aa better algorithm
 			  extoMem.result.set_slc(0,(ac_int<23, false>) 0); 
 			  tmp = dctoEx.lhs.slc<23>(0);
 			  while(tmp > 0) 
@@ -78,7 +78,6 @@ public :
 				tmp -= dctoEx.rhs.slc<23>(0);
 				extoMem.result.set_slc(0, 1 + extoMem.result.slc<23>(0));	
 			  }
-			  stall = false;
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_SQRT :                                      

@@ -9,6 +9,7 @@
 #include <incompleteMemory.h>
 #include <cacheMemory.h>
 #include <alu.h>
+#include <floatAlu.h>
 #include <pipelineRegisters.h>
 
 #ifndef MEMORY_INTERFACE
@@ -42,13 +43,13 @@ struct Core
 
     BasicAlu basicALU;
 	MultAlu multALU;
-
+	FloatAlu floatALU;
 	//memories, yay
 	MemoryInterface *dm, *im;
 
     //CoreCtrl ctrl;
 
-    ac_int<32, true> regFile[32];
+    ac_int<32, true> regFile[64];
     ac_int<32, false> pc;
 
 	//stall

@@ -72,7 +72,7 @@ void decode(struct FtoDC ftoDC,
     ac_int<32, false> valueReg1;
     ac_int<32, false> valueReg2;
 
-    if (funct7[3] & funct7[7]) 
+    if (funct7[3] & funct7[6]) 
 	{
     		valueReg1 = registerFile[rs1];
 	}
@@ -567,7 +567,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
     decode(core.ftoDC, dctoEx_temp, core.regFile);
 	core.basicALU.process(core.dctoEx, extoMem_temp, core.stallAlu);	//calling ALU: execute stage
  	core.multALU.process(core.dctoEx, extoMem_temp, core.stallAlu);	//calling ALU: execute stage
-	core.floatALU.process(core.dctoEx, extoMem_temp, core.stallAlu); // calling ALU : execute stage 
+//	core.floatALU.process(core.dctoEx, extoMem_temp, core.stallAlu); // calling ALU : execute stage 
 
     memory(core.extoMem, memtoWB_temp);
     writeback(core.memtoWB, wbOut_temp);

@@ -1,6 +1,7 @@
 #ifndef PIPELINE_REGISTERS_H_
 #define PIPELINE_REGISTERS_H_
 
+#include <ac_int.h>
 /******************************************************************************************
  * Definition of all pipeline registers
  *
@@ -55,10 +56,10 @@ struct DCtoEx
     bool useRs2;
     bool useRs3;
     bool useRd;
-    ac_int<5, false> rs1;       // rs1    = instruction[19:15]
-    ac_int<5, false> rs2;       // rs2    = instruction[24:20]
-    ac_int<5, false> rs3;
-    ac_int<5, false> rd;        // rd     = instruction[11:7]
+    ac_int<6, false> rs1;       // rs1    = instruction[19:15]
+    ac_int<6, false> rs2;       // rs2    = instruction[24:20]
+    ac_int<6, false> rs3;
+    ac_int<6, false> rd;        // rd     = instruction[11:7]
 
     //Register for all stages
     bool we;
@@ -70,7 +71,7 @@ struct ExtoMem
     ac_int<32, false> instruction;
 
     ac_int<32, true> result;    // result of the EX stage
-    ac_int<5, false> rd;        // destination register
+    ac_int<6, false> rd;        // destination register
     bool useRd;
     bool isLongInstruction;
     ac_int<7, false> opCode;    // LD or ST (can be reduced to 2 bits)
@@ -89,7 +90,7 @@ struct ExtoMem
 struct MemtoWB
 {
     ac_int<32, false> result;    // Result to be written back
-    ac_int<5, false> rd;        // destination register
+    ac_int<6, false> rd;        // destination register
     bool useRd;
 
     ac_int<32, true> address;
@@ -105,7 +106,7 @@ struct MemtoWB
 struct WBOut
 {
 	ac_int<32, false> value;
-	ac_int<5, false> rd;
+	ac_int<6, false> rd;
 	bool useRd;
     bool we;
 };
