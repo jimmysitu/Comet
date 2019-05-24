@@ -33,6 +33,27 @@ public :
                                                                                     
           switch(dctoEx.opCode)                                                   
           {                                                                       
+           case RISCV_FLOAT_LD:
+		break; 
+
+	   case RISCV_FLOAT_ST:
+		break;
+ 
+	   case RISCV_FLOAT_MADD :
+		break;
+	
+	   case RISCV_FLOAT_MSUB :
+		break; 
+
+	   case RISCV_FLOAT_NMADD : 
+		break;
+
+	   case RISCV_FLOAT_NMSUB : 
+		break;
+
+           case RISCV_FLOAT_OP : 
+		  switch(dctoEx.funct7)
+		  {
                   case  RISCV_FLOAT_OP_ADD :                                      
                           break;                                                  
                                                                                   
@@ -85,7 +106,12 @@ public :
                           break;                                                  
                                                                                   
                   default :                                                       
-                          break;                                                  
+                          break;   
+		  }                                               
+		  break; 
+
+	  default :  
+		break;
           }                                                                       
   }   
 		
