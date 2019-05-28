@@ -18,25 +18,22 @@
 class FloatAlu : public ALU
 {
 private :
-	ac_int<23,false> tmp = 0;
+	ac_int<23,true> tmp = 0;
+	int state = 0;
 public :
 	void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall)
 {
           stall =false;                                                          
-          extoMem.opCode = dctoEx.opCode;                                         
-          extoMem.rd = dctoEx.rd;                                                 
-          extoMem.funct3 = dctoEx.funct3;                                         
-          extoMem.we = dctoEx.we;                                                 
-          extoMem.isBranch = 0;                                                   
-          extoMem.useRd = dctoEx.useRd;                                           
-          extoMem.isLongInstruction = 0;                                          
-                                                                                    
           switch(dctoEx.opCode)                                                   
           {                                                                       
            case RISCV_FLOAT_LW:
+		 extoMem.isLongInstruction = 1;                                  
+                 extoMem.result = dctoEx.lhs + dctoEx.rhs;   
 		break; 
 
 	   case RISCV_FLOAT_SW:
+                extoMem.datac = dctoEx.datac;                                   
+                extoMem.result = dctoEx.lhs + dctoEx.rhs;  
 		break;
  
 	   case RISCV_FLOAT_MADD :
@@ -55,29 +52,29 @@ public :
 		  switch(dctoEx.funct7)
 		  {
                   case  RISCV_FLOAT_OP_ADD :                                      
+				
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_SUB  :                                      
                           break;                                                  
                                                                                   
-                  case RISCV_FLOAT_OP_MUL  :                                      
+                  case RISCV_FLOAT_OP_MUL  :                               
                           extoMem.result.set_slc(31, dctoEx.lhs.slc<1>(31) ^ dctoEx.rhs.slc<1>(31));
-                          extoMem.result.set_slc(23, dctoEx.lhs.slc<8>(23) + dctoEx.rhs.slc<8>(23));
-                          extoMem.result.set_slc(0, (dctoEx.lhs.slc<23>(0)        
-                                              * dctoEx.rhs.slc<23>(0)).slc<23>(0) );
+			if ((dctoEx.lhs.slc<8>(23) + dctoEx.rhs.slc<8>(23))[8]) 
+			{
+                          extoMem.result.set_slc(23,  (dctoEx.lhs.slc<8>(23) + dctoEx.rhs.slc<8>(23)).slc<8>(1) );
+                          extoMem.result.set_slc(0,   (dctoEx.lhs.slc<23>(0)       
+                                              * dctoEx.rhs.slc<23>(0)).slc<23>(23));
+			}
+			else
+			{
+                          extoMem.result.set_slc(23,  (dctoEx.lhs.slc<8>(23) + dctoEx.rhs.slc<8>(23)).slc<8>(0) );
+                          extoMem.result.set_slc(0,   (dctoEx.lhs.slc<23>(0)       
+                                              * dctoEx.rhs.slc<23>(0)).slc<23>(0));
+			}
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_DIV  :                                      
-                          extoMem.result.set_slc(31, dctoEx.lhs.slc<1>(31) ^ dctoEx.rhs.slc<1>(31));
-                          extoMem.result.set_slc(23, dctoEx.lhs.slc<8>(23) - dctoEx.rhs.slc<8>(23));
-				// write aa better algorithm
-			  extoMem.result.set_slc(0,(ac_int<23, false>) 0); 
-			  tmp = dctoEx.lhs.slc<23>(0);
-			  while(tmp > 0) 
-			  {
-				tmp -= dctoEx.rhs.slc<23>(0);
-				extoMem.result.set_slc(0, 1 + extoMem.result.slc<23>(0));	
-			  }
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_SQRT :                                      
@@ -99,9 +96,18 @@ public :
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_MVWX :                                      
+			  extoMem.result = dctoEx.lhs;
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_CLASSMVXW :                                 
+			  if (dctoEx.funct3) // funct3 = 0 -> FMV.X.W
+			  {
+				extoMem.result = dctoEx.lhs;
+			  }
+			  else  // FCLASS.S
+			  {
+				
+			  }
                           break;                                                  
                                                                                   
                   default :                                                       
@@ -112,7 +118,8 @@ public :
 	  default :  
 		break;
           }                                                                       
-  }   
+  }  
+
 		
 };
 

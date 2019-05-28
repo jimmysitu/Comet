@@ -72,7 +72,7 @@ void decode(struct FtoDC ftoDC,
     ac_int<32, false> valueReg1;
     ac_int<32, false> valueReg2;
 
-    if (funct7[3] & funct7[6]) 
+    if ( (funct7[3] & funct7[6] & opCode == RISCV_FLOAT_OP) | ( (opCode != RISCV_FLOAT_OP) & (opCode != RISCV_FLOAT_MADD) & (opCode != RISCV_FLOAT_MSUB) & (opCode != RISCV_FLOAT_NMADD) & (opCode != RISCV_FLOAT_NMSUB) ) )
 	{
     		valueReg1 = registerFile[rs1];
 	}
@@ -81,7 +81,7 @@ void decode(struct FtoDC ftoDC,
 		valueReg1 = registerFile[frs1];
 	}
 
-     if (opCode[6]) 
+     if ((opCode == RISCV_FLOAT_OP) | (opCode == RISCV_FLOAT_MADD) | (opCode == RISCV_FLOAT_MSUB) | (opCode == RISCV_FLOAT_NMADD) | (opCode == RISCV_FLOAT_NMSUB) | (opCode == RISCV_FLOAT_SW) )
 	{
      		valueReg2 = registerFile[frs2];
 	}
@@ -179,6 +179,7 @@ void decode(struct FtoDC ftoDC,
         dctoEx.useRd = 0;
         dctoEx.rd = 0;
         break;
+
     case RISCV_OPI:
         dctoEx.lhs = valueReg1;
         dctoEx.rhs = imm12_I_signed;
@@ -202,8 +203,31 @@ void decode(struct FtoDC ftoDC,
         //TODO
 
         break;
-	//******************************************************************************************
-	// Treatment for F instructions
+	/******************************************************************************************
+	 * Treatment for F instructions
+ 	 * 
+	 * Author : Lauric
+	 ******************************************************************************************/
+    case RISCV_FLOAT_LW : 
+	dctoEx.lhs = valueReg1;                                                 
+        dctoEx.rhs = imm12_I_signed;                                            
+        dctoEx.useRs1 = 1;                                                      
+        dctoEx.useRs2 = 0;                                                      
+        dctoEx.useRs3 = 0;                                                      
+        dctoEx.useRd = 1;    		
+	dctoEx.rd[5] = 1;
+	break;
+
+    case RISCV_FLOAT_SW : 
+        dctoEx.lhs = valueReg1;                                                 
+        dctoEx.rhs = imm12_S_signed;                                            
+        dctoEx.datac = valueReg2; //Value to store in memory                    
+        dctoEx.useRs1 = 1;                                                      
+        dctoEx.useRs2 = 0;                                                      
+        dctoEx.useRs3 = 1;                                                      
+        dctoEx.useRd = 0;                                                       
+        dctoEx.rd = 0;
+	break;
 	
     case RISCV_FLOAT_OP:
         dctoEx.useRs1 = 1;
@@ -322,6 +346,7 @@ void memory(struct ExtoMem extoMem,
 
     switch(extoMem.opCode)
     {
+    case RISCV_FLOAT_LW:
     case RISCV_LD:
         memtoWB.rd = extoMem.rd;
 
@@ -329,6 +354,7 @@ void memory(struct ExtoMem extoMem,
         memtoWB.isLoad = 1;
     //    formatread(extoMem.result, datasize, signenable, mem_read); //TODO
         break;
+    case RISCV_FLOAT_SW:
     case RISCV_ST:
 //        mem_read = dataMemory[extoMem.result >> 2];
        // if(extoMem.we) //TODO0: We do not handle non 32bit writes
@@ -567,7 +593,13 @@ void doCycle(struct Core &core, 		 //Core containing all values
     decode(core.ftoDC, dctoEx_temp, core.regFile);
 	core.basicALU.process(core.dctoEx, extoMem_temp, core.stallAlu);	//calling ALU: execute stage
  	core.multALU.process(core.dctoEx, extoMem_temp, core.stallAlu);	//calling ALU: execute stage
-//	core.floatALU.process(core.dctoEx, extoMem_temp, core.stallAlu); // calling ALU : execute stage 
+
+/********************************************************************************************* 
+ *    Call of floating ALU
+ * 	Author : Lauric 
+ */
+	core.floatALU.process(core.dctoEx, extoMem_temp, core.stallAlu); 
+/********************************************************************************************/
 
     memory(core.extoMem, memtoWB_temp);
     writeback(core.memtoWB, wbOut_temp);

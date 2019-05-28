@@ -96,6 +96,10 @@ BasicSimulator::BasicSimulator (
 	for(int i=0; i<32; i++) {
 			core.regFile[i] = 0;
 	}
+//	Initialize float memory
+	for(int i=32; i<64; i++) {
+			core.regFile[i] = 0;
+	}
 	/*
     dataMemory = new ac_int<32, false>[DRAM_SIZE];
     for(int i(0); i < DRAM_SIZE; i++)

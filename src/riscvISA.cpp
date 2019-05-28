@@ -163,6 +163,68 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction){
 	case RISCV_SYSTEM:
 		stream << "SYSTEM";
 	break;
+
+/****************************************************************************************************
+ * Intruction for the stantard F extension
+ *
+ *  Author : Lauric
+ *
+ ***************************************************************************************************/
+	case RISCV_FLOAT_OP : 
+		switch(funct7) 
+		{
+			case  RISCV_FLOAT_OP_ADD:
+			break;
+
+			case RISCV_FLOAT_OP_SUB:
+			break;
+
+			case RISCV_FLOAT_OP_MUL:
+				stream << "FMUL rf" << (int) rd << " = rf" << (int) rs1 << ", rf" << (int) rs2;
+			break;
+
+			case RISCV_FLOAT_OP_DIV:
+				stream << "FDIV rf" << (int) rd << " = rf" << (int) rs1 << ", rf" << (int) rs2;
+			break;
+
+			case RISCV_FLOAT_OP_SQRT:
+			break;
+
+			case RISCV_FLOAT_OP_SGN:
+			break;
+
+			case RISCV_FLOAT_OP_MINMAX:
+			break;
+
+			case RISCV_FLOAT_OP_CVTWS:
+			break;
+
+			case RISCV_FLOAT_OP_CLASSMVXW:
+			if(funct3)
+				{stream << "FMV.W.X r" << (int) rd << " = r" << (int) rs1;}
+			else 
+				{}
+			break;
+
+			case RISCV_FLOAT_OP_CVTSW:
+			break;
+
+			case RISCV_FLOAT_OP_CMP:
+			break;
+
+			case RISCV_FLOAT_OP_MVWX:
+				stream << "FMV.W.X r" << (int) rd << " = r" << (int) rs1;
+			break;
+		}
+	break; 
+
+	case RISCV_FLOAT_LW: 
+			stream << "FLW rf" << (int) rd << " = Mem[r" << (int) rs1<<"]";         
+			break;
+
+	case RISCV_FLOAT_SW: 
+			stream << "FSW Mem[r" << (int) rs1 <<"] = rf" << (int) rs2;
+			break;
 	default:
 		stream << "??? ";
 	break;
