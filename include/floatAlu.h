@@ -130,7 +130,25 @@ public :
                   case RISCV_FLOAT_OP_SQRT :                                      
                           break;                                                  
                                                                                   
-                  case RISCV_FLOAT_OP_SGN  :                                      
+                  case RISCV_FLOAT_OP_SGN  :
+					extoMem.result.set_slc(0, dctoEx.rhs.slc<31>(0));
+					f1Sign = dctoEx.rhs.slc<1>(31);
+					f2Sign = dctoEx.lhs.slc<1>(31);
+					switch(dctoEx.funct3)
+					{
+
+						case 0 :
+							extoMem.result[31] = (bool) f2Sign; 
+						break;
+
+						case 1: 
+							extoMem.result[31] = !( (bool) f2Sign);
+						break;
+				
+						case 2:
+							extoMem.result[31] = ((bool) f1Sign) ^ ((bool) f2Sign);
+						break;
+					}                                      
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_MINMAX :  
