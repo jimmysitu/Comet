@@ -174,9 +174,11 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction){
 		switch(funct7) 
 		{
 			case  RISCV_FLOAT_OP_ADD:
+				stream << "FADD rf" << (int) rd << " = rf" << (int) rs1 << ", rf" << (int) rs2;
 			break;
 
 			case RISCV_FLOAT_OP_SUB:
+				stream << "FSUB rf" << (int) rd << " = rf" << (int) rs1 << ", rf" << (int) rs2;
 			break;
 
 			case RISCV_FLOAT_OP_MUL:
@@ -188,32 +190,77 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction){
 			break;
 
 			case RISCV_FLOAT_OP_SQRT:
+				stream << "FSQRT rf" << (int) rd << " = rf" << (int) rs1;
 			break;
 
 			case RISCV_FLOAT_OP_SGN:
+				switch(funct3)
+				{
+					case 0 :
+						stream << "FSGNJ rf" << (int) rd << "= rf" << (int) rs1 << ", rf" << (int) rs2;
+						break;
+
+					case 1 :
+						stream << "FSGNJN rf" << (int) rd << "= rf" << (int) rs1 << ", rf" << (int) rs2;
+						break;
+
+					case 2 :
+						stream << "FSGNJX rf" << (int) rd << "= rf" << (int) rs1 << ", rf" << (int) rs2;
+						break;
+				
+				}
 			break;
 
 			case RISCV_FLOAT_OP_MINMAX:
+			if(funct3)
+				stream << "FMAX rf" << (int) rd << " rf" << (int) rs1 << ", rf" << (int) rs2;
+			
+			else
+				stream << "FMIN rf" << (int) rd << " rf" << (int) rs1 << ", rf" << (int) rs2;
+			
 			break;
 
 			case RISCV_FLOAT_OP_CVTWS:
+				if(rs2)
+					stream << "FCVT.WU.S r" << (int) rd << " = rf" << (int) rs1;
+				else
+					stream << "FCVT.W.S r" << (int) rd << " = rf" << (int) rs1;
 			break;
 
 			case RISCV_FLOAT_OP_CLASSMVXW:
 			if(funct3)
-				{stream << "FMV.W.X r" << (int) rd << " = r" << (int) rs1;}
+				stream << "FMV.X.W r" << (int) rd << " = rf" << (int) rs1;
 			else 
-				{}
+				stream << "FCLASS r" << (int) rd << " = rf" << (int) rs1;
 			break;
 
 			case RISCV_FLOAT_OP_CVTSW:
+			if(rs2)
+					stream << "FCVT.S.WU rf" << (int) rd << " = r" << (int) rs1;
+				else
+					stream << "FCVT.S.W rf" << (int) rd << " = r" << (int) rs1;
 			break;
 
 			case RISCV_FLOAT_OP_CMP:
+				switch(funct3)
+				{
+					case 0 :
+						stream << "FLE r" << (int) rd << "= rf" << (int) rs1 << ", rf" << (int) rs2;
+						break;
+
+					case 1 :
+						stream << "FLT r" << (int) rd << "= rf" << (int) rs1 << ", rf" << (int) rs2;
+						break;
+
+					case 2 :
+						stream << "FEQ r" << (int) rd << "= rf" << (int) rs1 << ", rf" << (int) rs2;
+						break;
+				
+				}
 			break;
 
 			case RISCV_FLOAT_OP_MVWX:
-				stream << "FMV.W.X r" << (int) rd << " = r" << (int) rs1;
+				stream << "FMV.W.X rf" << (int) rd << " = r" << (int) rs1;
 			break;
 		}
 	break; 
