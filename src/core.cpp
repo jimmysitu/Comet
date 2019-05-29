@@ -598,7 +598,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
  *    Call of floating ALU
  * 	Author : Lauric 
  */
-//	core.floatALU.process(core.dctoEx, extoMem_temp, core.stallAlu); 
+	core.floatALU.process(core.dctoEx, extoMem_temp, core.stallAlu); 
 /********************************************************************************************/
 
     memory(core.extoMem, memtoWB_temp);
