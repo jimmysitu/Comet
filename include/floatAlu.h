@@ -36,13 +36,28 @@ public :
 	  ac_int<48, false> outputMantissa;
 	  ac_int<23, false> resultMantissa;
  	  ac_int<9, false> outputExp; 
+      float f1;
+	  int* p;
 
-      stall =false;                                                          
+
+      stall =false;       
+
+					f1Mantissa = dctoEx.rhs.slc<23>(0);
+					f2Mantissa = dctoEx.lhs.slc<23>(0);
+					f1Mantissa[23] = 1;
+					f2Mantissa[23] = 1;
+
+					f1Exp = dctoEx.rhs.slc<8>(23) - 127;
+					f2Exp = dctoEx.lhs.slc<8>(23) - 127;
+					
+					f1Sign = dctoEx.rhs.slc<1>(31);
+					f2Sign = dctoEx.lhs.slc<1>(31);
+                                                   
       switch(dctoEx.opCode)                                                   
       {                                                                       
          case RISCV_FLOAT_LW:
-		 extoMem.isLongInstruction = 1;                                  
-         extoMem.result = dctoEx.lhs + dctoEx.rhs;   
+		 	extoMem.isLongInstruction = 1;                                  
+         	extoMem.result = dctoEx.lhs + dctoEx.rhs;   
 		 break; 
 
 	   case RISCV_FLOAT_SW:
@@ -73,19 +88,7 @@ public :
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_DIV  : 
-                         f1Sign = dctoEx.rhs.slc<1>(31);
- 						 f2Sign = dctoEx.lhs.slc<1>(31);	
-
-						 f1Mantissa = dctoEx.rhs.slc<23>(0);
-  						 f2Mantissa = dctoEx.lhs.slc<23>(0);
-							f1Mantissa[23] = 1;
-							f2Mantissa[23] = 1;
-
-  			 			 f1Exp = dctoEx.rhs.slc<8>(23) - 127;
-			  			 f2Exp = dctoEx.lhs.slc<8>(23) - 127;
-
-
-  			 			 outputSign = f1Sign ^ f2Sign;
+						 outputSign = f1Sign ^ f2Sign;
     			  		 outputMantissa = ((ac_int<48,false>)f1Mantissa << 24)/ ((ac_int<48,false>) f2Mantissa);
   			  			 outputExp = f1Exp - f2Exp + 127;
 
@@ -101,19 +104,6 @@ public :
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_MUL  :                                      
-
-
-  						f1Sign = dctoEx.rhs.slc<1>(31);
-						f2Sign = dctoEx.lhs.slc<1>(31);
- 
-  						f1Mantissa = dctoEx.rhs.slc<23>(0);
-						f2Mantissa = dctoEx.lhs.slc<23>(0);
-						f1Mantissa[23] = 1;                                                     
-						f2Mantissa[23] = 1;                                                     
- 
-						f1Exp = dctoEx.rhs.slc<8>(23); 
-						f2Exp = dctoEx.lhs.slc<8>(23);
-
 						outputSign = f1Sign ^ f2Sign;                 
 						outputMantissa = f1Mantissa * f2Mantissa;
 						resultMantissa = (outputMantissa[47] ?outputMantissa.slc<23>(24) : outputMantissa.slc<23>(23));
@@ -125,15 +115,13 @@ public :
 						extoMem.result.set_slc(31, outputSign); 
  						extoMem.result.set_slc(0, resultMantissa);
  						extoMem.result.set_slc(23, outputExp.slc<8>(0));
+
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_SQRT :                                      
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_SGN  :
-					extoMem.result.set_slc(0, dctoEx.rhs.slc<31>(0));
-					f1Sign = dctoEx.rhs.slc<1>(31);
-					f2Sign = dctoEx.lhs.slc<1>(31);
 					switch(dctoEx.funct3)
 					{
 
@@ -152,16 +140,6 @@ public :
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_MINMAX :  
-					f1Mantissa = dctoEx.rhs.slc<23>(0);
-					f2Mantissa = dctoEx.lhs.slc<23>(0);
-					f1Mantissa[23] = 1;
-					f2Mantissa[23] = 1;
-
-					f1Exp = dctoEx.rhs.slc<8>(23) - 127;
-					f2Exp = dctoEx.lhs.slc<8>(23) - 127;
-					
-					f1Sign = dctoEx.rhs.slc<1>(31);
-					f2Sign = dctoEx.lhs.slc<1>(31);
 					if(dctoEx.funct3) //FMAX
 					{
 						if(f1Exp == f2Sign)
@@ -253,21 +231,21 @@ public :
 					
                           break;                                                  
                                                                                   
-                  case RISCV_FLOAT_OP_CVTWS :                                     
+                  case RISCV_FLOAT_OP_CVTWS :   
+					if(!dctoEx.rs2)
+						{
+							extoMem.result = (int) (( pow(2, ((int) f1Exp) -23) ) * (int) f1Mantissa);
+							if(f1Exp)
+								extoMem.result = - extoMem.result;
+						}
+					else
+						{
+							extoMem.result = (unsigned int) (( pow(2, ((int) f1Exp) -23) ) * (int) f1Mantissa);
+						}
+				                                
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_CMP  :
-					f1Mantissa = dctoEx.rhs.slc<23>(0);
-					f2Mantissa = dctoEx.lhs.slc<23>(0);
-					f1Mantissa[23] = 1;
-					f2Mantissa[23] = 1;
-
-					f1Exp = dctoEx.rhs.slc<8>(23) - 127;
-					f2Exp = dctoEx.lhs.slc<8>(23) - 127;
-					
-					f1Sign = dctoEx.rhs.slc<1>(31);
-					f2Sign = dctoEx.lhs.slc<1>(31);
-						  
 					switch(dctoEx.funct3)
 							{
 								case 0:
@@ -354,7 +332,11 @@ public :
 							}                                    
                           break;                                                  
                                                                                   
-                  case RISCV_FLOAT_OP_CVTSW :                                     
+                  case RISCV_FLOAT_OP_CVTSW :     // Same thing if the interger is signed or not
+								f1 = (float) dctoEx.rhs;
+								p = (int*) &f1;
+								extoMem.result = (ac_int<32,false>) *p;
+
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_MVWX :                                      
