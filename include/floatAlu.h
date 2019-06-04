@@ -18,8 +18,12 @@
 class FloatAlu : public ALU
 {
 private :
-	ac_int<23,false> tmp = 0;
 	int state = 0;
+	ac_int<48, false> quotient = 0;
+	ac_int<48,false> remainder = 0;
+	ac_int<48,false> f1Val = 0;
+	ac_int<48,false> f2Val = 0;
+	
 public :
 	void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall)
 {			
@@ -52,8 +56,8 @@ public :
 					
 					f1Sign = dctoEx.rhs.slc<1>(31);
 					f2Sign = dctoEx.lhs.slc<1>(31);
-                                                   
-      switch(dctoEx.opCode)                                                   
+   if(!state)                                              
+     {switch(dctoEx.opCode)                                                   
       {                                                                       
          case RISCV_FLOAT_LW:
 		 	extoMem.isLongInstruction = 1;                                  
@@ -88,19 +92,10 @@ public :
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_DIV  : 
-						 outputSign = f1Sign ^ f2Sign;
-    			  		 outputMantissa = ((ac_int<48,false>)f1Mantissa << 24)/ ((ac_int<48,false>) f2Mantissa);
-  			  			 outputExp = f1Exp - f2Exp + 127;
-
-			  			if (outputMantissa[23])
-							outputExp--;
-
-  			  			resultMantissa = (ac_int<24,false>) outputMantissa;
-
-  			 			extoMem.result.set_slc(0, resultMantissa.slc<23>(0)); 
-  			  			extoMem.result.set_slc(23, outputExp.slc<8>(0));
-  			  			extoMem.result.set_slc(31, outputSign);
-
+						 state = 48;
+						 quotient = 0;
+						 remainder = 0;
+						 stall = true;
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_MUL  :                                      
@@ -361,7 +356,31 @@ public :
 
 	  default :  
 		break;
-          }                                                                       
+          } 
+  }            
+  else // state != 0 -> division loop
+   {
+    state--;
+	remainder = remainder << 1;
+	remainder[0] = f1Val[state];
+	if(remainder >= f2Val)
+	{
+		remainder = remainder - f2Val;
+		quotient[state] = 1;
+		printf("Adding a one at %d\n", state);
+	}
+	
+	if(!state)
+	{
+		outputSign = f1Sign ^ f2Sign;
+	  	outputExp = f1Exp - f2Exp + 127;
+		stall = false;
+  		extoMem.result.set_slc(0, quotient.slc<23>(1)); 
+  		extoMem.result.set_slc(23, outputExp.slc<8>(0));
+  		extoMem.result.set_slc(31, outputSign);
+
+	}
+   }                                                        
   }  
 
 		
