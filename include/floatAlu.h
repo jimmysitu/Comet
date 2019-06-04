@@ -359,7 +359,7 @@ public :
           } 
   }            
   else // state != 0 -> division loop
-   {
+   { // we unroll the loop 4 times (maybe there is a better way to do it)
     state--;
 	remainder = remainder << 1;
 	remainder[0] = f1Val[state];
@@ -367,7 +367,34 @@ public :
 	{
 		remainder = remainder - f2Val;
 		quotient[state] = 1;
-		printf("Adding a one at %d\n", state);
+	}
+	
+	
+	    state--;
+	remainder = remainder << 1;
+	remainder[0] = f1Val[state];
+	if(remainder >= f2Val)
+	{
+		remainder = remainder - f2Val;
+		quotient[state] = 1;
+	}
+	
+	    state--;
+	remainder = remainder << 1;
+	remainder[0] = f1Val[state];
+	if(remainder >= f2Val)
+	{
+		remainder = remainder - f2Val;
+		quotient[state] = 1;
+	}
+	
+	    state--;
+	remainder = remainder << 1;
+	remainder[0] = f1Val[state];
+	if(remainder >= f2Val)
+	{
+		remainder = remainder - f2Val;
+		quotient[state] = 1;
 	}
 	
 	if(!state)
