@@ -122,7 +122,43 @@ public :
 									
                           break;                                                  
                                                                                   
-                  case RISCV_FLOAT_OP_SUB  :                                     
+                  case RISCV_FLOAT_OP_SUB  : 
+                    f2Sign = f2Sign ^ f2Sign;	
+                    if(f1Exp > f2Exp)
+					{
+						while(f1Exp != f2Exp)
+							{
+								f2Exp++;
+								f2Mantissa = f2Mantissa >> 1;
+							}
+							
+					}
+					else
+					{
+						while(f1Exp != f2Exp)
+							{
+								f1Exp++;
+								f1Mantissa = f1Mantissa >> 1;
+							}
+					}
+
+					if(f1Sign == f2Sign)
+						extoMem.result.set_slc(31, f1Sign);
+					else
+					{
+						if(f1Mantissa > f2Mantissa)
+							extoMem.result.set_slc(31,f1Sign);
+						else
+							extoMem.result.set_slc(31,f2Sign);
+					}
+
+							
+					resultMantissa = f1Mantissa + f2Mantissa;
+					outputExp = f1Exp +128;
+
+					extoMem.result.set_slc(0, resultMantissa.slc<23>(1));
+					extoMem.result.set_slc(23, outputExp);                                      
+						                                    
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_DIV  : 
