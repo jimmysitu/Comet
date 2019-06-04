@@ -23,12 +23,5 @@ add_executable(atomicTests
 							./src/simpleMemory.cpp
 							./src/riscvISA.cpp)
 
-add_executable(test 
-							./src/core.cpp
-							./src/elfFile.cpp
-							./src/main2.cpp
-							./src/simpleMemory.cpp
-							./src/riscvISA.cpp
-							./src/basic_simulator.cpp)
 
 #target_link_libraries( comet.sim	LINK_PUBLIC ${Boost_LIBRARIES} )
