@@ -41,6 +41,8 @@ public :
 	  ac_int<48, false> outputMantissa;
 	  ac_int<23, false> resultMantissa;
  	  ac_int<9, false> outputExp; 
+ 	  ac_int<32,false> localResult;
+
 
       float f1;
 	  int g;
@@ -64,12 +66,12 @@ public :
       {                                                                       
          case RISCV_FLOAT_LW:
 		 	extoMem.isLongInstruction = 1;                                  
-         	extoMem.result = dctoEx.lhs + dctoEx.rhs;   
+         	localResult = dctoEx.lhs + dctoEx.rhs;   
 		 break; 
 
 	   case RISCV_FLOAT_SW:
                 extoMem.datac = dctoEx.datac;                                   
-                extoMem.result = dctoEx.lhs + dctoEx.rhs;  
+                localResult = dctoEx.lhs + dctoEx.rhs;  
 		 break;
  
 	   case RISCV_FLOAT_MADD :
@@ -107,21 +109,21 @@ public :
 					}
 
 					if(f1Sign == f2Sign)
-						extoMem.result.set_slc(31, f1Sign);
+						localResult.set_slc(31, f1Sign);
 					else
 					{
 						if(f1Mantissa > f2Mantissa)
-							extoMem.result.set_slc(31,f1Sign);
+							localResult.set_slc(31,f1Sign);
 						else
-							extoMem.result.set_slc(31,f2Sign);
+							localResult.set_slc(31,f2Sign);
 					}
 
 							
 					resultMantissa = f1Mantissa + f2Mantissa;
 					outputExp = f1Exp +128;
 
-					extoMem.result.set_slc(0, resultMantissa.slc<23>(1));
-					extoMem.result.set_slc(23, outputExp);                                      
+					localResult.set_slc(0, resultMantissa.slc<23>(1));
+					localResult.set_slc(23, outputExp);                                      
 									
                           break;                                                  
                                                                                   
@@ -146,21 +148,21 @@ public :
 					}
 
 					if(f1Sign == f2Sign)
-						extoMem.result.set_slc(31, f1Sign);
+						localResult.set_slc(31, f1Sign);
 					else
 					{
 						if(f1Mantissa > f2Mantissa)
-							extoMem.result.set_slc(31,f1Sign);
+							localResult.set_slc(31,f1Sign);
 						else
-							extoMem.result.set_slc(31,f2Sign);
+							localResult.set_slc(31,f2Sign);
 					}
 
 							
 					resultMantissa = f1Mantissa + f2Mantissa;
 					outputExp = f1Exp +128;
 
-					extoMem.result.set_slc(0, resultMantissa.slc<23>(1));
-					extoMem.result.set_slc(23, outputExp);                                      
+					localResult.set_slc(0, resultMantissa.slc<23>(1));
+					localResult.set_slc(23, outputExp);                                      
 						                                    
                           break;                                                  
                                                                                   
@@ -180,9 +182,9 @@ public :
  						if (outputMantissa[47])                                                 
  							outputExp++;                                                    
 
-						extoMem.result.set_slc(31, outputSign); 
- 						extoMem.result.set_slc(0, resultMantissa);
- 						extoMem.result.set_slc(23, outputExp.slc<8>(0));
+						localResult.set_slc(31, outputSign); 
+ 						localResult.set_slc(0, resultMantissa);
+ 						localResult.set_slc(23, outputExp.slc<8>(0));
 
                           break;                                                  
                                                                                   
@@ -194,15 +196,15 @@ public :
 					{
 
 						case 0 :
-							extoMem.result[31] = (bool) f2Sign; 
+							localResult[31] = (bool) f2Sign; 
 						break;
 
 						case 1: 
-							extoMem.result[31] = !( (bool) f2Sign);
+							localResult[31] = !( (bool) f2Sign);
 						break;
 				
 						case 2:
-							extoMem.result[31] = ((bool) f1Sign) ^ ((bool) f2Sign);
+							localResult[31] = ((bool) f1Sign) ^ ((bool) f2Sign);
 						break;
 					}                                      
                           break;                                                  
@@ -213,32 +215,32 @@ public :
 						if(f1Exp == f2Sign)
 						{if(f1Sign){  // both are positive
 							if (f1Exp > f2Exp)
-								extoMem.result = dctoEx.rhs;
+								localResult = dctoEx.rhs;
 							else
 							{
 								if(f2Exp > f1Exp)
-									extoMem.result = dctoEx.lhs;
+									localResult = dctoEx.lhs;
 								else
 								{	
 									if(f1Mantissa > f2Mantissa)
-										extoMem.result = dctoEx.rhs;
+										localResult = dctoEx.rhs;
 									else
-										extoMem.result = dctoEx.lhs;
+										localResult = dctoEx.lhs;
 								}
 							}}
 						else{ // both are negative
 							if (f1Exp < f2Exp)
-								extoMem.result = dctoEx.rhs;
+								localResult = dctoEx.rhs;
 							else
 							{
 								if(f2Exp < f1Exp)
-									extoMem.result = dctoEx.lhs;
+									localResult = dctoEx.lhs;
 								else
 								{	
 									if(f1Mantissa < f2Mantissa)
-										extoMem.result = dctoEx.rhs;
+										localResult = dctoEx.rhs;
 									else
-										extoMem.result = dctoEx.lhs;
+										localResult = dctoEx.lhs;
 								}
 							}}
 						} //End if(f1Exp == f2Sign)
@@ -246,9 +248,9 @@ public :
 						{
 
 						if(f1Sign < f2Sign) // rhs positive and lhs negative 
-							extoMem.result = dctoEx.lhs;
+							localResult = dctoEx.lhs;
 						else // rhs negative and lhs positive
-							extoMem.result = dctoEx.rhs;
+							localResult = dctoEx.rhs;
 						}  
 					}
    
@@ -257,32 +259,32 @@ public :
 						if(f1Exp == f2Sign)
 						{if(f1Sign){  // both are positive
 							if (f1Exp < f2Exp)
-								extoMem.result = dctoEx.rhs;
+								localResult = dctoEx.rhs;
 							else
 							{
 								if(f2Exp < f1Exp)
-									extoMem.result = dctoEx.lhs;
+									localResult = dctoEx.lhs;
 								else
 								{	
 									if(f1Mantissa < f2Mantissa)
-										extoMem.result = dctoEx.rhs;
+										localResult = dctoEx.rhs;
 									else
-										extoMem.result = dctoEx.lhs;
+										localResult = dctoEx.lhs;
 								}
 							}}
 						else{ // both are negative
 							if (f1Exp > f2Exp)
-								extoMem.result = dctoEx.rhs;
+								localResult = dctoEx.rhs;
 							else
 							{
 								if(f2Exp > f1Exp)
-									extoMem.result = dctoEx.lhs;
+									localResult = dctoEx.lhs;
 								else
 								{	
 									if(f1Mantissa > f2Mantissa)
-										extoMem.result = dctoEx.rhs;
+										localResult = dctoEx.rhs;
 									else
-										extoMem.result = dctoEx.lhs;
+										localResult = dctoEx.lhs;
 								}
 							}}
 						} //End if(f1Exp == f2Sign)
@@ -290,9 +292,9 @@ public :
 						{
 
 						if(f1Sign < f2Sign) // rhs positive and lhs negative 
-							extoMem.result = dctoEx.lhs;
+							localResult = dctoEx.lhs;
 						else // rhs negative and lhs positive
-							extoMem.result = dctoEx.rhs;
+							localResult = dctoEx.rhs;
 						}  
 					}
 
@@ -305,11 +307,11 @@ public :
 					if(!dctoEx.rs2)
 						{
 							
-							extoMem.result =  (int) f1Mantissa;
+							localResult =  (int) f1Mantissa;
 						}
 					else
 						{
-							extoMem.result =(unsigned int) f1Mantissa;
+							localResult =(unsigned int) f1Mantissa;
 						}                   
                           break;                                                  
                                                                                   
@@ -323,26 +325,26 @@ public :
 										if(f1Sign)
 										{
 											if (f1Exp >= f2Exp)
-												extoMem.result[0] = true;
+												localResult[0] = true;
 											else
 											{
 												if(f2Exp == f1Exp)
 												{	
 												if(f1Mantissa >= f2Mantissa)
-													extoMem.result[0] = true;
+													localResult[0] = true;
 												}
 											}	
 										}
 										else
 										{
 											if (f1Exp <= f2Exp)
-												extoMem.result[0] = true;
+												localResult[0] = true;
 											else
 											{
 											if(f2Exp == f1Exp)
 												{	
 												if(f1Mantissa <= f2Mantissa)
-													extoMem.result[0] = true;
+													localResult[0] = true;
 												}
 											}
 										}
@@ -350,7 +352,7 @@ public :
 									else
 									{
 										if(f1Sign > f2Sign)
-											extoMem.result[0] = true ;
+											localResult[0] = true ;
 									}
 
 								break;
@@ -362,26 +364,26 @@ public :
 										if(f1Sign)
 										{
 											if (f1Exp > f2Exp)
-												extoMem.result[0] = true;
+												localResult[0] = true;
 											else
 											{
 												if(f2Exp == f1Exp)
 												{	
 												if(f1Mantissa > f2Mantissa)
-													extoMem.result[0] = true;
+													localResult[0] = true;
 												}
 											}	
 										}
 										else
 										{
 											if (f1Exp < f2Exp)
-												extoMem.result[0] = true;
+												localResult[0] = true;
 											else
 											{
 											if(f2Exp == f1Exp)
 												{	
 												if(f1Mantissa < f2Mantissa)
-													extoMem.result[0] = true;
+													localResult[0] = true;
 												}
 											}
 										}
@@ -389,13 +391,13 @@ public :
 									else
 									{
 										if(f1Sign > f2Sign)
-											extoMem.result[0] = true ;
+											localResult[0] = true ;
 									}
 
 								break;
 
 								case 2:
-									extoMem.result[0] = dctoEx.rhs = dctoEx.lhs;
+									localResult[0] = dctoEx.rhs = dctoEx.lhs;
 								break;
 							}                                    
                           break;                                                  
@@ -406,8 +408,8 @@ public :
 									for(int i = 31; i >= 0; i--)
 										if (dctoEx.rhs[i])
 											{
-												extoMem.result.set_slc(23, (ac_int<8,false>) (127 + i));
-												extoMem.result.set_slc(0, (dctoEx.rhs << (31 - i)).slc<23>(8) );
+												localResult.set_slc(23, (ac_int<8,false>) (127 + i));
+												localResult.set_slc(0, (dctoEx.rhs << (31 - i)).slc<23>(8) );
 											}
 								}
 								else // FCVT.W.S
@@ -417,8 +419,8 @@ public :
 										for(int i = 30; i >= 0; i--)
 											if (!dctoEx.rhs[i])
 												{
-													extoMem.result.set_slc(23, (ac_int<8,false>) (127 + i-1));
-													extoMem.result.set_slc(0, (dctoEx.rhs << (31 - i+1)).slc<23>(8) );
+													localResult.set_slc(23, (ac_int<8,false>) (127 + i-1));
+													localResult.set_slc(0, (dctoEx.rhs << (31 - i+1)).slc<23>(8) );
 												}
 									
 									}
@@ -427,21 +429,21 @@ public :
 										for(int i = 31; i >= 0; i--)
 											if (dctoEx.rhs[i])
 												{
-													extoMem.result.set_slc(23, (ac_int<8,false>) (127 + i));
-													extoMem.result.set_slc(0, (dctoEx.rhs << (31 - i)).slc<23>(8) );
+													localResult.set_slc(23, (ac_int<8,false>) (127 + i));
+													localResult.set_slc(0, (dctoEx.rhs << (31 - i)).slc<23>(8) );
 												}
 									}
 								}
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_MVWX :                                      
-			  extoMem.result = dctoEx.lhs;
+			  localResult = dctoEx.lhs;
                           break;                                                  
                                                                                   
                   case RISCV_FLOAT_OP_CLASSMVXW :                                 
 			  if (dctoEx.funct3) // funct3 = 0 -> FMV.X.W
 			  {
-				extoMem.result = dctoEx.lhs;
+				localResult = dctoEx.lhs;
 			  }
 			  else  // FCLASS.S
 			  {
@@ -463,6 +465,7 @@ public :
    switch(dctoEx.funct7)
    {
  	  case RISCV_FLOAT_OP_DIV : 
+
     	for(int i =0; i <4; i++) 
     	{
     		state--;
@@ -479,9 +482,9 @@ public :
 			outputSign = f1Sign ^ f2Sign;
 		  	outputExp = f1Exp - f2Exp + 127;
 			stall = false;
-  			extoMem.result.set_slc(0, quotient.slc<23>(1)); 
-  			extoMem.result.set_slc(23, outputExp.slc<8>(0));
-  			extoMem.result.set_slc(31, outputSign);
+  			localResult.set_slc(0, quotient.slc<23>(1)); 
+  			localResult.set_slc(23, outputExp.slc<8>(0));
+  			localResult.set_slc(31, outputSign);
 	
 		}
 		break;
@@ -490,16 +493,16 @@ public :
 			if (state > 0)
 			{
 				if (state >= 32)
-					{extoMem.result = extoMem.result << 32; state -= 32;}
+					{localResult = localResult << 32; state -= 32;}
 				else
-					{extoMem.result = extoMem.result << (state % 32); state = 0;}
+					{localResult = localResult << (state % 32); state = 0;}
 			}
 			else
 			{
 				if (state <= -32)
-					{extoMem.result = extoMem.result >> 32; state += 32;}
+					{localResult = localResult >> 32; state += 32;}
 				else
-					{extoMem.result = extoMem.result >> (32 - (state % 32)); state = 0;}
+					{localResult = localResult >> (32 - (state % 32)); state = 0;}
 			
 			}
 			
@@ -507,14 +510,16 @@ public :
 			{
 				stall = false;
 				if(!dctoEx.rs2 && f1Exp)
-					extoMem.result = - extoMem.result; 
+					localResult = - localResult; 
 			}
 			break;
 			
 	
 	
 	}
-   }                                                        
+   } 
+   extoMem.result = localResult;
+                                                  
   }  
 
 		
