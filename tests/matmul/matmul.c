@@ -21,7 +21,7 @@ int main(void)
     int i;
     int j;
     int k;
-    float sum;
+    int sum;
 
     for (i=0; i<4; i++)
     {
