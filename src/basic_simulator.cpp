@@ -250,7 +250,7 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 void BasicSimulator::printCycle(){
     // Use the trace file to separate program output from simulator output
 
-  if(!core.stallSignals[0] & 0) {
+  if(!core.stallSignals[0]) {
    
 	if (!core.stallSignals[0] && ! core.stallIm && !core.stallDm){
 	printf("Debug trace : %x ",(unsigned int) core.ftoDC.instruction);

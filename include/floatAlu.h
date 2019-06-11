@@ -19,6 +19,7 @@ class FloatAlu : public ALU
 {
 private :
 	int state = 0;
+	int subState = 0;
 	ac_int<48, false> quotient = 0;
 	ac_int<48,false> remainder = 0;
 	ac_int<48,false> f1Val = 0;
@@ -41,13 +42,14 @@ public :
 
 	  ac_int<1, false> outputSign;                 
 	  ac_int<48, false> outputMantissa;
-	  ac_int<23, false> resultMantissa;
+	  ac_int<24, false> resultMantissa;
  	  ac_int<9, false> outputExp;
 
 
 
       float f1;
 	  int g;
+	  int i;
 	  
 
 
@@ -93,80 +95,69 @@ public :
 			  switch(dctoEx.funct7)
 			  {
 		              case  RISCV_FLOAT_OP_ADD :  
-		              if(f1Exp > f2Exp)
+						if(!subState)
 						{
-							while(f1Exp != f2Exp)
-								{
-									f2Exp++;
-									f2Mantissa = f2Mantissa >> 1;
-								}
-								
+							state = 1;
+							subState = 1;
+							stall = true;
+							f1Val  = f1Mantissa;
+							f2Val = f2Mantissa;
 						}
 						else
 						{
-							while(f1Exp != f2Exp)
-								{
-									f1Exp++;
-									f1Mantissa = f1Mantissa >> 1;
-								}
-						}
-
-						if(f1Sign == f2Sign)
-							localResult.set_slc(31, f1Sign);
-						else
-						{
-							if(f1Mantissa > f2Mantissa)
-								localResult.set_slc(31,f1Sign);
+							subState = 0;	
+							stall = false;					
+							if(f1Sign == f2Sign)
+								localResult.set_slc(31, f1Sign);
 							else
-								localResult.set_slc(31,f2Sign);
+							{
+								if(f1Val > f2Val)
+									localResult.set_slc(31,f1Sign);
+								else
+									localResult.set_slc(31,f2Sign);
+							}
+
+									
+							resultMantissa = f1Val + f2Val;
+							outputExp = f1Exp +128;
+
+							localResult.set_slc(0, resultMantissa.slc<23>(1));
+							localResult.set_slc(23, outputExp);                                      
 						}
-
-								
-						resultMantissa = f1Mantissa + f2Mantissa;
-						outputExp = f1Exp +128;
-
-						localResult.set_slc(0, resultMantissa.slc<23>(1));
-						localResult.set_slc(23, outputExp);                                      
 										
 		                      break;                                                  
 		                                                                              
 		              case RISCV_FLOAT_OP_SUB  : 
-		                f2Sign = f2Sign ^ f2Sign;	
-		                if(f1Exp > f2Exp)
+		                
+			if(!subState)
 						{
-							while(f1Exp != f2Exp)
-								{
-									f2Exp++;
-									f2Mantissa = f2Mantissa >> 1;
-								}
-								
+							state = 1;
+							subState = 1;
+							stall = true;
+							f1Val  = f1Mantissa;
+							f2Val = f2Mantissa;
 						}
 						else
 						{
-							while(f1Exp != f2Exp)
-								{
-									f1Exp++;
-									f1Mantissa = f1Mantissa >> 1;
-								}
-						}
-
-						if(f1Sign == f2Sign)
-							localResult.set_slc(31, f1Sign);
-						else
-						{
-							if(f1Mantissa > f2Mantissa)
-								localResult.set_slc(31,f1Sign);
+							subState = 0;	
+							stall = false;					
+							if(f1Sign == f2Sign)
+								localResult.set_slc(31, f1Sign);
 							else
-								localResult.set_slc(31,f2Sign);
-						}
+							{
+								if(f1Val > f2Val)
+									localResult.set_slc(31,f1Sign);
+								else
+									localResult.set_slc(31,f2Sign);
+							}
+							
+							f2Sign = f2Sign ^ f2Sign;										
+							resultMantissa = f1Val + f2Val;
+							outputExp = f1Exp +128;
 
-								
-						resultMantissa = f1Mantissa + f2Mantissa;
-						outputExp = f1Exp +128;
-
-						localResult.set_slc(0, resultMantissa.slc<23>(1));
-						localResult.set_slc(23, outputExp);                                      
-								                                
+							localResult.set_slc(0, resultMantissa.slc<23>(1));
+							localResult.set_slc(23, outputExp);                                      
+						}                        
 		                      break;                                                  
 		                                                                              
 		              case RISCV_FLOAT_OP_DIV  : 
@@ -408,33 +399,33 @@ public :
 		              case RISCV_FLOAT_OP_CVTSW :     
 									if(dctoEx.rs2) // FCVT.WU.S
 									{
-										for(int i = 31; i >= 0; i--)
+										for(i = 31; i >= 0; i--)
 											if (dctoEx.rhs[i])
-												{
-													localResult.set_slc(23, (ac_int<8,false>) (127 + i));
-													localResult.set_slc(0, (dctoEx.rhs << (31 - i)).slc<23>(8) );
-												}
+													break;
+
+										localResult.set_slc(23, (ac_int<8,false>) (127 + i));
+										localResult.set_slc(0, (dctoEx.rhs << (31 - i)).slc<23>(8) );
 									}
 									else // FCVT.W.S
 									{
 										if(dctoEx.rhs[31]) // the number is negative -> 2's complement
 										{
-											for(int i = 30; i >= 0; i--)
+											for(i = 30; i >= 0; i--)
 												if (!dctoEx.rhs[i])
-													{
-														localResult.set_slc(23, (ac_int<8,false>) (127 + i-1));
-														localResult.set_slc(0, (dctoEx.rhs << (31 - i+1)).slc<23>(8) );
-													}
+														break;
+														
+											localResult.set_slc(23, (ac_int<8,false>) (127 + i-1));
+											localResult.set_slc(0, (dctoEx.rhs << (31 - i+1)).slc<23>(8) );
+
 										
 										}
 										else 
 										{
-											for(int i = 31; i >= 0; i--)
+											for(i = 31; i >= 0; i--)
 												if (dctoEx.rhs[i])
-													{
-														localResult.set_slc(23, (ac_int<8,false>) (127 + i));
-														localResult.set_slc(0, (dctoEx.rhs << (31 - i)).slc<23>(8) );
-													}
+													break;
+											localResult.set_slc(23, (ac_int<8,false>) (127 + i));
+											localResult.set_slc(0, (dctoEx.rhs << (31 - i)).slc<23>(8) );
 										}
 									}
 		                      break;                                                  
@@ -517,10 +508,33 @@ public :
 				}
 				break;
 				
+			case RISCV_FLOAT_OP_ADD :
+			case RISCV_FLOAT_OP_SUB: 
+				
+				if (f1Exp > f2Exp)
+				{
+					if (f1Exp - f2Exp >= 32)
+						{f1Val = f1Val << 32; f1Exp -= 32;}
+					else
+						{f1Val = f1Val << (f1Exp - f2Exp % 32); f1Exp = f2Exp; state = 0;}
+				}
+				else
+				{
+					if (f2Exp - f1Exp >= 32)
+						{f2Val = f2Val << 32; f2Exp -= 32;}
+					else
+						{f2Val = f2Val << (f2Exp - f1Exp % 32); f2Exp = f1Exp; state = 0;}
+				
+				}
 		
-		
+				break;  
+				
+			default: 
+				break;		
 		}
    }
+   
+   if(( (dctoEx.opCode == RISCV_FLOAT_OP)|(dctoEx.opCode == RISCV_FLOAT_MADD)|(dctoEx.opCode == RISCV_FLOAT_MSUB)|(dctoEx.opCode == RISCV_FLOAT_NMADD)|(dctoEx.opCode == RISCV_FLOAT_NMSUB) ))
    	   extoMem.result = localResult;                       
 
 } 

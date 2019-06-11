@@ -235,8 +235,6 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction);
 #define RISCV_FLOAT_OP_CLASSMVXW 0x70
 
 
-// funct3
-//TODO
 
 
 #ifndef __CATAPULT

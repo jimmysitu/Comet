@@ -1,5 +1,5 @@
 XLEN?=32
-CCRV=riscv$(XLEN)-unknown-elf-gcc
+CCRV=/local/riscv/bin/riscv$(XLEN)-unknown-elf-gcc
 CCHOST=gcc
 CFLAGS=-Wno-overflow
 EXEC=matmul

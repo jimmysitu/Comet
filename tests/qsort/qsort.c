@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <string.h>
 
-int A[10] = {893, 40, 3233, 4267, 2669, 2541, 9073, 6023, 5681, 4622};
+float A[10] = {89.53, 40.6, 323.63, 4267.65, 266.59, 25.451, 907.543, 602.543, 568.641, 462.2};
 
 int partition(int low, int hi)
 {
-    int pivot = A[hi];
+    float pivot = A[hi];
     int i = low-1,j;
-    int temp;
+    float  temp;
     for(j = low; j<hi; j++)
     {
         if(A[j] < pivot)
@@ -43,6 +43,7 @@ int main()
     qsort(0,10-1);
     for(i = 0; i < 10; ++i)
     {
-      printf("%d\n", A[i]);
+      printf("%d\n", (int)  A[i]);
     }
+    return 0;
 }

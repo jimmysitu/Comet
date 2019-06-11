@@ -32,6 +32,7 @@ void decode(struct FtoDC ftoDC,
     ac_int<6, false> frs2 = rs2;
     frs1[5]=1;   // In the case we use the float register 
     frs2[5]=1;	
+
     ac_int<3, false> funct3 = instruction.slc<3>(12);
     ac_int<6, false> rd = (ac_int<6,false>) instruction.slc<5>(7);
     ac_int<7, false> opCode = instruction.slc<7>(0);    // could be reduced to 5 bits because 1:0 is always 11
@@ -72,6 +73,8 @@ void decode(struct FtoDC ftoDC,
     ac_int<32, false> valueReg1;
     ac_int<32, false> valueReg2;
 
+    		valueReg1 = registerFile[rs1];
+     		valueReg2 = registerFile[rs2];
     if ( (funct7[3] & funct7[6] & opCode == RISCV_FLOAT_OP) | ( (opCode != RISCV_FLOAT_OP) & (opCode != RISCV_FLOAT_MADD) & (opCode != RISCV_FLOAT_MSUB) & (opCode != RISCV_FLOAT_NMADD) & (opCode != RISCV_FLOAT_NMSUB) ) )
 	{
     		valueReg1 = registerFile[rs1];
@@ -341,13 +344,13 @@ void memory(struct ExtoMem extoMem,
     memtoWB.useRd = extoMem.useRd;
     memtoWB.result = extoMem.result;
     memtoWB.rd = extoMem.rd;
-
     ac_int<32, false> mem_read;
 
     switch(extoMem.opCode)
     {
     case RISCV_FLOAT_LW:
     case RISCV_LD:
+
         memtoWB.rd = extoMem.rd;
 
        	memtoWB.address = extoMem.result;
@@ -689,6 +692,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
     if (wbOut_temp.we && wbOut_temp.useRd && !localStall && !core.stallIm && !core.stallDm){
     	core.regFile[wbOut_temp.rd] = wbOut_temp.value;
     	core.cycle++;
+    	//printf("Writting %d in %d \n", (int) wbOut_temp.value, (int)wbOut_temp.rd);
     }
 
 
