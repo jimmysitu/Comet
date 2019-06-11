@@ -43,7 +43,7 @@ int main()
     qsort(0,10-1);
     for(i = 0; i < 10; ++i)
     {
-      printf("%d\n", (int)  A[i]);
+      printf("%f\n",   A[i]);
     }
     return 0;
 }
