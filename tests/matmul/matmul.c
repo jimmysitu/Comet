@@ -10,7 +10,7 @@ int main(void)
              26,75,94,47
              };
 
-   float B[16] = {1,2,3,4,
+    float B[16] = {1,2,3,4,
              5,6,7,8,
              9,10,11,12,
              13,14,15,16
@@ -18,10 +18,10 @@ int main(void)
 
     float result[16];
 
-    int i;
+    int i=0;
     int j;
     int k;
-    int sum;
+    float sum;
 
     for (i=0; i<4; i++)
     {
@@ -29,11 +29,11 @@ int main(void)
         {
             sum = 0;
             for(k = 0; k<4; k++)
-                sum +=  A[(i<<2) + k] * B[(k<<2) + j];
+                sum += A[(i<<2) + k] * B[(k<<2) + j];
             result[(i<<2) + j] = sum;
         }
     }
-/*
+
     for(i = 0; i < 4; ++i)
     {
         for(j = 0; j < 4; ++j)
@@ -42,6 +42,6 @@ int main(void)
         }
         printf("\n");
     }
-*/
+
     return 0;
 }
