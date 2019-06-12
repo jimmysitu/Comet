@@ -37,8 +37,8 @@ public :
 	  ac_int<24, false> f1Mantissa;
 	  ac_int<24, false> f2Mantissa;
  
-	  ac_int<9, false> f1Exp; 
-	  ac_int<9, false> f2Exp;
+	  ac_int<9, true> f1Exp; 
+	  ac_int<9, true> f2Exp;
 
 	  ac_int<1, false> outputSign;                 
 	  ac_int<48, false> outputMantissa;
@@ -55,16 +55,34 @@ public :
 
       stall =false;       
 
-					f1Mantissa = dctoEx.rhs.slc<23>(0);
-					f2Mantissa = dctoEx.lhs.slc<23>(0);
-					f1Mantissa[23] = 1;
-					f2Mantissa[23] = 1;
-
-					f1Exp = dctoEx.rhs.slc<8>(23) - 127;
-					f2Exp = dctoEx.lhs.slc<8>(23) - 127;
-					
-					f1Sign = dctoEx.rhs.slc<1>(31);
-					f2Sign = dctoEx.lhs.slc<1>(31);
+	f1Mantissa = dctoEx.rhs.slc<23>(0);
+	f2Mantissa = dctoEx.lhs.slc<23>(0);
+	f1Mantissa[23] = 1;
+	f2Mantissa[23] = 1;
+	
+	if(dctoEx.rhs.slc<8>(23) != 0)
+	{
+		f1Mantissa[23] = 1;
+		f1Exp = dctoEx.rhs.slc<8>(23) - 127;  
+	 }
+	 else 
+	 {
+		f1Exp = - 126;
+	 }
+	
+	 if(dctoEx.lhs.slc<8>(23) != 0)
+	 {
+		f2Mantissa[23] = 1;
+		 f2Exp = dctoEx.lhs.slc<8>(23) - 127;  
+	 }
+	 else 
+	 {
+	  	f2Exp =  - 126;  
+	 }
+				
+	f1Sign = dctoEx.rhs.slc<1>(31);
+	f2Sign = dctoEx.lhs.slc<1>(31);
+   
    if(!state)                                              
      {
 		 switch(dctoEx.opCode)                                                   
@@ -296,17 +314,28 @@ public :
 		                      break;                                                  
 		                                                                              
 		              case RISCV_FLOAT_OP_CVTWS :
-						state = ((int) f1Exp) - 23;
-						stall = true; 
-						if(!dctoEx.rs2)
-							{
-								
-								localResult =  (int) f1Mantissa;
-							}
-						else
-							{
-								localResult =(unsigned int) f1Mantissa;
-							}                   
+		              	if(dctoEx.rhs.slc<8>(23)) // the float is normal so it may be interesting to compute his value
+		              	{
+		              	
+							state = ((int) f1Exp) - 23;
+							stall = true; 
+							if(!dctoEx.rs2)
+								{
+									
+									localResult =  (int) f1Mantissa;
+								}
+							else
+								{
+									localResult =(unsigned int) f1Mantissa;
+								}                   
+		              	}
+		              	else // the float is subnormal so his value is near 0 --> do not need to compute his exact value
+		              	{
+		              		localResult = (ac_int<32,false>) 0;
+							localResult.set_slc(31, f1Sign);		              	
+		              	}
+		              		
+		              	
 		                      break;                                                  
 		                                                                              
 		              case RISCV_FLOAT_OP_CMP  :
@@ -396,37 +425,46 @@ public :
 								}                                    
 		                      break;                                                  
 		                                                                              
-		              case RISCV_FLOAT_OP_CVTSW :     
-									if(dctoEx.rs2) // FCVT.WU.S
-									{
-										for(i = 31; i >= 0; i--)
-											if (dctoEx.rhs[i])
-													break;
-
-										localResult.set_slc(23, (ac_int<8,false>) (127 + i));
-										localResult.set_slc(0, (dctoEx.rhs << (31 - i)).slc<23>(8) );
-									}
-									else // FCVT.W.S
-									{
-										if(dctoEx.rhs[31]) // the number is negative -> 2's complement
-										{
-											for(i = 30; i >= 0; i--)
-												if (!dctoEx.rhs[i])
-														break;
-														
-											localResult.set_slc(23, (ac_int<8,false>) (127 + i-1));
-											localResult.set_slc(0, (dctoEx.rhs << (31 - i+1)).slc<23>(8) );
-
-										
-										}
-										else 
+		              case RISCV_FLOAT_OP_CVTSW :  
+		              				if((int) f1Exp) // if f1 is not null
+		              				{
+				          				
+										if(dctoEx.rs2) // FCVT.S.WU
 										{
 											for(i = 31; i >= 0; i--)
 												if (dctoEx.rhs[i])
-													break;
+														break;
+
 											localResult.set_slc(23, (ac_int<8,false>) (127 + i));
 											localResult.set_slc(0, (dctoEx.rhs << (31 - i)).slc<23>(8) );
 										}
+										else // FCVT.S.W
+										{
+											if(dctoEx.rhs[31]) // the number is negative -> 2's complement
+											{
+												for(i = 30; i >= 0; i--)
+													if (!dctoEx.rhs[i])
+															break;
+															
+												localResult.set_slc(23, (ac_int<8,false>) (127 + i-1));
+												localResult.set_slc(0, (dctoEx.rhs << (31 - i+1)).slc<23>(8) );
+
+											
+											}
+											else 
+											{
+												for(i = 31; i >= 0; i--)
+													if (dctoEx.rhs[i])
+														break;
+												localResult.set_slc(23, (ac_int<8,false>) (127 + i));
+												localResult.set_slc(0, (dctoEx.rhs << (31 - i)).slc<23>(8) );
+											}
+										}
+		              				}   
+									else //f1 is zero
+									{
+									localResult.set_slc(0, (ac_int<31, false>) 0);
+									localResult.set_slc(31, f1Sign);
 									}
 		                      break;                                                  
 		                                                                              
@@ -476,7 +514,16 @@ public :
 				outputSign = f1Sign ^ f2Sign;
 			  	outputExp = f1Exp - f2Exp + 127;
 				stall = false;
-	  			localResult.set_slc(0, quotient.slc<23>(1)); 
+				
+				if(!quotient[24])
+				{
+						outputExp--;
+						localResult.set_slc(0, quotient.slc<23>(0)); 
+				}
+				else 
+					 	localResult.set_slc(0, quotient.slc<23>(1)); 
+				
+
 	  			localResult.set_slc(23, outputExp.slc<8>(0));
 	  			localResult.set_slc(31, outputSign);
 		
