@@ -515,13 +515,21 @@ public :
 			  	outputExp = f1Exp - f2Exp + 127;
 				stall = false;
 				
-				if(!quotient[24])
+				for(i = 47; i >= 0; i--)
+					if (quotient[i])
+						break;
+						
+				if (i > 22) // the result is normal
 				{
-						outputExp--;
-						localResult.set_slc(0, quotient.slc<23>(0)); 
+					localResult.set_slc(0, quotient.slc<23>(i - 23) );
+					outputExp += i - 24 ;
 				}
-				else 
-					 	localResult.set_slc(0, quotient.slc<23>(1)); 
+				else // the result is a subnormal 
+				{
+				outputExp = 0;
+				localResult.set_slc(0,quotient.slc<23>(0));
+				}
+				
 				
 
 	  			localResult.set_slc(23, outputExp.slc<8>(0));
