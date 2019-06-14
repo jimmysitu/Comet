@@ -124,7 +124,7 @@ public :
 			  switch(dctoEx.funct7)
 			  {
 		              case  RISCV_FLOAT_OP_ADD :
-				          if(f1Exp != 0xff | f2Exp != 0xff) // operand are not exceptions
+				          if(f1Exp != 0xff & f2Exp != 0xff) // operand are not exceptions
 				          {
 				          
 							if(!subState)
@@ -193,7 +193,7 @@ public :
 		                      break;                                                  
 		                                                                              
 		              case RISCV_FLOAT_OP_SUB  : 
-		                	if(f1Exp != 0xff | f2Exp != 0xff) // float are not exceptions
+		                	if(f1Exp != 0xff & f2Exp != 0xff) // float are not exceptions
 				          	{
 								if(!subState)
 								{
@@ -261,7 +261,7 @@ public :
 						              break;                                                  
 		                                                                              
 		              case RISCV_FLOAT_OP_DIV  : 
-		              	if(f1Exp != 0xff | f2Exp != 0xff) // float are not exceptions
+		              	if(f1Exp != 0xff & f2Exp != 0xff) // float are not exceptions
 				        {
 						      	if(dctoEx.lhs)
 						      	{
@@ -272,7 +272,9 @@ public :
 									 stall = true;
 						      	}
 								else
+								{
 									DIV0 = 1;
+								}
 						}
 				          else // one of the operand is an exception
 				          {
@@ -291,7 +293,7 @@ public :
 						              break;                                                  
 		                                                                              
 		              case RISCV_FLOAT_OP_MUL  :  
-		              	if(f1Exp != 0xff | f2Exp != 0xff) // float are not exceptions
+		              	if(f1Exp != 0xff & f2Exp != 0xff) // float are not exceptions
 				        {                                    
 								outputSign = f1Sign ^ f2Sign;                 
 								outputMantissa = f1Mantissa * f2Mantissa;
