@@ -95,12 +95,12 @@ public :
 	f2Sign = dctoEx.lhs.slc<1>(31);
 	
 
-	//  Nan handeling
+	//  Nan handling
 
 	if((dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 != RISCV_FLOAT_OP_CMP 
 	& ((f1Exp == 0xff & f1Mantissa) | (f2Exp == 0xff & f2Mantissa)) )) // we have a float instructions with at leat a Nan
 	{
-	   if(f1Exp == 0Xff & f2Exp = 0xff & f1Mantissa & f2Mantissa) // both are Nan
+	   if(((f1Exp == 0xff & f1Mantissa) & (f2Exp == 0xff & f2Mantissa))) // both are Nan
 	   {
 	   localResult = CNAN;
 	   }
@@ -119,7 +119,7 @@ public :
 	   		
 	   		else // f2 is a quiet Nan and f1 is not a Nan
 	   			localResult = dctoEx.rhs; 
-	   }
+	    }
 	}
 	else if(dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 == RISCV_FLOAT_OP_CMP 
 			& ((f1Exp == 0xff & f1Mantissa) | (f2Exp == 0xff & f2Mantissa)) )// CMP case we return false all the time if one of the operand is a Nan 
