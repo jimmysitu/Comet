@@ -98,8 +98,8 @@ public :
 	//  Nan handling
 
 	if((dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 != RISCV_FLOAT_OP_CMP 
-	& ((f1Exp == 0xff & f1Mantissa) | (f2Exp == 0xff & f2Mantissa)) )) // we have a float instructions with at leat a Nan
-	{
+	& (( ((ac_int<8,false>) dctoEx.rhs.slc<8>(23)) ==  0xff & f1Mantissa != 0) | ( ((ac_int<8,false>) dctoEx.lhs.slc<8>(23)) == 0xff & f2Mantissa != 0)) )) // we have a float instructions with at least a Nan
+	{ // Give seg fault
 	   if(((f1Exp == 0xff & f1Mantissa) & (f2Exp == 0xff & f2Mantissa))) // both are Nan
 	   {
 	   localResult = CNAN;
@@ -112,17 +112,17 @@ public :
 	   		else // f1 is a quiet Nan and f2 is not a Nan
 	   			localResult = dctoEx.lhs; 
 	   }
-	   else // f1 is not a Nan and f2 is a Nan 
+	 	 else // f1 is not a Nan and f2 is a Nan 
 	   	{
 	   		if (f2Mantissa[22]) // f2 is a signaling Nan
 	   			localResult = CNAN;
 	   		
 	   		else // f2 is a quiet Nan and f1 is not a Nan
-	   			localResult = dctoEx.rhs; 
+	   			localResult = dctoEx.rhs; // cause a seg fault 
 	    }
 	}
 	else if(dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 == RISCV_FLOAT_OP_CMP 
-			& ((f1Exp == 0xff & f1Mantissa) | (f2Exp == 0xff & f2Mantissa)) )// CMP case we return false all the time if one of the operand is a Nan 
+			& ((f1Exp == 0xff & f1Mantissa != 0) | (f2Exp == 0xff & f2Mantissa != 0)) )// CMP case we return false all the time if one of the operand is a Nan 
 		{/* default value of localResult is already 0*/	}
 	
 	else// Normal case
@@ -195,7 +195,7 @@ public :
 												localResult.set_slc(23, outputExp);   
 												
 												if(outputExp > 126) // over and underflow handeling with return of infty
-													if(f1Sign)
+													if(f1Sign != 0)
 														{
 														UNDERF = 1;		
 														localResult = INFN;
@@ -263,7 +263,7 @@ public :
 													localResult.set_slc(23, outputExp);   
 													
 													if(outputExp > 126) // over and underflow handeling with return of infty
-														if(f1Sign)
+														if(f1Sign != 0)
 															{
 															UNDERF = 1;		
 															localResult = INFN;
@@ -298,7 +298,7 @@ public :
 									  case RISCV_FLOAT_OP_DIV  : 
 									  	if(f1Exp != 0xff & f2Exp != 0xff) // float are not exceptions
 										{
-											  	if(dctoEx.lhs)
+											  	if(dctoEx.lhs != 0)
 											  	{
 											  	
 													 state = 48;
@@ -309,6 +309,8 @@ public :
 												else
 												{
 													DIV0 = 1;
+													localResult = INFP;
+													localResult[31] = f2Sign;
 												}
 										}
 										  else // one of the operand is an exception
@@ -345,7 +347,7 @@ public :
 						 						localResult.set_slc(23, outputExp.slc<8>(0));
 						 						
 						 						if(outputExp > 126) // over and underflow handeling with return of infty
-												if(f1Sign)
+												if(f1Sign != 0)
 													{
 													UNDERF = 1;		
 													localResult = INFN;
@@ -369,7 +371,7 @@ public :
 										  		}
 										  		else
 										  		{	
-										  			if(dctoEx.lhs) // infty * float 
+										  			if(dctoEx.lhs != 0) // infty * float 
 										  			{
 											  			localResult = dctoEx.rhs;
 											  			localResult = f1Sign ^ f2Sign; 
@@ -380,7 +382,7 @@ public :
 										  	}
 										  	else 
 										  	{				          	
-										  		if(dctoEx.rhs) // infty * float 
+										  		if(dctoEx.rhs != 0) // infty * float 
 										  			{
 											  			localResult = dctoEx.lhs;
 											  			localResult = f1Sign ^ f2Sign; 
@@ -506,29 +508,49 @@ public :
 										      break;                                                  
 										                                                              
 									  case RISCV_FLOAT_OP_CVTWS :
-									  	if(dctoEx.rhs.slc<8>(23)) // the float is normal so it may be interesting to compute his value
-									  	{
+									  printf("Exp = %x, %x\n", (ac_int<8,false>) dctoEx.rhs.slc<8>(23), (ac_int<23,false>) dctoEx.rhs.slc<23>(0));
 									  	
-											state = ((int) f1Exp) - 23;
-											stall = true; 
-											if(!dctoEx.rs2)
-												{
-													
-													localResult =  (int) f1Mantissa;
-												}
+									 	if( f1Exp > 0) // the float is normal and superior to 1 so it may be interesting to compute his value
+										{	
+											if(dctoEx.rs2 == 0)
+												localResult =  (int) f1Mantissa;
 											else
-												{
-													localResult =(unsigned int) f1Mantissa;
-												}                   
-									  	}
+												localResult =(unsigned int) f1Mantissa;
+			
+									  
+									  		state = 23 - ((int) f1Exp) ;
+	
+											if (state >= 0)
+											{
+												if (state >= 32)
+													localResult = 0;
+												else
+													localResult = localResult >> state ; 
+											}
+											else
+											{
+												if (state <= -32)
+													localResult = 0;
+												else
+													localResult = localResult << (- state);
+											}
+										
+
+																	
+										}
 									  	else // the float is subnormal so his value is near 0 --> do not need to compute his exact value
 									  	{
 									  		localResult = (ac_int<32,false>) 0;
-											localResult.set_slc(31, f1Sign);		              	
+													  	
 									  	}
+
+														
+										if(f1Sign != 0)
+											localResult = - localResult; 
+
 									  		
 									  	
-										      break;                                                  
+										break;                                                  
 										                                                              
 									  case RISCV_FLOAT_OP_CMP  :
 										switch(dctoEx.funct3)
@@ -537,7 +559,7 @@ public :
 													
 														if(f1Sign == f2Sign)
 														{
-															if(f1Sign)
+															if(f1Sign != 0)
 															{
 																if (f1Exp >= f2Exp)
 																	localResult[0] = true;
@@ -576,7 +598,7 @@ public :
 															
 														if(f1Sign == f2Sign)
 														{
-															if(f1Sign)
+															if(f1Sign != 0)
 															{
 																if (f1Exp > f2Exp)
 																	localResult[0] = true;
@@ -655,9 +677,9 @@ public :
 									  				}   
 													else //f1 is an exception
 													{
-														if(f1Exp) // infty or Nan 
+														if(f1Exp != 0) // infty or Nan 
 														{
-															if(f1Mantissa) // f1Mantissa != 0 -> Nan
+															if(f1Mantissa != 0) // f1Mantissa != 0 -> Nan
 																{
 																	localResult = CNAN;	
 																}
@@ -740,8 +762,8 @@ public :
 					  			localResult.set_slc(23, outputExp.slc<8>(0));
 					  			localResult.set_slc(31, outputSign);
 					  			
-					  			if(outputExp > 126)  // over and underflow handeling with return of infty
-									if(f1Sign)
+					  			if(outputExp > 126)  // over and underflow handling with return of infty
+									if(f1Sign != 0)
 									{
 										UNDERF = 1;		
 										localResult = INFN;
@@ -754,31 +776,7 @@ public :
 						
 							}
 							break;
-							
-							case RISCV_FLOAT_OP_CVTWS : 
-								if (state > 0)
-								{
-									if (state >= 32)
-										{localResult = localResult << 32; state -= 32;}
-									else
-										{localResult = localResult << (state % 32); state = 0;}
-								}
-								else
-								{
-									if (state <= -32)
-										{localResult = localResult >> 32; state += 32;}
-									else
-										{localResult = localResult >> (32 - (state % 32)); state = 0;}
-								
-								}
-								
-								if (!state)
-								{
-									stall = false;
-									if(!dctoEx.rs2 && f1Exp)
-										localResult = - localResult; 
-								}
-								break;
+
 								
 							case RISCV_FLOAT_OP_ADD :
 							case RISCV_FLOAT_OP_SUB: 
@@ -808,7 +806,7 @@ public :
 	}
    
    if(( (dctoEx.opCode == RISCV_FLOAT_OP)|(dctoEx.opCode == RISCV_FLOAT_MADD)|(dctoEx.opCode == RISCV_FLOAT_MSUB)|(dctoEx.opCode == RISCV_FLOAT_NMADD)|(dctoEx.opCode == RISCV_FLOAT_NMSUB) ))
-   	   extoMem.result = localResult;                       
+   	   extoMem.result = localResult;       
 
 } 
 
