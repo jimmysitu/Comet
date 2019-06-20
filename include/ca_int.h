@@ -190,7 +190,7 @@ template<int size>
 
 //Struct definition for ca_int
 template<int size>
- struct ca_int : ac_int<size, true>{
+ class ca_int : public ac_int<size, true>{
  public:
 
 	 ca_int() : ac_int<size, true>(){}
@@ -284,7 +284,8 @@ template<int size>
 //**************************************************************************
 //Struct definition for ca_uint
 template<int size>
- struct ca_uint : ac_int<size, false>{
+ class ca_uint : public ac_int<size, false>{
+ public:
 
 	 ca_uint() : ac_int<size, false>(){}
 
