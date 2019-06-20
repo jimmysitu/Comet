@@ -55,8 +55,14 @@ test:atomic:
     - cd build/bin
     - ./atomicTests $CI_PROJECT_DIR/tests/atomicTests
 
-test:applications:
+test:applications_acint:
   stage: test
   script:
     - cd tests
-    - ./runTests.sh
+    - ./runTests.sh comet.sim
+
+test:applications_apint:
+  stage: test
+  script:
+    - cd tests
+    - ./runTests.sh comet_vivado.sim
