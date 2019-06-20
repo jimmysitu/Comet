@@ -1,5 +1,5 @@
 #include <core.h>
-#include <ac_int.h>
+#include <ca_int.h>
 #include <cacheMemory.h>
 
 #ifndef __HLS__
@@ -7,9 +7,9 @@
 #endif  // __HLS__
 
 
-void fetch(ac_int<32, false> pc,
+void fetch(ca_uint<32> pc,
            struct FtoDC &ftoDC,
-           ac_int<32, false> instruction)
+           ca_uint<32> instruction)
 {
     ftoDC.instruction = instruction;
     ftoDC.pc = pc;
@@ -19,54 +19,54 @@ void fetch(ac_int<32, false> pc,
 
 void decode(struct FtoDC ftoDC,
             struct DCtoEx &dctoEx,
-            ac_int<32, true> registerFile[32])
+            ca_int<32> registerFile[32])
 {
-    ac_int<32, false> pc = ftoDC.pc;
-    ac_int<32, false> instruction = ftoDC.instruction;
+    ca_uint<32> pc = ftoDC.pc;
+    ca_uint<32> instruction = ftoDC.instruction;
 
     // R-type instruction
-    ac_int<7, false> funct7 = instruction.slc<7>(25);
-    ac_int<5, false> rs2 = instruction.slc<5>(20);
-    ac_int<5, false> rs1 = instruction.slc<5>(15);
-    ac_int<3, false> funct3 = instruction.slc<3>(12);
-    ac_int<5, false> rd = instruction.slc<5>(7);
-    ac_int<7, false> opCode = instruction.slc<7>(0);    // could be reduced to 5 bits because 1:0 is always 11
+    ca_uint<7> funct7 = instruction.slc<7>(25);
+    ca_uint<5> rs2 = instruction.slc<5>(20);
+    ca_uint<5> rs1 = instruction.slc<5>(15);
+    ca_uint<3> funct3 = instruction.slc<3>(12);
+    ca_uint<5> rd = instruction.slc<5>(7);
+    ca_uint<7> opCode = instruction.slc<7>(0);    // could be reduced to 5 bits because 1:0 is always 11
 
     //Construction of different immediate values
-    ac_int<12, false> imm12_I = instruction.slc<12>(20);
-    ac_int<12, false> imm12_S = 0;
+    ca_uint<12> imm12_I = instruction.slc<12>(20);
+    ca_uint<12> imm12_S = 0;
     imm12_S.set_slc(5, instruction.slc<7>(25));
     imm12_S.set_slc(0, instruction.slc<5>(7));
 
-    ac_int<12, true> imm12_I_signed = instruction.slc<12>(20);
-    ac_int<12, true> imm12_S_signed = 0;
+    ca_int<12> imm12_I_signed = instruction.slc<12>(20);
+    ca_int<12> imm12_S_signed = 0;
     imm12_S_signed.set_slc(0, imm12_S.slc<12>(0));
 
-    ac_int<13, false> imm13 = 0;
+    ca_uint<13> imm13 = 0;
     imm13[12] = instruction[31];
     imm13.set_slc(5, instruction.slc<6>(25));
     imm13.set_slc(1, instruction.slc<4>(8));
     imm13[11] = instruction[7];
 
-    ac_int<13, true> imm13_signed = 0;
+    ca_int<13> imm13_signed = 0;
     imm13_signed.set_slc(0, imm13);
 
-    ac_int<32, true> imm31_12 = 0;
+    ca_int<32> imm31_12 = 0;
     imm31_12.set_slc(12, instruction.slc<20>(12));
 
-    ac_int<21, false> imm21_1 = 0;
+    ca_uint<21> imm21_1 = 0;
     imm21_1.set_slc(12, instruction.slc<8>(12));
     imm21_1[11] = instruction[20];
     imm21_1.set_slc(1, instruction.slc<10>(21));
     imm21_1[20] = instruction[31];
 
-    ac_int<21, true> imm21_1_signed = 0;
+    ca_int<21> imm21_1_signed = 0;
     imm21_1_signed.set_slc(0, imm21_1);
 
 
     //Register access
-    ac_int<32, false> valueReg1 = registerFile[rs1];
-    ac_int<32, false> valueReg2 = registerFile[rs2];
+    ca_uint<32> valueReg1 = registerFile[rs1];
+    ca_uint<32> valueReg2 = registerFile[rs2];
 
 
     dctoEx.rs1 = rs1;
@@ -207,14 +207,14 @@ void memory(struct ExtoMem extoMem,
             struct MemtoWB &memtoWB)
 {
 
-    ac_int<2, false> datasize = extoMem.funct3.slc<2>(0);
+    ca_uint<2> datasize = extoMem.funct3.slc<2>(0);
     bool signenable = !extoMem.funct3.slc<1>(2);
     memtoWB.we = extoMem.we;
     memtoWB.useRd = extoMem.useRd;
     memtoWB.result = extoMem.result;
     memtoWB.rd = extoMem.rd;
 
-    ac_int<32, false> mem_read;
+    ca_uint<32> mem_read;
 
     switch(extoMem.opCode)
     {
@@ -250,12 +250,12 @@ void writeback(struct MemtoWB memtoWB,
     }
 }
 
-void branchUnit(ac_int<32, false> nextPC_fetch,
-		ac_int<32, false> nextPC_decode,
+void branchUnit(ca_uint<32> nextPC_fetch,
+		ca_uint<32> nextPC_decode,
 		bool isBranch_decode,
-		ac_int<32, false> nextPC_execute,
+		ca_uint<32> nextPC_execute,
 		bool isBranch_execute,
-		ac_int<32, false> &pc,
+		ca_uint<32> &pc,
 		bool &we_fetch,
 		bool &we_decode,
 		bool stall_fetch){
@@ -278,21 +278,21 @@ void branchUnit(ac_int<32, false> nextPC_fetch,
 }
 
 void forwardUnit(
-		ac_int<5, false> decodeRs1,
+		ca_uint<5> decodeRs1,
 		bool decodeUseRs1,
-		ac_int<5, false> decodeRs2,
+		ca_uint<5> decodeRs2,
 		bool decodeUseRs2,
-		ac_int<5, false> decodeRs3,
+		ca_uint<5> decodeRs3,
 		bool decodeUseRs3,
 
-		ac_int<5, false> executeRd,
+		ca_uint<5> executeRd,
 		bool executeUseRd,
 		bool executeIsLongComputation,
 
-		ac_int<5, false> memoryRd,
+		ca_uint<5> memoryRd,
 		bool memoryUseRd,
 
-		ac_int<5, false> writebackRd,
+		ca_uint<5> writebackRd,
 		bool writebackUseRd,
 
 		bool stall[5],
@@ -454,7 +454,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
 
     //declare temporary register file
-    ac_int<32, false> nextInst;
+    ca_uint<32> nextInst;
 
     if (!localStall && !core.stallDm)
     	core.im->process(core.pc, WORD, LOAD, 0, nextInst, core.stallIm);
@@ -560,7 +560,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
 }
 
 //void doCore(IncompleteMemory im, IncompleteMemory dm, bool globalStall)
-void doCore(bool globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32, false> dmData[DRAM_SIZE>>2])
+void doCore(bool globalStall, ca_uint<32> imData[DRAM_SIZE>>2], ca_uint<32> dmData[DRAM_SIZE>>2])
 {
     Core core;
     IncompleteMemory imInterface = IncompleteMemory(imData);

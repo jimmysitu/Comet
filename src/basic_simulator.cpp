@@ -82,8 +82,8 @@ BasicSimulator::BasicSimulator (
 	//Register for all stages
 	core.memtoWB.we = false;
 
-	im = new ac_int<32, false>[DRAM_SIZE >> 2];
-	dm = new ac_int<32, false>[DRAM_SIZE >> 2];
+	im = new ca_uint<32>[DRAM_SIZE >> 2];
+	dm = new ca_uint<32>[DRAM_SIZE >> 2];
 
 	core.cycle = 0;
 
@@ -97,7 +97,7 @@ BasicSimulator::BasicSimulator (
 			core.regFile[i] = 0;
 	}
 	/*
-    dataMemory = new ac_int<32, false>[DRAM_SIZE];
+    dataMemory = new ca_uint<32>[DRAM_SIZE];
     for(int i(0); i < DRAM_SIZE; i++)
     {
         instructionMemory[i] = 0;
@@ -167,7 +167,7 @@ BasicSimulator::BasicSimulator (
 	insertDataMemoryMap(STACK_INIT + 2, (argc >> 16) & 0xFF);
 	insertDataMemoryMap(STACK_INIT + 3, (argc >> 24) & 0xFF);
 
-	ac_int<32, true> currentPlaceStrings = STACK_INIT + 4 + 4*argc;
+	ca_int<32> currentPlaceStrings = STACK_INIT + 4 + 4*argc;
 	for (int oneArg = 0; oneArg < argc; oneArg++)
 	{
 		insertDataMemoryMap(STACK_INIT+ 4*oneArg + 4, currentPlaceStrings.slc<8>(0));
@@ -229,14 +229,14 @@ void BasicSimulator::fillMemory()
 	}
 }
 
-void BasicSimulator::insertInstructionMemoryMap(ac_int<32, false> addr, ac_int<8, false> value)
+void BasicSimulator::insertInstructionMemoryMap(ca_uint<32> addr, ca_uint<8> value)
 {
 	imemMap[addr] = value;
 	if(addr > heapAddress)
 		heapAddress = addr;
 }
 
-void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false> value)
+void BasicSimulator::insertDataMemoryMap(ca_uint<32> addr, ca_uint<8> value)
 {
 	dmemMap[addr] = value;
 	if(addr > heapAddress)
@@ -246,7 +246,7 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 void BasicSimulator::printCycle(){
     // Use the trace file to separate program output from simulator output
 
-  if(!core.stallSignals[0] && 0) {
+  if(!core.stallSignals[0] & 0) {
    
 	if (!core.stallSignals[0] && ! core.stallIm && !core.stallDm){
 	printf("Debug trace : %x ",(unsigned int) core.ftoDC.pc);
@@ -267,26 +267,26 @@ void BasicSimulator::printCycle(){
 }
 
 
-void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
+void BasicSimulator::stb(ca_uint<32> addr, ca_int<8> value)
 {
-//	ac_int<32, false> mem = dm[addr >> 2];
+//	ca_uint<32> mem = dm[addr >> 2];
 //	mem.set_slc(((int) addr.slc<2>(0) << 3), value);
 //	dm[addr >> 2] = mem;
 
-	ac_int<32, false> wordRes = 0;
+	ca_uint<32> wordRes = 0;
 	bool stall = true;
 	while (stall)
 		core.dm->process(addr, BYTE_U, STORE, value, wordRes, stall);
 
 }
 
-void BasicSimulator::sth(ac_int<32, false> addr, ac_int<16, true> value)
+void BasicSimulator::sth(ca_uint<32> addr, ca_int<16> value)
 {
 	this->stb(addr+1, value.slc<8>(8));
 	this->stb(addr+0, value.slc<8>(0));
 }
 
-void BasicSimulator::stw(ac_int<32, false> addr, ac_int<32, true> value)
+void BasicSimulator::stw(ca_uint<32> addr, ca_int<32> value)
 {
 	this->stb(addr+3, value.slc<8>(24));
 	this->stb(addr+2, value.slc<8>(16));
@@ -294,7 +294,7 @@ void BasicSimulator::stw(ac_int<32, false> addr, ac_int<32, true> value)
 	this->stb(addr+0, value.slc<8>(0));
 }
 
-void BasicSimulator::std(ac_int<32, false> addr, ac_int<64, true> value)
+void BasicSimulator::std(ca_uint<32> addr, ca_int<64> value)
 {
 	this->stb(addr+7, value.slc<8>(56));
 	this->stb(addr+6, value.slc<8>(48));
@@ -307,7 +307,7 @@ void BasicSimulator::std(ac_int<32, false> addr, ac_int<64, true> value)
 }
 
 
-ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
+ca_int<8> BasicSimulator::ldb(ca_uint<32> addr)
 {
 	// if data is in the cache, we must read in the cache directly
 	//#ifndef nocache
@@ -316,16 +316,16 @@ ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
 	//    {
 	//        if(dctrl[i].slc<32-tagshift>(j*(32-tagshift)) == getTag(addr))
 	//        {
-	//            ac_int<32, false> mem = ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
+	//            ca_uint<32> mem = ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
 	//            formatread(addr, 0, 0, mem);
 	//            return mem;
 	//        }
 	//    }
 	//#endif
 	// read main memory if it wasn't in cache
-	ac_int<8, true> result;
+	ca_int<8> result;
 	result = dm[addr >> 2].slc<8>(((int)addr.slc<2>(0))<<3);
-	ac_int<32, false> wordRes = 0;
+	ca_uint<32> wordRes = 0;
 	bool stall = true;
 	while (stall)
 		core.dm->process(addr, BYTE_U, LOAD, 0, wordRes, stall);
@@ -336,17 +336,17 @@ ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
 
 
 //Little endian version
-ac_int<16, true> BasicSimulator::ldh(ac_int<32, false> addr)
+ca_int<16> BasicSimulator::ldh(ca_uint<32> addr)
 {
-	ac_int<16, true> result = 0;
+	ca_int<16> result = 0;
 	result.set_slc(8, this->ldb(addr+1));
 	result.set_slc(0, this->ldb(addr));
 	return result;
 }
 
-ac_int<32, true> BasicSimulator::ldw(ac_int<32, false> addr)
+ca_int<32> BasicSimulator::ldw(ca_uint<32> addr)
 {
-	ac_int<32, true> result = 0;
+	ca_int<32> result = 0;
 	result.set_slc(24, this->ldb(addr+3));
 	result.set_slc(16, this->ldb(addr+2));
 	result.set_slc(8, this->ldb(addr+1));
@@ -354,9 +354,9 @@ ac_int<32, true> BasicSimulator::ldw(ac_int<32, false> addr)
 	return result;
 }
 
-ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
+ca_int<32> BasicSimulator::ldd(ca_uint<32> addr)
 {
-	ac_int<32, true> result = 0;
+	ca_int<32> result = 0;
 	result.set_slc(56, this->ldb(addr+7));
 	result.set_slc(48, this->ldb(addr+6));
 	result.set_slc(40, this->ldb(addr+5));
@@ -374,11 +374,11 @@ void BasicSimulator::solveSyscall()
 
 	if((core.extoMem.opCode == RISCV_SYSTEM) && !core.stallSignals[2] && !core.stallIm && !core.stallDm && !core.stallAlu){
 
-		ac_int<32, true> syscallId = core.regFile[17];
-		ac_int<32, true> arg1 = core.regFile[10];
-		ac_int<32, true> arg2 = core.regFile[11];
-		ac_int<32, true> arg3 = core.regFile[12];
-		ac_int<32, true> arg4 = core.regFile[13];
+		ca_int<32> syscallId = core.regFile[17];
+		ca_int<32> arg1 = core.regFile[10];
+		ca_int<32> arg2 = core.regFile[11];
+		ca_int<32> arg3 = core.regFile[12];
+		ca_int<32> arg4 = core.regFile[13];
 
 		if(core.memtoWB.useRd && core.memtoWB.we && !core.stallSignals[3]) {
 			if(core.memtoWB.rd == 10)
@@ -394,7 +394,7 @@ void BasicSimulator::solveSyscall()
 
 		}
 
-		ac_int<32, true> result = 0;
+		ca_int<32> result = 0;
 
 		switch (syscallId)
 		{
@@ -583,10 +583,10 @@ void BasicSimulator::solveSyscall()
 	}// if exToMem.opCode == RISCV_SYSTEM
 }
 
-ac_int<32, true> BasicSimulator::doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
+ca_int<32> BasicSimulator::doRead(ca_uint<32> file, ca_uint<32> bufferAddr, ca_uint<32> size)
 {
 	char* localBuffer = new char[size.to_int()];
-	ac_int<32, true> result;
+	ca_int<32> result;
 
 	if(file == 0 && inputFile)
 		result = read(inputFile->_fileno, localBuffer, size);
@@ -603,14 +603,14 @@ ac_int<32, true> BasicSimulator::doRead(ac_int<32, false> file, ac_int<32, false
 }
 
 
-ac_int<32, true> BasicSimulator::doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
+ca_int<32> BasicSimulator::doWrite(ca_uint<32> file, ca_uint<32> bufferAddr, ca_uint<32> size)
 {
 	char* localBuffer = new char[size.to_int()];
 
 	for (int i=0; i<size; i++)
 		localBuffer[i] = this->ldb(bufferAddr + i);
 
-	ac_int<32, true> result = 0;
+	ca_int<32> result = 0;
 	if(file == 1 && outputFile)  // 3 is the first available file descriptor
 	{
 		fflush(stdout);
@@ -628,9 +628,9 @@ ac_int<32, true> BasicSimulator::doWrite(ac_int<32, false> file, ac_int<32, fals
 	return result;
 }
 
-ac_int<32, true> BasicSimulator::doFstat(ac_int<32, false> file, ac_int<32, false> stataddr)
+ca_int<32> BasicSimulator::doFstat(ca_uint<32> file, ca_uint<32> stataddr)
 {
-	ac_int<32, true> result = 0;
+	ca_int<32> result = 0;
 	struct stat filestat = {0};     // for stdout, its easier to compare debug trace when syscalls gives same results
 
 	if(file != 1)
@@ -679,7 +679,7 @@ ac_int<32, true> BasicSimulator::doFstat(ac_int<32, false> file, ac_int<32, fals
 	return result;
 }
 
-ac_int<32, true> BasicSimulator::doOpen(ac_int<32, false> path, ac_int<32, false> flags, ac_int<32, false> mode)
+ca_int<32> BasicSimulator::doOpen(ca_uint<32> path, ca_uint<32> flags, ca_uint<32> mode)
 {
 	int oneStringElement = this->ldb(path);
 	int index = 0;
@@ -757,13 +757,13 @@ ac_int<32, true> BasicSimulator::doOpen(ac_int<32, false> path, ac_int<32, false
 
 }
 
-ac_int<32, true> BasicSimulator::doOpenat(ac_int<32, false> dir, ac_int<32, false> path, ac_int<32, false> flags, ac_int<32, false> mode)
+ca_int<32> BasicSimulator::doOpenat(ca_uint<32> dir, ca_uint<32> path, ca_uint<32> flags, ca_uint<32> mode)
 {
 	fprintf(stderr, "Syscall : SYS_openat not implemented yet...\n");
 	exit(-1);
 }
 
-ac_int<32, true> BasicSimulator::doClose(ac_int<32, false> file)
+ca_int<32> BasicSimulator::doClose(ca_uint<32> file)
 {
 	if(file > 2)    // don't close simulator's stdin, stdout & stderr
 	{
@@ -773,13 +773,13 @@ ac_int<32, true> BasicSimulator::doClose(ac_int<32, false> file)
 	return 0;
 }
 
-ac_int<32, true> BasicSimulator::doLseek(ac_int<32, false> file, ac_int<32, false> ptr, ac_int<32, false> dir)
+ca_int<32> BasicSimulator::doLseek(ca_uint<32> file, ca_uint<32> ptr, ca_uint<32> dir)
 {
 	int result = lseek(file, ptr, dir);
 	return result;
 }
 
-ac_int<32, true> BasicSimulator::doStat(ac_int<32, false> filename, ac_int<32, false> stataddr)
+ca_int<32> BasicSimulator::doStat(ca_uint<32> filename, ca_uint<32> stataddr)
 {
 	int oneStringElement = this->ldb(filename);
 	int index = 0;
@@ -824,9 +824,9 @@ ac_int<32, true> BasicSimulator::doStat(ac_int<32, false> filename, ac_int<32, f
 	return result;
 }
 
-ac_int<32, true> BasicSimulator::doSbrk(ac_int<32, false> value)
+ca_int<32> BasicSimulator::doSbrk(ca_uint<32> value)
 {
-	ac_int<32, true> result;
+	ca_int<32> result;
 	if (value == 0)
 	{
 		result = heapAddress;
@@ -841,7 +841,7 @@ ac_int<32, true> BasicSimulator::doSbrk(ac_int<32, false> value)
 	return result;
 }
 
-ac_int<32, true> BasicSimulator::doGettimeofday(ac_int<32, false> timeValPtr)
+ca_int<32> BasicSimulator::doGettimeofday(ca_uint<32> timeValPtr)
 {
 	struct timeval oneTimeVal;
 	int result = gettimeofday(&oneTimeVal, NULL);
@@ -852,7 +852,7 @@ ac_int<32, true> BasicSimulator::doGettimeofday(ac_int<32, false> timeValPtr)
 	return result;
 }
 
-ac_int<32, true> BasicSimulator::doUnlink(ac_int<32, false> path)
+ca_int<32> BasicSimulator::doUnlink(ca_uint<32> path)
 {
 	int oneStringElement = this->ldb(path);
 	int index = 0;

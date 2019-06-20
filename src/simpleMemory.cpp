@@ -1,28 +1,28 @@
 #include "simpleMemory.h"
 /*
-void SimpleMemory::setByte(ac_int<32, false> addr, ac_int<8, false> data) {
+void SimpleMemory::setByte(ca_uint<32> addr, ca_uint<8> data) {
   data[addr>>2].set_slc(addr.slc<2>(0) << 3, data);
 }
 
-ac_int<8, false> SimpleMemory::getByte(ac_int<32, false> addr) {
+ca_uint<8> SimpleMemory::getByte(ca_uint<32> addr) {
   return data[addr>>2].slc<8>(0);
 }
 
-void SimpleMemory::setWord(ac_int<32, false> addr, ac_int<32, false> data) {
+void SimpleMemory::setWord(ca_uint<32> addr, ca_uint<32> data) {
   data[addr>>2] = data;
 }
 
-ac_int<32, false> SimpleMemory::getWord(ac_int<32, false> addr) {
+ca_uint<32> SimpleMemory::getWord(ca_uint<32> addr) {
   return  data[addr>>2];
 }
 */
-void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut) {
+void SimpleMemory::process(ca_uint<32> addr, memMask mask, memOpType opType, ca_uint<32> dataIn, ca_uint<32>& dataOut, bool& waitOut) {
   //no latency, wait is always set to false
 
-  ac_int<32, true> temp;
-  ac_int<8, false> t8;
-  ac_int<1, true> bit;
-  ac_int<16, false> t16;
+  ca_int<32> temp;
+  ca_uint<8> t8;
+  ca_int<1> bit;
+  ca_uint<16> t16;
 
   switch(opType) {
     case STORE:
@@ -48,13 +48,13 @@ void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opTyp
           t8 = data[addr>>2].slc<8>(((int)addr.slc<2>(0)) << 3);
           bit = t8.slc<1>(7);
           dataOut.set_slc(0, t8);
-          dataOut.set_slc(8, (ac_int<24, true>)bit);
+          dataOut.set_slc(8, (ca_int<24>)bit);
           break;
         case HALF:
           t16 = data[addr>>2].slc<16>(addr[1] ? 16 : 0);
           bit = t16.slc<1>(15);
           dataOut.set_slc(0, t16);
-          dataOut.set_slc(16, (ac_int<16, true>)bit);
+          dataOut.set_slc(16, (ca_int<16>)bit);
           break;
         case WORD:
           dataOut = data[addr>>2];

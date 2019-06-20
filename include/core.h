@@ -1,7 +1,7 @@
 #ifndef __CORE_H__
 #define __CORE_H__
 
-#include <ac_int.h>
+#include <ca_int.h>
 #include <riscvISA.h>
 
 //all the possible memories
@@ -48,8 +48,8 @@ struct Core
 
     //CoreCtrl ctrl;
 
-    ac_int<32, true> regFile[32];
-    ac_int<32, false> pc;
+    ca_int<32> regFile[32];
+    ca_uint<32> pc;
 
 	//stall
 	bool stallSignals[5] = {0, 0, 0, 0, 0};

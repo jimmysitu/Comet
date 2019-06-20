@@ -10,7 +10,7 @@
 
 #include "memoryInterface.h"
 #include "memory.h"
-#include <ac_int.h>
+#include <ca_int.h>
 
 #define LINE_SIZE 16
 #define LOG_LINE_SIZE 4
@@ -21,7 +21,7 @@
 #define ASSOCIATIVITY 4
 #define LOG_ASSOCIATIVITY 2
 
-#define TAG_SIZE 32-LOG_LINE_SIZE-LOG_LINE_SIZE
+#define TAG_SIZE 32-LOG_LINE_SIZE-LOG_SET_SIZE
 
 
 /************************************************************************
@@ -41,29 +41,29 @@ public:
 	MemoryInterface *nextLevel;
 #endif
 
-	ac_int<TAG_SIZE+LINE_SIZE*8, false> cacheMemory[SET_SIZE][ASSOCIATIVITY];
-	ac_int<40, false> age[SET_SIZE][ASSOCIATIVITY];
-	ac_int<1, false> dataValid[SET_SIZE][ASSOCIATIVITY];
+	ca_uint<TAG_SIZE+LINE_SIZE*8> cacheMemory[SET_SIZE][ASSOCIATIVITY];
+	ca_uint<40> age[SET_SIZE][ASSOCIATIVITY];
+	ca_uint<1> dataValid[SET_SIZE][ASSOCIATIVITY];
 
 
-	ac_int<4, false> cacheState; //Used for the internal state machine
-	ac_int<LOG_ASSOCIATIVITY, false> older = 0; //Set where the miss occurs
+	ca_uint<4> cacheState; //Used for the internal state machine
+	ca_uint<LOG_ASSOCIATIVITY> older = 0; //Set where the miss occurs
 
 	//Variables for next level access
-	ac_int<LINE_SIZE*8+TAG_SIZE, false> newVal, oldVal;
-	ac_int<32, false> nextLevelAddr;
+	ca_uint<LINE_SIZE*8+TAG_SIZE> newVal, oldVal;
+	ca_uint<32> nextLevelAddr;
 	memOpType nextLevelOpType;
-	ac_int<32, false> nextLevelDataIn;
-	ac_int<32, false> nextLevelDataOut;
-	ac_int<40, false> cycle;
-	ac_int<LOG_ASSOCIATIVITY, false> setMiss;
+	ca_uint<32> nextLevelDataIn;
+	ca_uint<32> nextLevelDataOut;
+	ca_uint<40> cycle;
+	ca_uint<LOG_ASSOCIATIVITY> setMiss;
 	bool isValid;
 	
-    	bool wasStore = false;
-	ac_int<LOG_ASSOCIATIVITY, false> setStore;
-	ac_int<LOG_SET_SIZE, false> placeStore;
-	ac_int<LINE_SIZE*8+TAG_SIZE, false> valStore;
-	ac_int<32, false> dataOutStore;
+	bool wasStore = false;
+	ca_uint<LOG_ASSOCIATIVITY> setStore;
+	ca_uint<LOG_SET_SIZE> placeStore;
+	ca_uint<LINE_SIZE*8+TAG_SIZE> valStore;
+	ca_uint<32> dataOutStore;
 
 	bool nextLevelWaitOut;
 
@@ -92,13 +92,13 @@ public:
 		numberMiss = 0;
 	}
 
-	void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut)
+	void process(ca_uint<32> addr, memMask mask, memOpType opType, ca_uint<32> dataIn, ca_uint<32>& dataOut, bool& waitOut)
 	{
 
 
-		ac_int<LOG_SET_SIZE, false> place = addr.slc<LOG_SET_SIZE>(LOG_LINE_SIZE); //bit size is the log(setSize)
-		ac_int<TAG_SIZE, false> tag = addr.slc<TAG_SIZE>(LOG_LINE_SIZE + LOG_SET_SIZE); // startAddress is log(lineSize) + log(setSize) + 2
-		ac_int<LOG_LINE_SIZE, false> offset = addr.slc<LOG_LINE_SIZE-2>(2); //bitSize is log(lineSize), start address is 2(because of #bytes in a word)
+		ca_uint<LOG_SET_SIZE> place = addr.slc<LOG_SET_SIZE>(LOG_LINE_SIZE); //bit size is the log(setSize)
+		ca_uint<TAG_SIZE> tag = addr.slc<TAG_SIZE>(LOG_LINE_SIZE + LOG_SET_SIZE); // startAddress is log(lineSize) + log(setSize) + 2
+		ca_uint<LOG_LINE_SIZE> offset = addr.slc<LOG_LINE_SIZE-2>(2); //bitSize is log(lineSize), start address is 2(because of #bytes in a word)
 
 
 
@@ -118,20 +118,20 @@ public:
 			}
 			else if (opType != NONE){
 
-				ac_int<LINE_SIZE*8+TAG_SIZE, false> val1 = cacheMemory[place][0];
-				ac_int<LINE_SIZE*8+TAG_SIZE, false> val2 = cacheMemory[place][1];
-				ac_int<LINE_SIZE*8+TAG_SIZE, false> val3 = cacheMemory[place][2];
-				ac_int<LINE_SIZE*8+TAG_SIZE, false> val4 = cacheMemory[place][3];
+				ca_uint<LINE_SIZE*8+TAG_SIZE> val1 = cacheMemory[place][0];
+				ca_uint<LINE_SIZE*8+TAG_SIZE> val2 = cacheMemory[place][1];
+				ca_uint<LINE_SIZE*8+TAG_SIZE> val3 = cacheMemory[place][2];
+				ca_uint<LINE_SIZE*8+TAG_SIZE> val4 = cacheMemory[place][3];
 
-				ac_int<1, false> valid1 = dataValid[place][0];
-				ac_int<1, false> valid2 = dataValid[place][1];
-				ac_int<1, false> valid3 = dataValid[place][2];
-				ac_int<1, false> valid4 = dataValid[place][3];
+				ca_uint<1> valid1 = dataValid[place][0];
+				ca_uint<1> valid2 = dataValid[place][1];
+				ca_uint<1> valid3 = dataValid[place][2];
+				ca_uint<1> valid4 = dataValid[place][3];
 
-				ac_int<16, false> age1 = age[place][0];
-				ac_int<16, false> age2 = age[place][1];
-				ac_int<16, false> age3 = age[place][2];
-				ac_int<16, false> age4 = age[place][3];
+				ca_uint<16> age1 = age[place][0];
+				ca_uint<16> age2 = age[place][1];
+				ca_uint<16> age3 = age[place][2];
+				ca_uint<16> age4 = age[place][3];
 
 				if (cacheState == 0){
 					numberAccess++;
@@ -139,10 +139,10 @@ public:
 	//				fprintf(stdout, "Reading at addr %x\n", addr);
 
 
-					ac_int<TAG_SIZE, false> tag1 = val1.slc<TAG_SIZE>(0);
-					ac_int<TAG_SIZE, false> tag2 = val2.slc<TAG_SIZE>(0);
-					ac_int<TAG_SIZE, false> tag3 = val3.slc<TAG_SIZE>(0);
-					ac_int<TAG_SIZE, false> tag4 = val4.slc<TAG_SIZE>(0);
+					ca_uint<TAG_SIZE> tag1 = val1.slc<TAG_SIZE>(0);
+					ca_uint<TAG_SIZE> tag2 = val2.slc<TAG_SIZE>(0);
+					ca_uint<TAG_SIZE> tag3 = val3.slc<TAG_SIZE>(0);
+					ca_uint<TAG_SIZE> tag4 = val4.slc<TAG_SIZE>(0);
 
 					bool hit1 = (tag1 == tag) && valid1;
 					bool hit2 = (tag2 == tag) && valid2;
@@ -150,9 +150,9 @@ public:
 					bool hit4 = (tag4 == tag) && valid4;
 
 					bool hit = hit1 | hit2 | hit3 | hit4;
-					ac_int<LOG_ASSOCIATIVITY, false> set = 0;
-					ac_int<LINE_SIZE*8, false> selectedValue;
-					ac_int<TAG_SIZE, false> tag;
+					ca_uint<LOG_ASSOCIATIVITY> set = 0;
+					ca_uint<LINE_SIZE*8> selectedValue;
+					ca_uint<TAG_SIZE> tag;
 
 
 					if (hit1){
@@ -179,14 +179,14 @@ public:
 						set = 3;
 					}
 
-					ac_int<8, true> signedByte;
-					ac_int<16, true> signedHalf;
-					ac_int<32, true> signedWord;
+					ca_int<8> signedByte;
+					ca_int<16> signedHalf;
+					ca_int<32> signedWord;
 
 					if (hit){
 
 
-						ac_int<LINE_SIZE*8+TAG_SIZE, false> localValStore = 0;
+						ca_uint<LINE_SIZE*8+TAG_SIZE> localValStore = 0;
 						localValStore.set_slc(TAG_SIZE, selectedValue);
 						localValStore.set_slc(0, tag);
 
@@ -223,6 +223,7 @@ public:
 								dataOut.set_slc(0, signedWord);
 								break;
 							case WORD:
+//								fprintf(stderr, "slice is %d   - %d  %x  \n", ((((int)addr.slc<2>(0)) << 3) + 4*8*offset), offset.to_uint(), addr.to_uint());
 								dataOut = selectedValue.slc<32>(4*8*offset);
 								break;
 							case BYTE_U:
@@ -253,7 +254,7 @@ public:
 					}
 
 
-					ac_int<32, false> oldAddress = (((int)oldVal.slc<TAG_SIZE>(0))<<(LOG_LINE_SIZE + LOG_SET_SIZE)) | (((int) place)<<LOG_LINE_SIZE);
+					ca_uint<32> oldAddress = (((int)oldVal.slc<TAG_SIZE>(0))<<(LOG_LINE_SIZE + LOG_SET_SIZE)) | (((int) place)<<LOG_LINE_SIZE);
 					//First we write back the four memory values in upper level
 
 					if (cacheState >= 7){ //Then we read four values from upper level
@@ -298,9 +299,9 @@ public:
 						//age[place][setMiss] = cycle;
 						nextLevelOpType = NONE;
 
-						ac_int<8, true> signedByte;
-						ac_int<16, true> signedHalf;
-						ac_int<32, true> signedWord;
+						ca_int<8> signedByte;
+						ca_int<16> signedHalf;
+						ca_int<32> signedWord;
 
 						switch(mask) {
 						case BYTE:

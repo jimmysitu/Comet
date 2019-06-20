@@ -37,16 +37,16 @@ public:
 
 
 
-	    ac_int<13, false> imm13 = 0;
+	    ca_uint<13> imm13 = 0;
 	    imm13[12] = dctoEx.instruction[31];
 	    imm13.set_slc(5, dctoEx.instruction.slc<6>(25));
 	    imm13.set_slc(1, dctoEx.instruction.slc<4>(8));
 	    imm13[11] = dctoEx.instruction[7];
 
-	    ac_int<13, true> imm13_signed = 0;
+	    ca_int<13> imm13_signed = 0;
 	    imm13_signed.set_slc(0, imm13);
 
-	    ac_int<5, false> shamt = dctoEx.instruction.slc<5>(20);
+	    ca_uint<5> shamt = dctoEx.instruction.slc<5>(20);
 
 
 	    // switch must be in the else, otherwise external op may trigger default case
@@ -89,10 +89,10 @@ public:
 	            extoMem.isBranch = (dctoEx.lhs >= dctoEx.rhs);
 	            break;
 	        case RISCV_BR_BLTU:
-	            extoMem.isBranch = ((ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs);
+	            extoMem.isBranch = ((ca_uint<32>)dctoEx.lhs < (ca_uint<32>)dctoEx.rhs);
 	            break;
 	        case RISCV_BR_BGEU:
-	            extoMem.isBranch = ((ac_int<32, false>)dctoEx.lhs >= (ac_int<32, false>)dctoEx.rhs);
+	            extoMem.isBranch = ((ca_uint<32>)dctoEx.lhs >= (ca_uint<32>)dctoEx.rhs);
 	            break;
 	        }
 	        break;
@@ -114,7 +114,7 @@ public:
 	            extoMem.result = dctoEx.lhs < dctoEx.rhs;
 	            break;
 	        case RISCV_OPI_SLTIU:
-	            extoMem.result = (ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs;
+	            extoMem.result = (ca_uint<32>)dctoEx.lhs < (ca_uint<32>)dctoEx.rhs;
 	            break;
 	        case RISCV_OPI_XORI:
 	            extoMem.result = dctoEx.lhs ^ dctoEx.rhs;
@@ -127,13 +127,13 @@ public:
 	            break;
 	        case RISCV_OPI_SLLI: // cast rhs as 5 bits, otherwise generated hardware is 32 bits
 	            // & shift amount held in the lower 5 bits (riscv spec)
-	            extoMem.result = dctoEx.lhs << (ac_int<5, false>)dctoEx.rhs;
+	            extoMem.result = dctoEx.lhs << (ca_uint<5>)dctoEx.rhs;
 	            break;
 	        case RISCV_OPI_SRI:
 	            if (dctoEx.funct7.slc<1>(5)) //SRAI
-	                extoMem.result = dctoEx.lhs >> (ac_int<5, false>)shamt;
+	                extoMem.result = dctoEx.lhs >> (ca_uint<5>)shamt;
 	            else //SRLI
-	                extoMem.result = (ac_int<32, false>)dctoEx.lhs >> (ac_int<5, false>)shamt;
+	                extoMem.result = (ca_uint<32>)dctoEx.lhs >> (ca_uint<5>)shamt;
 	            break;
 	        }
 	        break;
@@ -151,22 +151,22 @@ public:
 	                    extoMem.result = dctoEx.lhs + dctoEx.rhs;
 	                break;
 	            case RISCV_OP_SLL:
-	                extoMem.result = dctoEx.lhs << (ac_int<5, false>)dctoEx.rhs;
+	                extoMem.result = dctoEx.lhs << (ca_uint<5>)dctoEx.rhs;
 	                break;
 	            case RISCV_OP_SLT:
 	                extoMem.result = dctoEx.lhs < dctoEx.rhs;
 	                break;
 	            case RISCV_OP_SLTU:
-	                extoMem.result = (ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs;
+	                extoMem.result = (ca_uint<32>)dctoEx.lhs < (ca_uint<32>)dctoEx.rhs;
 	                break;
 	            case RISCV_OP_XOR:
 	                extoMem.result = dctoEx.lhs ^ dctoEx.rhs;
 	                break;
 	            case RISCV_OP_SR:
 	                if(dctoEx.funct7.slc<1>(5))   // SRA
-	                    extoMem.result = dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
+	                    extoMem.result = dctoEx.lhs >> (ca_uint<5>)dctoEx.rhs;
 	                else  // SRL
-	                    extoMem.result = (ac_int<32, false>)dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
+	                    extoMem.result = (ca_uint<32>)dctoEx.lhs >> (ca_uint<5>)dctoEx.rhs;
 	                break;
 	            case RISCV_OP_OR:
 	                extoMem.result = dctoEx.lhs | dctoEx.rhs;
@@ -198,7 +198,7 @@ public:
 	            extoMem.result = dctoEx.lhs;
 	            break;
 	        case RISCV_SYSTEM_CSRRC:
-	            extoMem.datac = dctoEx.lhs & ((ac_int<32, false>)~dctoEx.rhs);
+	            extoMem.datac = dctoEx.lhs & ((ca_uint<32>)~dctoEx.rhs);
 	            extoMem.result = dctoEx.lhs;
 	            break;
 	        case RISCV_SYSTEM_CSRRWI:
@@ -210,7 +210,7 @@ public:
 	            extoMem.result = dctoEx.lhs;
 	            break;
 	        case RISCV_SYSTEM_CSRRCI:
-	            extoMem.datac = dctoEx.lhs & ((ac_int<32, false>)~dctoEx.rhs);
+	            extoMem.datac = dctoEx.lhs & ((ca_uint<32>)~dctoEx.rhs);
 	            extoMem.result = dctoEx.lhs;
 	            break;
 	        }
@@ -229,11 +229,11 @@ public:
 
 class MultAlu: public ALU {
 public:
-    ac_int<32, false> quotient, remainder;
-    //ac_int<33, false> 
-    ac_int<6, false> state = 0; 
+    ca_uint<32> quotient, remainder;
+    //ca_uint<33>
+    ca_uint<6> state = 0;
     bool resIsNeg;
-    ac_int<32, false> dataAUnsigned, dataBUnsigned;
+    ca_uint<32> dataAUnsigned, dataBUnsigned;
 
 	void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall){
         //no need to fill in the output register fields, the first ALU has that taken care of
@@ -244,9 +244,9 @@ public:
 			    dataAUnsigned.set_slc(0, dctoEx.lhs);
     			dataBUnsigned.set_slc(0, dctoEx.rhs);
 			    //mult results
-			    ac_int<32, false> resultU = dataAUnsigned * dataBUnsigned;
-			    ac_int<32, false> resultS = dctoEx.lhs * dctoEx.rhs;
-			    ac_int<32, false> resultSU = dctoEx.lhs * dataBUnsigned;
+			    ca_uint<32> resultU = dataAUnsigned * dataBUnsigned;
+			    ca_uint<32> resultS = dctoEx.lhs * dctoEx.rhs;
+			    ca_uint<32> resultSU = dctoEx.lhs * dataBUnsigned;
                 resIsNeg = dctoEx.lhs[31] ^ dctoEx.rhs[31];
 
 			    switch (dctoEx.funct3){

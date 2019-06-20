@@ -25,9 +25,9 @@ struct FtoDC
 {
     FtoDC() : pc(0), instruction(0x13), we(1)
     {}
-    ac_int<32, false> pc;           	// PC where to fetch
-    ac_int<32, false> instruction;  	// Instruction to execute
-    ac_int<32, false> nextPCFetch;      // Next pc according to fetch
+    ca_uint<32> pc;           	// PC where to fetch
+    ca_uint<32> instruction;  	// Instruction to execute
+    ca_uint<32> nextPCFetch;      // Next pc according to fetch
 
     //Register for all stages
     bool we;
@@ -35,19 +35,19 @@ struct FtoDC
 
 struct DCtoEx
 {
-    ac_int<32, false> pc;       // used for branch
-    ac_int<32, false> instruction;
+    ca_uint<32> pc;       // used for branch
+    ca_uint<32> instruction;
 
-    ac_int<7, false> opCode;    // opCode = instruction[6:0]
-    ac_int<7, false> funct7;    // funct7 = instruction[31:25]
-    ac_int<3, false> funct3;    // funct3 = instruction[14:12]
+    ca_uint<7> opCode;    // opCode = instruction[6:0]
+    ca_uint<7> funct7;    // funct7 = instruction[31:25]
+    ca_uint<3> funct3;    // funct3 = instruction[14:12]
 
-    ac_int<32, true> lhs;   //  left hand side : operand 1
-    ac_int<32, true> rhs;   // right hand side : operand 2
-    ac_int<32, true> datac; // ST, BR, JAL/R,
+    ca_int<32> lhs;   //  left hand side : operand 1
+    ca_int<32> rhs;   // right hand side : operand 2
+    ca_int<32> datac; // ST, BR, JAL/R,
 
     //For branch unit
-    ac_int<32, false> nextPCDC;
+    ca_uint<32> nextPCDC;
     bool isBranch;
 
     //Information for forward/stall unit
@@ -55,10 +55,10 @@ struct DCtoEx
     bool useRs2;
     bool useRs3;
     bool useRd;
-    ac_int<5, false> rs1;       // rs1    = instruction[19:15]
-    ac_int<5, false> rs2;       // rs2    = instruction[24:20]
-    ac_int<5, false> rs3;
-    ac_int<5, false> rd;        // rd     = instruction[11:7]
+    ca_uint<5> rs1;       // rs1    = instruction[19:15]
+    ca_uint<5> rs2;       // rs2    = instruction[24:20]
+    ca_uint<5> rs3;
+    ca_uint<5> rd;        // rd     = instruction[11:7]
 
     //Register for all stages
     bool we;
@@ -66,20 +66,20 @@ struct DCtoEx
 
 struct ExtoMem
 {
-    ac_int<32, false> pc;
-    ac_int<32, false> instruction;
+    ca_uint<32> pc;
+    ca_uint<32> instruction;
 
-    ac_int<32, true> result;    // result of the EX stage
-    ac_int<5, false> rd;        // destination register
+    ca_int<32> result;    // result of the EX stage
+    ca_uint<5> rd;        // destination register
     bool useRd;
     bool isLongInstruction;
-    ac_int<7, false> opCode;    // LD or ST (can be reduced to 2 bits)
-    ac_int<3, false> funct3;    // datasize and sign extension bit
+    ca_uint<7> opCode;    // LD or ST (can be reduced to 2 bits)
+    ca_uint<3> funct3;    // datasize and sign extension bit
 
-    ac_int<32, true> datac;     // data to be stored in memory or csr result
+    ca_int<32> datac;     // data to be stored in memory or csr result
 
     //For branch unit
-    ac_int<32, false> nextPC;
+    ca_uint<32> nextPC;
     bool isBranch;
 
     //Register for all stages
@@ -88,13 +88,13 @@ struct ExtoMem
 
 struct MemtoWB
 {
-    ac_int<32, false> result;    // Result to be written back
-    ac_int<5, false> rd;        // destination register
+    ca_uint<32> result;    // Result to be written back
+    ca_uint<5> rd;        // destination register
     bool useRd;
 
-    ac_int<32, true> address;
-    ac_int<32, false> valueToWrite;
-    ac_int<4, false> byteEnable;
+    ca_int<32> address;
+    ca_uint<32> valueToWrite;
+    ca_uint<4> byteEnable;
     bool isStore;
     bool isLoad;
 
@@ -104,8 +104,8 @@ struct MemtoWB
 
 struct WBOut
 {
-	ac_int<32, false> value;
-	ac_int<5, false> rd;
+	ca_uint<32> value;
+	ca_uint<5> rd;
 	bool useRd;
     bool we;
 };

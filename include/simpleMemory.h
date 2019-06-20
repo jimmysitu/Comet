@@ -6,12 +6,12 @@
 
 class SimpleMemory: public MemoryInterface {
 public:
-  ac_int<32, false> *data;
+  ca_uint<32> *data;
 
-  SimpleMemory(ac_int<32, false> *arg){
+  SimpleMemory(ca_uint<32> *arg){
 	  data = arg;
   }
-  void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut);
+  void process(ca_uint<32> addr, memMask mask, memOpType opType, ca_uint<32> dataIn, ca_uint<32>& dataOut, bool& waitOut);
 };
 
 #endif //__SIMPLE_MEMORY_H__

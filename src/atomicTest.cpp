@@ -73,7 +73,7 @@ int main(int argc, char** argv)
 
 		//We initialize a simulator with the state
 		Core core;
-		ac_int<32, false> im[8192], dm[8192];
+		ca_uint<32> im[8192], dm[8192];
 
 		core.im = new CacheMemory(new IncompleteMemory(im), false);
 		core.dm = new CacheMemory(new IncompleteMemory(dm), true);

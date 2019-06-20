@@ -1,6 +1,7 @@
 #ifndef __BASIC_SIMULATOR_H__
 #define __BASIC_SIMULATOR_H__
 
+#include <ca_int.h>
 #include <map>
 #include <vector>
 #include "simulator.h"
@@ -8,10 +9,10 @@
 class BasicSimulator : public Simulator 
 {
     unsigned heapAddress;
-    std::map<ac_int<32, false>, ac_int<8, false> > imemMap;  
-    std::map<ac_int<32, false>, ac_int<8, false> > dmemMap;  
+    std::map<ca_uint<32>, ca_uint<8> > imemMap;
+    std::map<ca_uint<32>, ca_uint<8> > dmemMap;
     
-    ac_int<32, false> *im, *dm;
+    ca_uint<32> *im, *dm;
 
     FILE* inputFile;
     FILE* outputFile;
@@ -28,30 +29,30 @@ protected:
     void extend(){};
     void solveSyscall();
 
-    void insertInstructionMemoryMap(ac_int<32, false> addr, ac_int<8, false> value);
-    void insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false> value);
+    void insertInstructionMemoryMap(ca_uint<32> addr, ca_uint<8> value);
+    void insertDataMemoryMap(ca_uint<32> addr, ca_uint<8> value);
 
-    ac_int<32, true> doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size);
-    ac_int<32, true> doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size);
-    ac_int<32, true> doOpen(ac_int<32, false> name, ac_int<32, false> flags, ac_int<32, false> mode);
-    ac_int<32, true> doOpenat(ac_int<32, false> dir, ac_int<32, false> name, ac_int<32, false> flags, ac_int<32, false> mode);
-    ac_int<32, true> doLseek(ac_int<32, false> file, ac_int<32, false> ptr, ac_int<32, false> dir);
-    ac_int<32, true> doClose(ac_int<32, false> file);
-    ac_int<32, true> doStat(ac_int<32, false> filename, ac_int<32, false> ptr);
-    ac_int<32, true> doSbrk(ac_int<32, false> value);
-    ac_int<32, true> doGettimeofday(ac_int<32, false> timeValPtr);
-    ac_int<32, true> doUnlink(ac_int<32, false> path);
-    ac_int<32, true> doFstat(ac_int<32, false> file, ac_int<32, false> stataddr);
+    ca_int<32> doRead(ca_uint<32> file, ca_uint<32> bufferAddr, ca_uint<32> size);
+    ca_int<32> doWrite(ca_uint<32> file, ca_uint<32> bufferAddr, ca_uint<32> size);
+    ca_int<32> doOpen(ca_uint<32> name, ca_uint<32> flags, ca_uint<32> mode);
+    ca_int<32> doOpenat(ca_uint<32> dir, ca_uint<32> name, ca_uint<32> flags, ca_uint<32> mode);
+    ca_int<32> doLseek(ca_uint<32> file, ca_uint<32> ptr, ca_uint<32> dir);
+    ca_int<32> doClose(ca_uint<32> file);
+    ca_int<32> doStat(ca_uint<32> filename, ca_uint<32> ptr);
+    ca_int<32> doSbrk(ca_uint<32> value);
+    ca_int<32> doGettimeofday(ca_uint<32> timeValPtr);
+    ca_int<32> doUnlink(ca_uint<32> path);
+    ca_int<32> doFstat(ca_uint<32> file, ca_uint<32> stataddr);
     
-    void stb(ac_int<32, false> addr, ac_int<8, true> value);
-    void sth(ac_int<32, false> addr, ac_int<16, true> value);
-    void stw(ac_int<32, false> addr, ac_int<32, true> value);
-    void std(ac_int<32, false> addr, ac_int<64, true> value);
+    void stb(ca_uint<32> addr, ca_int<8> value);
+    void sth(ca_uint<32> addr, ca_int<16> value);
+    void stw(ca_uint<32> addr, ca_int<32> value);
+    void std(ca_uint<32> addr, ca_int<64> value);
 
-    ac_int<8, true> ldb(ac_int<32, false> addr);
-    ac_int<16, true> ldh(ac_int<32, false> addr);
-    ac_int<32, true> ldw(ac_int<32, false> addr);
-    ac_int<32, true> ldd(ac_int<32, false> addr);
+    ca_int<8> ldb(ca_uint<32> addr);
+    ca_int<16> ldh(ca_uint<32> addr);
+    ca_int<32> ldw(ca_uint<32> addr);
+    ca_int<32> ldd(ca_uint<32> addr);
 };
 
 #endif // __BASIC_SIMULATOR_H__
