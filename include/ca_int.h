@@ -18,8 +18,8 @@ template<int size>
 //**************************************************************************
 
 template<int size>
-struct ca_int : ap_int<size>{
- public:
+class ca_int : public ap_int<size>{
+public:
 
 	 ca_int() : ap_int<size>(){}
 
@@ -95,7 +95,8 @@ struct ca_int : ap_int<size>{
 //**************************************************************************
 
 template<int size>
-struct ca_uint : ap_uint<size>{
+class ca_uint : public ap_uint<size>{
+public:
 
 	 ca_uint() : ap_uint<size>(){}
 
