@@ -264,6 +264,40 @@ template<int size>
 		 return ca_int<sliceSize>(ac_int<size, false>::template slc<sliceSize>(lsb));
 	 }
 
+	 // Assignation
+
+	 ca_int<size> operator=(const long unsigned int val){
+		 return ac_int<size, true>::operator=(val);
+	 }
+
+	 ca_int<size> operator=(const long int val){
+		 return ac_int<size, true>::operator=(val);
+	 }
+
+	 ca_int<size> operator=(const int val){
+		 return ac_int<size, true>::operator=(val);
+	 }
+
+	 ca_int<size> operator=(const unsigned int val){
+		 return ac_int<size, true>::operator=(val);
+	 }
+
+	 template <int otherSize>
+	 ca_int<size> operator=(const ca_uint<otherSize> val){
+		 return ac_int<size, true>::operator=(ac_int<otherSize, false>(val));
+	 }
+
+	 template <int otherSize>
+	 ca_int<size> operator=(const ca_int<otherSize> val){
+		 return ac_int<size, true>::operator=(ac_int<otherSize, true>(val));
+	 }
+
+	 template <int otherSize, bool sign>
+	 ca_int<size> operator=(const ac_int<otherSize, sign> val){
+		 return ac_int<size, true>::operator=(ac_int<otherSize, sign>(val));
+	 }
+
+
 	#define CTOR(TYPE) \
 		inline ca_int(TYPE val) : ac_int<size, true>(val) {}
 	CTOR(bool)
@@ -360,8 +394,38 @@ template<int size>
 		 return ca_uint<sliceSize>(ac_int<size, false>::template slc<sliceSize>(lsb));
 	 }
 
+	 // Assignation
 
+	 ca_uint<size> operator=(const long unsigned int val){
+		 return ac_int<size, false>::operator=(val);
+	 }
 
+	 ca_uint<size> operator=(const long int val){
+		 return ac_int<size, false>::operator=(val);
+	 }
+
+	 ca_uint<size> operator=(const int val){
+		 return ac_int<size, false>::operator=(val);
+	 }
+
+	 ca_uint<size> operator=(const unsigned int val){
+		 return ac_int<size, false>::operator=(val);
+	 }
+
+	 template <int otherSize>
+	 ca_uint<size> operator=(const ca_uint<otherSize> val){
+		 return ac_int<size, false>::operator=(ac_int<otherSize, false>(val));
+	 }
+
+	 template <int otherSize>
+	 ca_uint<size> operator=(const ca_int<otherSize> val){
+		 return ac_int<size, false>::operator=(ac_int<otherSize, true>(val));
+	 }
+
+	 template <int otherSize, bool sign>
+	 ca_uint<size> operator=(const ac_int<otherSize, sign> val){
+		 return ac_int<size, false>::operator=(ac_int<otherSize, sign>(val));
+	 }
 
 	#define CTOR(TYPE) \
 		inline ca_uint(TYPE val) : ac_int<size, false>(val) {}
