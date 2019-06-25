@@ -24,6 +24,8 @@
 #define INFP 0x7f800000
 #define INFN 0xff800000
 
+
+
 class FloatAlu : public ALU
 {
 private :
@@ -36,6 +38,7 @@ private :
 	ac_int<24,false> tmp = 0;
 	ac_int<32, false> localResult = 0;
 	ac_int<32,false> statusRegister = 0;
+	ac_int<9,false> exp = 0;
 	
 
 	
@@ -50,6 +53,9 @@ public :
  
 	  ac_int<9, true> f1Exp; 
 	  ac_int<9, true> f2Exp;
+	  
+	  ac_int<8,false> f1UExp;
+	  ac_int<8,false> f2UExp;
 
 	  ac_int<1, false> outputSign;                 
 	  ac_int<48, false> outputMantissa;
@@ -94,6 +100,9 @@ public :
 	f1Sign = dctoEx.rhs.slc<1>(31);
 	f2Sign = dctoEx.lhs.slc<1>(31);
 	
+	f1UExp = dctoEx.rhs.slc<8>(23);
+	f2UExp = dctoEx.lhs.slc<8>(23);
+	
 
 	//  Nan handling
 
@@ -118,7 +127,10 @@ public :
 	   			localResult = CNAN;
 	   		
 	   		else // f2 is a quiet Nan and f1 is not a Nan
-	   			localResult = dctoEx.rhs; // cause a seg fault 
+	   			if (dctoEx.useRs2)
+	   				localResult = dctoEx.rhs;  
+	   			else
+	   				localResult = CNAN; // seg fault
 	    }
 	}
 	else if(dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 == RISCV_FLOAT_OP_CMP 
@@ -172,6 +184,7 @@ public :
 											}
 											else
 											{
+													
 												subState = 0;	
 												stall = false;					
 												if(f1Sign == f2Sign)
@@ -189,12 +202,13 @@ public :
 												
 
 													
-												outputExp = f1Exp +128;
+												outputExp = exp +126;
 
 												localResult.set_slc(0, resultMantissa.slc<23>(1));
-												localResult.set_slc(23, outputExp);   
+												localResult.set_slc(23, outputExp.slc<8>(0));   
 												
-												if(outputExp > 126) // over and underflow handeling with return of infty
+												if(outputExp.slc<8>(0) > 254) // over and underflow handeling with return of infty
+												{
 													if(f1Sign != 0)
 														{
 														UNDERF = 1;		
@@ -204,7 +218,8 @@ public :
 														{
 														OVERF = 1;		
 														localResult = INFP;
-														}                                   
+														}    
+												}                     
 											}
 										  }
 										  else // one of the operand is an exception
@@ -240,6 +255,7 @@ public :
 												}
 												else
 												{
+
 													subState = 0;	
 													stall = false;					
 													if(f1Sign == f2Sign)
@@ -262,7 +278,7 @@ public :
 													localResult.set_slc(0, resultMantissa.slc<23>(1));
 													localResult.set_slc(23, outputExp);   
 													
-													if(outputExp > 126) // over and underflow handeling with return of infty
+													if(outputExp > 254) // over and underflow handeling with return of infty
 														if(f1Sign != 0)
 															{
 															UNDERF = 1;		
@@ -300,11 +316,12 @@ public :
 										{
 											  	if(dctoEx.lhs != 0)
 											  	{
-											  	
 													 state = 48;
 													 quotient = 0;
 													 remainder = 0;
 													 stall = true;
+													 f1Val.set_slc(23,f1Mantissa);
+													 f2Val.set_slc(0, f2Mantissa);	
 											  	}
 												else
 												{
@@ -325,7 +342,6 @@ public :
 										  		localResult = dctoEx.rhs;
 										  			
 										  	} // else float / infty -> 0 
-										  		
 										  }  
 													  break;                                                  
 										                                                              
@@ -335,7 +351,7 @@ public :
 												outputSign = f1Sign ^ f2Sign;                 
 												outputMantissa = f1Mantissa * f2Mantissa;
 												resultMantissa = (outputMantissa[47] ?outputMantissa.slc<23>(24) : outputMantissa.slc<23>(23));
-						 						outputExp = f1Exp + f2Exp - 127; 
+						 						outputExp = f1Exp + f2Exp - 129; 
 						 
 						 						
 														
@@ -346,7 +362,7 @@ public :
 						 						localResult.set_slc(0, resultMantissa);
 						 						localResult.set_slc(23, outputExp.slc<8>(0));
 						 						
-						 						if(outputExp > 126) // over and underflow handeling with return of infty
+						 						if(outputExp.slc<8>(0) > 254) // over and underflow handeling with return of infty
 												if(f1Sign != 0)
 													{
 													UNDERF = 1;		
@@ -418,98 +434,89 @@ public :
 									  case RISCV_FLOAT_OP_MINMAX :  
 										if(dctoEx.funct3) //FMAX
 										{
-											if(f1Exp == f2Sign)
-											{if(f1Sign){  // both are positive
-												if (f1Exp > f2Exp)
-													localResult = dctoEx.rhs;
-												else
-												{
-													if(f2Exp > f1Exp)
-														localResult = dctoEx.lhs;
-													else
-													{	
-														if(f1Mantissa > f2Mantissa)
-															localResult = dctoEx.rhs;
+										localResult = dctoEx.lhs;
+											if(f1Sign == f2Sign)
+														{
+															if(f1Sign.slc<1>(0) != 0) // negative
+															{
+																if (f1UExp < f2UExp)
+																	localResult =  dctoEx.rhs;
+																else 
+																{
+																	if(f2UExp == f1UExp)
+																	{
+																		if(f1Mantissa < f2Mantissa)
+																		localResult =  dctoEx.rhs;
+																	}
+																																	
+																}	
+															}
+															else
+															{
+																if (f1UExp > f2UExp)
+																	localResult =  dctoEx.rhs;
+																else
+																{
+																	if(f2UExp == f1UExp)
+																	{	
+																		if(f1Mantissa > f2Mantissa)
+																			localResult =  dctoEx.rhs;
+																	}
+																}
+															}
+														}
 														else
-															localResult = dctoEx.lhs;
-													}
-												}}
-											else{ // both are negative
-												if (f1Exp < f2Exp)
-													localResult = dctoEx.rhs;
-												else
-												{
-													if(f2Exp < f1Exp)
-														localResult = dctoEx.lhs;
-													else
-													{	
-														if(f1Mantissa < f2Mantissa)
-															localResult = dctoEx.rhs;
-														else
-															localResult = dctoEx.lhs;
-													}
-												}}
-											} //End if(f1Exp == f2Sign)
-											else // rhs and lhs have different sign                            	
-											{
+														{
+															if(f1Sign < f2Sign)
+																localResult =  dctoEx.rhs ;
+														}
 
-											if(f1Sign < f2Sign) // rhs positive and lhs negative 
-												localResult = dctoEx.lhs;
-											else // rhs negative and lhs positive
-												localResult = dctoEx.rhs;
-											}  
 										}
-					   
 										else //FMIN
 										{
-											if(f1Exp == f2Sign)
-											{if(f1Sign){  // both are positive
-												if (f1Exp < f2Exp)
-													localResult = dctoEx.rhs;
-												else
-												{
-													if(f2Exp < f1Exp)
-														localResult = dctoEx.lhs;
-													else
-													{	
-														if(f1Mantissa < f2Mantissa)
-															localResult = dctoEx.rhs;
+										localResult = dctoEx.rhs;
+											if(f1Sign == f2Sign)
+														{
+															if(f1Sign.slc<1>(0) != 0) // negative
+															{
+																if (f1UExp < f2UExp)
+																	localResult =  dctoEx.lhs;
+																else 
+																{
+																	if(f2UExp == f1UExp)
+																	{
+																		if(f1Mantissa < f2Mantissa)
+																		localResult =  dctoEx.lhs;
+																	}
+																																	
+																}	
+															}
+															else
+															{
+																if (f1UExp > f2UExp)
+																	localResult =  dctoEx.lhs;
+																else
+																{
+																	if(f2UExp == f1UExp)
+																	{	
+																		if(f1Mantissa > f2Mantissa)
+																			localResult =  dctoEx.lhs;
+																	}
+																}
+															}
+														}
 														else
-															localResult = dctoEx.lhs;
-													}
-												}}
-											else{ // both are negative
-												if (f1Exp > f2Exp)
-													localResult = dctoEx.rhs;
-												else
-												{
-													if(f2Exp > f1Exp)
-														localResult = dctoEx.lhs;
-													else
-													{	
-														if(f1Mantissa > f2Mantissa)
-															localResult = dctoEx.rhs;
-														else
-															localResult = dctoEx.lhs;
-													}
-												}}
-											} //End if(f1Exp == f2Sign)
-											else // rhs and lhs have different sign                            	
-											{
+														{
+															if(f1Sign < f2Sign)
+																localResult =  dctoEx.lhs ;
+														}
 
-											if(f1Sign < f2Sign) // rhs positive and lhs negative 
-												localResult = dctoEx.lhs;
-											else // rhs negative and lhs positive
-												localResult = dctoEx.rhs;
-											}  
 										}
 
 										
 										      break;                                                  
 										                                                              
 									  case RISCV_FLOAT_OP_CVTWS :
-									  printf("Exp = %x, %x\n", (ac_int<8,false>) dctoEx.rhs.slc<8>(23), (ac_int<23,false>) dctoEx.rhs.slc<23>(0));
-									  	
 									 	if( f1Exp > 0) // the float is normal and superior to 1 so it may be interesting to compute his value
 										{	
 											if(dctoEx.rs2 == 0)
@@ -550,88 +557,91 @@ public :
 
 									  		
 									  	
-										break;                                                  
+								break;                                                  
 										                                                              
 									  case RISCV_FLOAT_OP_CMP  :
+									  localResult = 0;
+
 										switch(dctoEx.funct3)
 												{
 													case 0:  // FLE
-													
 														if(f1Sign == f2Sign)
 														{
-															if(f1Sign != 0)
+															if(f1Sign.slc<1>(0) != 0) // negative
 															{
-																if (f1Exp >= f2Exp)
-																	localResult[0] = true;
-																else
+																if (f1UExp < f2UExp)
+																	localResult =  1;
+																else 
 																{
-																	if(f2Exp == f1Exp)
-																	{	
-																	if(f1Mantissa >= f2Mantissa)
-																		localResult[0] = true;
+																	if(f2UExp == f1UExp)
+																	{
+																		if(f1Mantissa <= f2Mantissa)
+																		localResult = 1;
 																	}
+																																	
 																}	
 															}
 															else
 															{
-																if (f1Exp <= f2Exp)
-																	localResult[0] = true;
+																if (f1UExp > f2UExp)
+																	localResult = 1;
 																else
 																{
-																if(f2Exp == f1Exp)
+																	if(f2UExp == f1UExp)
 																	{	
-																	if(f1Mantissa <= f2Mantissa)
-																		localResult[0] = true;
+																		if(f1Mantissa >= f2Mantissa)
+																			localResult = 1;
 																	}
 																}
 															}
 														}
 														else
 														{
-															if(f1Sign > f2Sign)
-																localResult[0] = true ;
+															if(f1Sign < f2Sign)
+																localResult = 1 ;
 														}
 
 													break;
 													
 													case 1:  // FLT
-															
 														if(f1Sign == f2Sign)
 														{
-															if(f1Sign != 0)
+															if(f1Sign.slc<1>(0) != 0) // negative
 															{
-																if (f1Exp > f2Exp)
-																	localResult[0] = true;
-																else
+																if (f1UExp < f2UExp)
+																	localResult =  1;
+																else 
 																{
-																	if(f2Exp == f1Exp)
-																	{	
-																	if(f1Mantissa > f2Mantissa)
-																		localResult[0] = true;
+																	if(f2UExp == f1UExp)
+																	{
+																		if(f1Mantissa < f2Mantissa)
+																		localResult = 1;
 																	}
+																																	
 																}	
 															}
 															else
 															{
-																if (f1Exp < f2Exp)
-																	localResult[0] = true;
+																if (f1UExp > f2UExp)
+																	localResult = 1;
 																else
 																{
-																if(f2Exp == f1Exp)
+																	if(f2UExp == f1UExp)
 																	{	
-																	if(f1Mantissa < f2Mantissa)
-																		localResult[0] = true;
+																		if(f1Mantissa > f2Mantissa)
+																			localResult = 1;
 																	}
 																}
 															}
 														}
 														else
 														{
-															if(f1Sign > f2Sign)
-																localResult[0] = true ;
+															if(f1Sign < f2Sign)
+																localResult = 1 ;
 														}
 
 													break;
+													
 
 													case 2:  //FEQ
 														localResult[0] = dctoEx.rhs == dctoEx.lhs;
@@ -639,8 +649,7 @@ public :
 												}                                    
 										      break;                                                  
 										                                                              
-									  case RISCV_FLOAT_OP_CVTSW :  
-									  				if( (f1Exp != 0 & f1Mantissa != 0 ) & f1Exp != 0xff) // if f1 is not an exception (exception are Nan infty and 0)
+									  case RISCV_FLOAT_OP_CVTSW :   													if( (f1Exp != 0 & f1Mantissa != 0 ) & f1Exp != 0xff) // if f1 is not an exception (exception are Nan infty and 0)
 									  				{
 										  				
 														if(dctoEx.rs2) // FCVT.S.WU
@@ -727,6 +736,7 @@ public :
 
 							for(int i =0; i <4; i++) 
 							{
+								stall = true;
 								state--;
 								remainder = remainder << 1;
 								remainder[0] = f1Val[state];
@@ -736,20 +746,20 @@ public :
 									quotient[state] = 1;
 								}
 							}
+										 
 							if(!state)
 							{
 								outputSign = f1Sign ^ f2Sign;
 							  	outputExp = f1Exp - f2Exp + 127;
-								stall = false;
 								
-								for(i = 47; i >= 0; i--)
+								for(i = 47; i >= 0; i--)  //Find the MSB
 									if (quotient[i])
 										break;
 										
 								if (i > 22) // the result is normal
 								{
 									localResult.set_slc(0, quotient.slc<23>(i - 23) );
-									outputExp += i - 24 ;
+									outputExp += i - 23;
 								}
 								else // the result is a subnormal 
 								{
@@ -761,8 +771,9 @@ public :
 
 					  			localResult.set_slc(23, outputExp.slc<8>(0));
 					  			localResult.set_slc(31, outputSign);
-					  			
-					  			if(outputExp > 126)  // over and underflow handling with return of infty
+								stall = false;
+
+					  			if(outputExp.slc<8>(0) > 254)  // over and underflow handling with return of infty
 									if(f1Sign != 0)
 									{
 										UNDERF = 1;		
@@ -780,23 +791,23 @@ public :
 								
 							case RISCV_FLOAT_OP_ADD :
 							case RISCV_FLOAT_OP_SUB: 
-								
-								if (f1Exp > f2Exp)
+								if (f2Exp < f1Exp)
 								{
-									if (f1Exp - f2Exp >= 32)
-										{f1Val = f1Val << 32; f1Exp -= 32;}
+									if (f1Exp - f2Exp > 32)
+										{f2Val = f2Val >> 32; f2Exp -= 32;}
 									else
-										{f1Val = f1Val << (f1Exp - f2Exp % 32); f1Exp = f2Exp; state = 0;}
+										{f2Val = f2Val >> (f1Exp - f2Exp); f2Exp = f1Exp; state = 0;}
 								}
 								else
 								{
-									if (f2Exp - f1Exp >= 32)
-				  						{f2Val = f2Val << 32; f2Exp -= 32;}
+									if (f2Exp - f1Exp > 32)
+				  						{f1Val = f1Val >> 32; f1Exp -= 32;}
 									else
-										{f2Val = f2Val << (f2Exp - f1Exp % 32); f2Exp = f1Exp; state = 0;}
+										{f1Val = f1Val >> (f2Exp - f1Exp); f1Exp = f2Exp; state = 0;}
 								
 								}
-						
+								
+								exp = f1Exp;
 								break;  
 								
 							default: 
@@ -806,7 +817,13 @@ public :
 	}
    
    if(( (dctoEx.opCode == RISCV_FLOAT_OP)|(dctoEx.opCode == RISCV_FLOAT_MADD)|(dctoEx.opCode == RISCV_FLOAT_MSUB)|(dctoEx.opCode == RISCV_FLOAT_NMADD)|(dctoEx.opCode == RISCV_FLOAT_NMSUB) ))
-   	   extoMem.result = localResult;       
+   {
+   	   extoMem.result = localResult;
+
+		   
+   }
+
+
 
 } 
 
