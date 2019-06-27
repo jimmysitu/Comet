@@ -38,7 +38,7 @@ std::default_random_engine generator;
 std::uniform_real_distribution<float> distribution(-5000,5000);
 
 // Int random init
-std::uniform_int_distribution<int> distributionFunct7(0,10);
+std::uniform_int_distribution<int> distributionFunct7(0,11);
 std::uniform_int_distribution<int> distributionFunct3(0,2);
 std::uniform_int_distribution<int> idistribution(-5000,5000);
 
@@ -75,8 +75,9 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 	fa = distribution(generator);
 	fb = distribution(generator);
 	
+	fa = fa * sgn(fa);
 
-	p = 0.005* fa*sgn(fa);
+
 	
 
 	a = &fa;
@@ -87,6 +88,7 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 	initialState.regs[33] = *( (int*) b);
 	
 
+	
 	finalState.regs[1] = d;
 	finalState.regs[32] = *((int*) a);
 	finalState.regs[33] = *((int*) b); 
@@ -214,6 +216,12 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 					finalState.regs[34] = *( (int*) a);
 					instruction = 0xf0008153;
 					break;
+					
+				case 11 : //Sqrt
+					fc = sqrt(fa);
+					c = &fc;
+					finalState.regs[34] = *((int*) c);
+					instruction = 0x58000153;
 
 			}
 			break;
@@ -229,7 +237,7 @@ int main(int argc, char** argv)
 
 		unsigned int instruction, numberOfCycles;
 		struct processorState initialState, finalState;
-		numberOfCycles = 100;
+		numberOfCycles = 900;
 		ac_int<32, false> im[8192], dm[8192];
 		Core core;
 
@@ -349,6 +357,8 @@ int main(int argc, char** argv)
 		
 		diff =(float) *( (float*) val1_p) - *( (float*) val2_p);
 		
+		p = 0.0005*finalState.regs[34];
+		
 		
 		if (diff*sgn(diff) > p )
 			{c++;printf("Issue with instruction : %x at register 34, awnser is %x and should be %x\n", instruction,core.regFile[34], finalState.regs[34]);}
@@ -357,8 +367,8 @@ int main(int argc, char** argv)
 
 	}
 	printf("error rate = %d / %d\n",c,a);
-
-	return 0;
+	
+	return c;
 
 
 }

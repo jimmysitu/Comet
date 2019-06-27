@@ -26,6 +26,7 @@
 
 
 
+
 class FloatAlu : public ALU
 {
 private :
@@ -38,6 +39,7 @@ private :
 	ac_int<24,false> tmp = 0;
 	ac_int<32, false> localResult = 0;
 	ac_int<32,false> statusRegister = 0;
+	enum roundingMode {RNE, RTZ, RDN, RUP, RMM};
 	
 	// var for sqrt
 	
@@ -52,6 +54,37 @@ private :
 
 	
 public :
+	void iterMantissa(ac_int<32,false> &f)
+	{
+		ac_int<24,false> mantissa = f.slc<23>(0);
+		ac_int<9,false> exp = f.slc<8>(23);
+		
+
+			
+			mantissa++;
+			
+			if(mantissa[23] != 0)
+			{
+				exp++;
+				if(exp[8] != 0)
+				{
+					OVERF = 1;
+				}
+				else
+				{
+					f.set_slc(23,exp.slc<8>(0));
+				}
+				f.set_slc(0,mantissa.slc<23>(1));
+			}
+			else
+			{
+				f.set_slc(0,mantissa.slc<23>(0));
+			}
+		
+		
+	}
+
+
 	void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall)
 {		
    	  ac_int<1, false> f1Sign;
@@ -70,11 +103,13 @@ public :
 	  ac_int<48, false> outputMantissa;
 	  ac_int<48, false> resultMantissa;
  	  ac_int<9, false> outputExp;
+ 	  
+ 	  ac_int<2,false> roundingFlags; // roundingFlags[0] = (cuttedBits >= 0.5) et roundingFlags[1] = (cuttedBits == 0.5) 
 
 
       float f1;
-	  int g;
-	  int i;
+	  int g,i,k;
+	  bool isHalf = false;
 	  
     stall =false;       
 
@@ -83,7 +118,7 @@ public :
 		if(dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 == RISCV_FLOAT_OP_SQRT)
 		{
 			/* set the flags, opCode and funct to proceed the correct compute 
-				iteration = 5
+				iteration = 10
 				u_n+1 = (u_n + a/u_n) >> 1
 			
 			while(iter > 0)
@@ -202,9 +237,8 @@ public :
 	& (( ((ac_int<8,false>) dctoEx.rhs.slc<8>(23)) ==  0xff & f1Mantissa != 0) | ( ((ac_int<8,false>) dctoEx.lhs.slc<8>(23)) == 0xff & f2Mantissa != 0)) )) // we have a float instructions with at least a Nan
 	{ // Give seg fault
 	   if(((f1Exp == 0xff & f1Mantissa) & (f2Exp == 0xff & f2Mantissa))) // both are Nan
-	   {
-	   localResult = CNAN;
-	   }
+	 	  localResult = CNAN;
+
 	   else if (f1Exp == 0xff & f1Mantissa) // f1 is a Nan
 	   {
 	   		if (f1Mantissa[22]) // f1 is a signaling Nan
@@ -343,6 +377,18 @@ public :
 												{
 													localResult.set_slc(0, resultMantissa.slc<23>(i - 23) );
 													outputExp += i - 23;
+													roundingFlags[0] = resultMantissa.slc<23>(i - 24);
+													
+													if(i == 24)
+														roundingFlags[1] = roundingFlags[0];
+													else
+													{
+													
+														for(k = i - 25; i != 0; i--)
+															isHalf = isHalf & resultMantissa[k];
+														
+														roundingFlags[1] = isHalf;
+													}
 												}
 												else 
 												{
@@ -356,7 +402,8 @@ public :
 													{
 															localResult.set_slc(0,resultMantissa.slc<23>(0));
 															outputExp = 0;
-													}	
+													}
+													roundingFlags = 0;
 												}
 																								
 												localResult.set_slc(23,outputExp.slc<8>(0));
@@ -364,14 +411,13 @@ public :
 												
 												if(outputExp.slc<8>(0) > 254) // over and underflow handeling with return of infty
 												{
+													OVERF = 1;		
 													if(f1Sign != 0)
 														{
-														UNDERF = 1;		
 														localResult = INFN;
 														}
 													else
 														{
-														OVERF = 1;		
 														localResult = INFP;
 														}    
 												}                     
@@ -445,7 +491,12 @@ public :
 										{                                    
 												outputSign = f1Sign ^ f2Sign;                 
 												outputMantissa = f1Mantissa * f2Mantissa;
-												resultMantissa = (outputMantissa[47] ?outputMantissa.slc<23>(24) : outputMantissa.slc<23>(23));
+												resultMantissa = (outputMantissa[47] ? outputMantissa.slc<23>(24) : outputMantissa.slc<23>(23));
+												roundingFlags[0] = (outputMantissa[47] ? outputMantissa.slc<23>(23) : outputMantissa.slc<23>(22));
+												if(outputMantissa[47])
+													roundingFlags[1] = (outputMantissa.slc<23>(0) == 0x400000);
+												else
+													roundingFlags[1] = (outputMantissa.slc<22>(0) == 0x200000);
 						 						outputExp = f1Exp + f2Exp - 129; 
 						 
 						 						
@@ -460,12 +511,11 @@ public :
 						 						if(outputExp.slc<8>(0) > 254) // over and underflow handeling with return of infty
 												if(f1Sign != 0)
 													{
-													UNDERF = 1;		
 													localResult = INFN;
+													OVERF = 1;		
 													}
 												else
 													{
-													OVERF = 1;		
 													localResult = INFP;
 													}
 						 				}
@@ -753,7 +803,9 @@ public :
 													if (dctoEx.lhs[i])
 															break;
 												localResult.set_slc(23, (ac_int<8,false>) (127 + i));
-												localResult.set_slc(0, (dctoEx.lhs << (31 - i)).slc<23>(8) );
+												localResult.set_slc(0, (dctoEx.lhs << (31 - i)).slc<23>(8));
+												roundingFlags[0] = (dctoEx.lhs << (31 - i)).slc<23>(7);
+												roundingFlags[1] = (dctoEx.lhs << (31 - i)).slc<7>(0) == 0x40;
 											}
 											else // FCVT.S.W
 											{
@@ -765,6 +817,8 @@ public :
 																	
 													localResult.set_slc(23, (ac_int<8,false>) (127 + i-1));
 													localResult.set_slc(0, (dctoEx.rhs << (31 - i+1)).slc<23>(8) );
+													roundingFlags[0] = (dctoEx.rhs << (31 - i+1)).slc<23>(7);
+												roundingFlags[1] = (dctoEx.rhs << (31 - i+1)).slc<7>(0) == 0x40;
 													}
 												else 
 												{
@@ -773,6 +827,8 @@ public :
 															break;
 													localResult.set_slc(23, (ac_int<8,false>) (127 + i));
 													localResult.set_slc(0, (dctoEx.lhs << (31 - i)).slc<23>(8) );
+													roundingFlags[0] = (dctoEx.lhs << (31 - i)).slc<23>(7);
+													roundingFlags[1] = (dctoEx.lhs << (31 - i)).slc<7>(0) == 0x40;
 												}
 											}
 							  				  
@@ -830,15 +886,27 @@ public :
 									if (quotient[i])
 										break;
 										
-								if (i > 22) // the result is normal
+								if (i > 23) // the result is normal
 								{
 									localResult.set_slc(0, quotient.slc<23>(i - 23) );
 									outputExp += i - 23;
+									roundingFlags[0] = quotient[i - 24];
+									
+									if(i == 24)
+										roundingFlags[1] = 0;
+									else
+									{
+									
+										for( k = i - 24; k != 0; k--)
+											isHalf = isHalf & quotient[k];
+										roundingFlags[1] = isHalf;											
+									}
 								}
 								else // the result is a subnormal 
 								{
 								outputExp = 0;
 								localResult.set_slc(0,quotient.slc<23>(0));
+								roundingFlags = 0;
 								}
 
 								
@@ -850,7 +918,7 @@ public :
 					  			if(outputExp.slc<8>(0) > 254)  // over and underflow handling with return of infty
 									if(f1Sign != 0)
 									{
-										UNDERF = 1;		
+										OVERF = 1;		
 										localResult = INFN;
 									}
 									else
@@ -903,6 +971,42 @@ public :
    
    if(( (dctoEx.opCode == RISCV_FLOAT_OP)|(dctoEx.opCode == RISCV_FLOAT_MADD)|(dctoEx.opCode == RISCV_FLOAT_MSUB)|(dctoEx.opCode == RISCV_FLOAT_NMADD)|(dctoEx.opCode == RISCV_FLOAT_NMSUB) ))
    {
+   		// Rounding mode
+   		
+   		switch(RNDM)
+   		{
+   			case RNE : 
+   				if(roundingFlags[0] != 0)
+   					iterMantissa(localResult);
+   				
+   				if(roundingFlags[1] != 0 & localResult[0]) // tie to even, so if we are already even we change nothing, else we take the successor
+   					iterMantissa(localResult);
+   				break;
+   				
+   			case RTZ : 
+   				break;
+   				
+   			case RDN :
+   				if(localResult[31] & roundingFlags[0] != 0)
+   						iterMantissa(localResult);
+   				break;
+   				
+   			case RUP : 
+   				if(!localResult[31] & roundingFlags[0] != 0)
+   					iterMantissa(localResult);
+   				break; 
+   			
+   			case RMM : // tie to maximal amplitude so in the tie case we take the successor
+				 if(roundingFlags[0] != 0 | roundingFlags[1] != 0) 
+   					iterMantissa(localResult);
+				break;
+   				
+   			default : 
+   				break;
+   		}
+   		
+   		
+   	
    	   extoMem.result = localResult;
 		   
    }

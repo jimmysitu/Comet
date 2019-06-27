@@ -21,7 +21,7 @@ int main(void)
     int i=0;
     int j;
     int k;
-    float sum;
+    int sum;
 
     for (i=0; i<4; i++)
     {
@@ -32,15 +32,6 @@ int main(void)
                 sum += A[(i<<2) + k] * B[(k<<2) + j];
             result[(i<<2) + j] = sum;
         }
-    }
-
-    for(i = 0; i < 4; ++i)
-    {
-        for(j = 0; j < 4; ++j)
-        {
-                printf("%d ", result[(i<<2) + j]);
-        }
-        printf("\n");
     }
 
     return 0;
