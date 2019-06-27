@@ -90,7 +90,7 @@ BasicSimulator::BasicSimulator (
 //	core.im = new SimpleMemory(im);
 //	core.dm = new SimpleMemory(dm);
 
-	core.im = new CacheMemory(new SimpleMemory(im), false);
+	core.im = new CacheMemory(new SimpleMemory(im), true);
 	core.dm = new CacheMemory(new SimpleMemory(dm), false);
 
 	for(int i=0; i<32; i++) {
@@ -246,7 +246,7 @@ void BasicSimulator::insertDataMemoryMap(ca_uint<32> addr, ca_uint<8> value)
 void BasicSimulator::printCycle(){
     // Use the trace file to separate program output from simulator output
 
-  if(!core.stallSignals[0] & 0) {
+  if(!core.stallSignals[0]) {
    
 	if (!core.stallSignals[0] && ! core.stallIm && !core.stallDm){
 	printf("Debug trace : %x ",(unsigned int) core.ftoDC.pc);

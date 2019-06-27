@@ -102,8 +102,6 @@ public:
 
 
 
-
-
 		if (!nextLevelWaitOut){
 			cycle++;
 
@@ -136,7 +134,6 @@ public:
 				if (cacheState == 0){
 					numberAccess++;
 
-	//				fprintf(stdout, "Reading at addr %x\n", addr);
 
 
 					ca_uint<TAG_SIZE> tag1 = val1.slc<TAG_SIZE>(0);
@@ -223,7 +220,6 @@ public:
 								dataOut.set_slc(0, signedWord);
 								break;
 							case WORD:
-//								fprintf(stderr, "slice is %d   - %d  %x  \n", ((((int)addr.slc<2>(0)) << 3) + 4*8*offset), offset.to_uint(), addr.to_uint());
 								dataOut = selectedValue.slc<32>(4*8*offset);
 								break;
 							case BYTE_U:

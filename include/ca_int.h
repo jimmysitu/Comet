@@ -1,6 +1,8 @@
 #ifndef INCLUDE_CA_INT_H_
 #define INCLUDE_CA_INT_H_
 
+#define MAX(a,b) ((((a)>(b)) ? a : b)
+
 
 
 #ifdef __VIVADO__
@@ -191,115 +193,364 @@ template<int size>
 
 //Struct definition for ca_int
 template<int size>
- class ca_int : public ac_int<size, true>{
+ class ca_int{
  public:
+	ac_int<size, true> value;
 
-	 ca_int() : ac_int<size, true>(){}
+	 inline ca_int(ac_int<size, true> val) : value(val){}
+	 inline operator ac_int<size, true>(){return value;};
+
+	 ca_int() : value() {}
+
+
+	 template <int sourceSize, bool Sign>
+	 inline ca_int(ac_int<sourceSize, Sign> val) : value(val){}
 
 	 template <int sourceSize>
-	 inline ca_int(ac_int<sourceSize, true> val) : ac_int<size, true>(val){}
+	 inline ca_int(ac_int<sourceSize, false> val) : value(val){}
 
 	 template <int sourceSize>
-	 inline ca_int(ac_int<sourceSize, false> val) : ac_int<size, true>(val){}
+	 inline ca_int(ca_uint<sourceSize> val) : value(val.value) {};
+
+	 template <int sourceSize>
+	 inline ca_int(ca_int<sourceSize> val) : value(val.value) {};
 
 
 	 template <int sliceSize>
-	 void set_slc(int lsb, ca_int<sliceSize> value){
-		 ac_int<size, true>::set_slc(lsb, value);
+	 void set_slc(int lsb, ca_int<sliceSize> val){
+		 value.set_slc(lsb, val.value);
 	 }
 
 	 template <int sliceSize>
-	 void set_slc(int lsb, ca_uint<sliceSize> value){
-		 ac_int<size, true>::set_slc(lsb, value);
+	 void set_slc(int lsb, ca_uint<sliceSize> val){
+		value.set_slc(lsb, val.value);
 	 }
 
 	 template <int sliceSize, int lsbSize>
-	 void set_slc(ca_uint<lsbSize> lsb, ca_uint<sliceSize> value){
-		 ac_int<size, true>::set_slc(lsb, value);
+	 void set_slc(ca_uint<lsbSize> lsb, ca_uint<sliceSize> val){
+		 value.set_slc(lsb.value, val.value);
 	 }
 
 	 template <int sliceSize, int lsbSize>
-	 void set_slc(ca_uint<lsbSize> lsb, ca_int<sliceSize> value){
-		 ac_int<size, true>::set_slc(lsb, value);
+	 void set_slc(ca_uint<lsbSize> lsb, ca_int<sliceSize> val){
+		 value.set_slc(lsb.value, val.value);
 	 }
 
 	 template <int sliceSize, int lsbSize>
-	 void set_slc(ca_int<lsbSize> lsb, ca_uint<sliceSize> value){
-		 ac_int<size, true>::set_slc(lsb, value);
+	 void set_slc(ca_int<lsbSize> lsb, ca_uint<sliceSize> val){
+		 value.set_slc(lsb.value, val.value);
 	 }
 
 	 template <int sliceSize, int lsbSize>
-	 void set_slc(ca_int<lsbSize> lsb, ca_int<sliceSize> value){
-		 ac_int<size, true>::set_slc(lsb, value);
+	 void set_slc(ca_int<lsbSize> lsb, ca_int<sliceSize> val){
+		 value.set_slc(lsb.value, val.value);
 	 }
 
 	 template <int sliceSize, int lsbSize, bool S>
-	 void set_slc(ac_int<lsbSize, S> lsb, ca_uint<sliceSize> value){
-		 ac_int<size, true>::set_slc(lsb, value);
+	 void set_slc(ac_int<lsbSize, S> lsb, ca_uint<sliceSize> val){
+		 value.set_slc(lsb, val.value);
 	 }
 
 	 template <int sliceSize, int lsbSize, bool S>
-	 void set_slc(ac_int<lsbSize, S> lsb, ca_int<sliceSize> value){
-		 ac_int<size, true>::set_slc(lsb, value);
+	 void set_slc(ac_int<lsbSize, S> lsb, ca_int<sliceSize> val){
+		value.set_slc(lsb, val.value);
+	 }
+
+	 template <int sliceSize, int lsbSize, bool S1, bool S2>
+	 void set_slc(ac_int<lsbSize, S1> lsb, ac_int<sliceSize, S2> val){
+		value.set_slc(lsb, val.value);
 	 }
 
 	 template <int sliceSize>
 	 ca_int<sliceSize> slc(const int lsb){
-		 return ca_int<sliceSize>(ac_int<size, true>::template slc<sliceSize>(lsb));
+		 return ca_int<sliceSize>(value.slc<sliceSize>(lsb));
 	 }
 
 	 template <int sliceSize, int lsbSize>
 	 ca_int<sliceSize> slc(const ca_uint<lsbSize> lsb){
-		 return ca_int<sliceSize>(ac_int<size, false>::template slc<sliceSize>(lsb));
+		 return ca_int<sliceSize>(value.slc<sliceSize>(lsb.value));
 	 }
 
 	 template <int sliceSize, int lsbSize>
 	 ca_int<sliceSize> slc(const ca_int<lsbSize> lsb){
-		 return ca_int<sliceSize>(ac_int<size, false>::template slc<sliceSize>(lsb));
+		 return ca_int<sliceSize>(value.slc<sliceSize>(lsb.value));
 	 }
 
 	 //Would like to get rid of this one
 	 template <int sliceSize, int lsbSize, bool S>
 	 ca_int<sliceSize> slc(const ac_int<lsbSize, S> lsb){
-		 return ca_int<sliceSize>(ac_int<size, false>::template slc<sliceSize>(lsb));
+		 return ca_int<sliceSize>(value.slc<sliceSize>(lsb));
 	 }
 
 	 // Assignation
 
 	 ca_int<size> operator=(const long unsigned int val){
-		 return ac_int<size, true>::operator=(val);
+		 value = val;
+		 return this;
 	 }
 
 	 ca_int<size> operator=(const long int val){
-		 return ac_int<size, true>::operator=(val);
-	 }
+		 value = val;
+		 return this;	 }
 
 	 ca_int<size> operator=(const int val){
-		 return ac_int<size, true>::operator=(val);
+		 value = val;
+		 return this;
 	 }
 
 	 ca_int<size> operator=(const unsigned int val){
-		 return ac_int<size, true>::operator=(val);
+		 value = val;
+		 return this;
 	 }
 
 	 template <int otherSize>
 	 ca_int<size> operator=(const ca_uint<otherSize> val){
-		 return ac_int<size, true>::operator=(ac_int<otherSize, false>(val));
+		 value = val.value;
+		 return this;
 	 }
 
 	 template <int otherSize>
 	 ca_int<size> operator=(const ca_int<otherSize> val){
-		 return ac_int<size, true>::operator=(ac_int<otherSize, true>(val));
+		 value = val.value;
+		 return this;
 	 }
 
 	 template <int otherSize, bool sign>
-	 ca_int<size> operator=(const ac_int<otherSize, sign> val){
-		 return ac_int<size, true>::operator=(ac_int<otherSize, sign>(val));
+	 ca_int<size> operator=(ac_int<otherSize, sign> val){
+		 value = val;
+		 return this;
 	 }
+
+	 //************** Operator Shifts
+
+	ca_int<size> operator>>(int val){
+		ca_int<size> result = value >> val;
+		 return result;
+	 }
+
+	 template <int otherSize, bool sign>
+	ca_int<size> operator>>(ac_int<otherSize, sign> val){
+		 ca_int<size> result = value >> val;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	ca_int<size> operator>>(ca_int<otherSize> val){
+		 ca_int<size> result = value >> val.value;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	ca_int<size> operator>>(ca_uint<otherSize> val){
+		 ca_int<size> result = value >> val.value;
+		 return result;
+	 }
+
+	 //************** Operator Shifts <<
+
+	ca_int<size> operator<<(int val){
+		ca_int<size> result = value << val;
+		 return result;
+	 }
+
+	 template <int otherSize, bool sign>
+	ca_int<size> operator<<(ac_int<otherSize, sign> val){
+		 ca_int<size> result = value << val;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	ca_int<size> operator<<(ca_int<otherSize> val){
+		 ca_int<size> result = value << val.value;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	ca_int<size> operator<<(ca_uint<otherSize> val){
+		 ca_int<size> result = value << val.value;
+		 return result;
+	 }
+
+	 //************** Operator +
+
+	ca_int<size+1> operator+(int val){
+		ca_int<size+1> result = value + val;
+		 return result;
+	 }
+
+	 template <int otherSize, bool sign>
+	ca_int<(size > otherSize)? size + 1 : otherSize + 1> operator+(ac_int<otherSize, sign> val){
+		 ca_int<(size > otherSize)? size + 1 : otherSize + 1> result = value + val;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	ca_int<(size > otherSize)? size + 1 : otherSize + 1> operator+(ca_int<otherSize> val){
+		 ca_int<(size > otherSize)? size + 1 : otherSize + 1> result = value + val.value;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	ca_int<(size > otherSize)? size + 1 : otherSize + 1> operator+(ca_uint<otherSize> val){
+		 ca_int<(size > otherSize)? size + 1 : otherSize + 1> result = value + val.value;
+		 return result;
+	 }
+
+	 //************** Operator -
+
+	ca_int<size+1> operator-(int val){
+		ca_int<size+1> result = value - val;
+		 return result;
+	 }
+
+	 template <int otherSize, bool sign>
+	ca_int<(size > otherSize)? size + 1 : otherSize + 1> operator-(ac_int<otherSize, sign> val){
+		 ca_int<(size > otherSize)? size + 1 : otherSize + 1> result = value - val;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	ca_int<(size > otherSize)? size + 1 : otherSize + 1> operator-(ca_int<otherSize> val){
+		 ca_int<(size > otherSize)? size + 1 : otherSize + 1> result = value - val.value;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	ca_int<(size > otherSize)? size + 1 : otherSize + 1> operator-(ca_uint<otherSize> val){
+		 ca_int<(size > otherSize)? size + 1 : otherSize + 1> result = value - val.value;
+		 return result;
+	 }
+
+	 //************** Operator *
+
+	ca_int<size+32> operator*(int val){
+		ca_int<size+32> result = value * val;
+		 return result;
+	 }
+
+	 template <int otherSize, bool sign>
+	ca_int<size+otherSize> operator*(ac_int<otherSize, sign> val){
+		 ca_int<size+otherSize> result = value * val;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	ca_int<size+otherSize> operator*(ca_int<otherSize> val){
+		 ca_int<size+otherSize> result = value * val.value;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	ca_int<size+otherSize> operator*(ca_uint<otherSize> val){
+		 ca_int<size+otherSize> result = value * val.value;
+		 return result;
+	 }
+
+	 //============================ Operator ==
+
+	 ca_int<1> operator==(int val){
+		 ca_int<1> result = value == val;
+		 return result;
+	 }
+
+	 template <int otherSize, bool sign>
+	 ca_int<1> operator==(ac_int<otherSize, sign> val){
+		 ca_int<1> result = value == val;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	 ca_int<1> operator==(ca_int<otherSize> val){
+		 ca_int<1> result = value == val.value;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	 ca_int<1> operator==(ca_uint<otherSize> val){
+		 ca_int<1> result = value == val.value;
+		 return result;
+	 }
+
+	 //********************************* Operator <
+
+	 bool operator<(int val){
+		 return value < val;
+	 }
+
+	 template <int otherSize, bool sign>
+	 bool operator<(ac_int<otherSize, sign> val){
+		 return value < val;
+	 }
+
+	 template <int otherSize>
+	 bool operator<(ca_int<otherSize> val){
+		 return value < val;
+	 }
+
+	 template <int otherSize>
+	 bool operator<(ca_uint<otherSize> val){
+		 return value < val;
+	 }
+
+	 //********************************* Operator >
+
+	 bool operator>(int val){
+		 return value > val;
+	 }
+
+	 template <int otherSize, bool sign>
+	 bool operator>(ac_int<otherSize, sign> val){
+		 return value > val;
+	 }
+
+	 template <int otherSize>
+	 bool operator>(ca_int<otherSize> val){
+		 return value > val;
+	 }
+
+	 template <int otherSize>
+	 bool operator>(ca_uint<otherSize> val){
+		 return value > val;
+	 }
+
+	 //********************************* Operator []
+
+	 ca_int<1> operator[](int val){
+		 return ca_int<1>(value.slc<1>(val));
+	 }
+
+	 //********************************* Operator ++ / --
+
+	 ca_int<size> operator ++(int){
+		 value++;
+		 return this;
+	 }
+
+	 ca_int<size> operator --(int){
+		 value--;
+		 return this;
+	 }
+
+	 ca_int<size> operator +=(int val){
+		 value += val;
+		 return this;
+	 }
+
+	 ca_int<size> operator -=(int val){
+		 value -= val;
+		 return this;
+	 }
+
+	 //************************************ Implicit and explicit conversions
+
+	 inline operator size_t() const {return value.to_uint64();}
+	 inline unsigned int to_uint() const {return value.to_uint();}
+	 inline int to_int() const {return value.to_int();}
+
 
 
 	#define CTOR(TYPE) \
-		inline ca_int(TYPE val) : ac_int<size, true>(val) {}
+		inline ca_int(TYPE val) : value(val) {}
 	CTOR(bool)
 	CTOR(char)
 	CTOR(signed char)
@@ -311,124 +562,364 @@ template<int size>
 	CTOR(long)
 	CTOR(unsigned long)
 	#undef CTOR
-	ca_int(double val) : ac_int<size, true>(val) {}
-	ca_int(float val) : ac_int<size, true>(val) {}
+	ca_int(double val) : value(val) {}
+	ca_int(float val) : value(val) {}
 
  };
 
 //**************************************************************************
 //Struct definition for ca_uint
 template<int size>
- class ca_uint : public ac_int<size, false>{
+ class ca_uint{
  public:
+	ac_int<size, false> value;
 
-	 ca_uint() : ac_int<size, false>(){}
+	 inline ca_uint(ac_int<size, true> val) : value(val){}
+	 inline operator ac_int<size, true>(){return value;};
+
+	 ca_uint() : value(){}
+
+	 template <int sourceSize, bool sign>
+	 inline ca_uint(ac_int<sourceSize, sign> val) : value(val){}
 
 	 template <int sourceSize>
-	 inline ca_uint(ac_int<sourceSize, true> val) : ac_int<size, false>(val){}
+	 inline ca_uint(ca_uint<sourceSize> val) : value(val.value) {};
 
 	 template <int sourceSize>
-	 inline ca_uint(ac_int<sourceSize, false> val) : ac_int<size, false>(val){}
-
-
+	 inline ca_uint(ca_int<sourceSize> val) : value(val.value) {};
 
 	 template <int sliceSize>
-	 void set_slc(int lsb, ca_uint<sliceSize> value){
-		 ac_int<size, false>::set_slc(lsb, value);
+	 void set_slc(int lsb, ca_uint<sliceSize> val){
+		 value.set_slc(lsb, val.value);
 	 }
 
 	 template <int sliceSize>
-	 void set_slc(int lsb, ca_int<sliceSize> value){
-		 ac_int<size, false>::set_slc(lsb, value);
+	 void set_slc(int lsb, ca_int<sliceSize> val){
+		 value.set_slc(lsb, val.value);
 	 }
 
 	 template <int sliceSize, int lsbSize>
-	 void set_slc(ca_int<lsbSize> lsb, ca_int<sliceSize> value){
-		 ac_int<size, false>::set_slc(lsb, value);
+	 void set_slc(ca_int<lsbSize> lsb, ca_int<sliceSize> val){
+		 value.set_slc(lsb.value, val.value);
 	 }
 
 	 template <int sliceSize, int lsbSize>
-	 void set_slc(ca_int<lsbSize> lsb, ca_uint<sliceSize> value){
-		 ac_int<size, false>::set_slc(lsb, value);
+	 void set_slc(ca_int<lsbSize> lsb, ca_uint<sliceSize> val){
+		 value.set_slc(lsb.value, val.value);
 	 }
 
 	 template <int sliceSize, int lsbSize>
-	 void set_slc(ca_uint<lsbSize> lsb, ca_int<sliceSize> value){
-		 ac_int<size, false>::set_slc(lsb, value);
+	 void set_slc(ca_uint<lsbSize> lsb, ca_int<sliceSize> val){
+		 value.set_slc(lsb.value, val.value);
 	 }
 
 	 template <int sliceSize, int lsbSize>
-	 void set_slc(ca_uint<lsbSize> lsb, ca_uint<sliceSize> value){
-		 ac_int<size, false>::set_slc(lsb, value);
+	 void set_slc(ca_uint<lsbSize> lsb, ca_uint<sliceSize> val){
+		 fprintf(stderr, "setting slice at %d\n", lsb.to_uint());
+		 value.set_slc(lsb.value, val.value);
 	 }
 
 	 template <int sliceSize, int lsbSize, bool S>
-	 void set_slc(ac_int<lsbSize, S> lsb, ca_int<sliceSize> value){
-		 ac_int<size, false>::set_slc(lsb, value);
+	 void set_slc(ac_int<lsbSize, S> lsb, ca_int<sliceSize> val){
+		 value.set_slc(lsb, val.value);
 	 }
 
 	 template <int sliceSize, int lsbSize, bool S>
-	 void set_slc(ac_int<lsbSize, S> lsb, ca_uint<sliceSize> value){
-		 ac_int<size, false>::set_slc(lsb, value);
+	 void set_slc(ac_int<lsbSize, S> lsb, ca_uint<sliceSize> val){
+		 value.set_slc(lsb, val.value);
 	 }
 
+	 template <int sliceSize, int lsbSize, bool S1, bool S2>
+	 void set_slc(ac_int<lsbSize, S1> lsb, ac_int<sliceSize, S2> val){
+		 value.set_slc(lsb, val.value);
+	 }
+
+	 //*******************************************************************
 
 	 template <int sliceSize>
 	 ca_uint<sliceSize> slc(const int lsb){
-		 return ca_uint<sliceSize>(ac_int<size, false>::template slc<sliceSize>(lsb));
+		 return ca_uint<sliceSize>(value.slc<sliceSize>(lsb));
 	 }
 
 	 template <int sliceSize, int lsbSize>
 	 ca_uint<sliceSize> slc(const ca_uint<lsbSize> lsb){
-		 return ca_uint<sliceSize>(ac_int<size, false>::template slc<sliceSize>(lsb));
+		 return ca_uint<sliceSize>(value.slc<sliceSize>(lsb.value));
 	 }
 
 	 template <int sliceSize, int lsbSize>
 	 ca_uint<sliceSize> slc(const ca_int<lsbSize> lsb){
-		 return ca_uint<sliceSize>(ac_int<size, false>::template slc<sliceSize>(lsb));
+		 return ca_uint<sliceSize>(value.slc<sliceSize>(lsb.value));
 	 }
 
 	 //Would like to get rid of this one
 	 template <int sliceSize, int lsbSize, bool S>
 	 ca_uint<sliceSize> slc(const ac_int<lsbSize, S> lsb){
-		 return ca_uint<sliceSize>(ac_int<size, false>::template slc<sliceSize>(lsb));
+		 return ca_uint<sliceSize>(value.slc<sliceSize>(lsb.value));
 	 }
 
 	 // Assignation
 
 	 ca_uint<size> operator=(const long unsigned int val){
-		 return ac_int<size, false>::operator=(val);
+		 value = val;
+		 return this;
 	 }
 
 	 ca_uint<size> operator=(const long int val){
-		 return ac_int<size, false>::operator=(val);
+		 value = val;
+		 return this;
 	 }
 
 	 ca_uint<size> operator=(const int val){
-		 return ac_int<size, false>::operator=(val);
+		 value = val;
+		 return this;
 	 }
 
 	 ca_uint<size> operator=(const unsigned int val){
-		 return ac_int<size, false>::operator=(val);
+		 value = val;
+		 return this;
 	 }
 
 	 template <int otherSize>
 	 ca_uint<size> operator=(const ca_uint<otherSize> val){
-		 return ac_int<size, false>::operator=(ac_int<otherSize, false>(val));
+		 value = val.value;
+		 return this;
 	 }
 
 	 template <int otherSize>
 	 ca_uint<size> operator=(const ca_int<otherSize> val){
-		 return ac_int<size, false>::operator=(ac_int<otherSize, true>(val));
+		 value = val.value;
+		 return this;
 	 }
 
 	 template <int otherSize, bool sign>
-	 ca_uint<size> operator=(const ac_int<otherSize, sign> val){
-		 return ac_int<size, false>::operator=(ac_int<otherSize, sign>(val));
+	 ca_uint<size> operator=(ac_int<otherSize, sign> val){
+		 value = val;
+		 return this;
 	 }
 
+
+	 //************** Operator Shifts
+
+	 ca_uint<size> operator>>(int val){
+		 ca_int<size> result = value >> val;
+		 return result;
+	 }
+
+	 template <int otherSize, bool sign>
+	 ca_uint<size> operator>>(ac_int<otherSize, sign> val){
+		 ca_int<size> result = value >> val;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	 ca_uint<size> operator>>(ca_int<otherSize> val){
+		 ca_int<size> result = value >> val.value;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	 ca_uint<size> operator>>(ca_uint<otherSize> val){
+		 ca_int<size> result = value >> val.value;
+		 return result;
+	 }
+
+	 //************** Operator Shifts <<
+
+	 ca_uint<size> operator<<(int val){
+		 ca_int<size> result = value << val;
+		 return result;
+	 }
+
+	 template <int otherSize, bool sign>
+	 ca_uint<size> operator<<(ac_int<otherSize, sign> val){
+		 ca_int<size> result = value << val;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	 ca_uint<size> operator<<(ca_int<otherSize> val){
+		 ca_int<size> result = value << val.value;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	 ca_uint<size> operator<<(ca_uint<otherSize> val){
+		 ca_int<size> result = value << val.value;
+		 return result;
+	 }
+
+	 //************** Operator +
+
+	 ca_uint<size+1> operator+(int val){
+		 ca_int<size+1> result = value + val;
+		 return result;
+	 }
+
+	 template <int otherSize, bool sign>
+	 ca_uint<(size > otherSize)? size + 1 : otherSize + 1> operator+(ac_int<otherSize, sign> val){
+		 ca_int<(size > otherSize)? size + 1 : otherSize + 1> result = value + val;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	 ca_uint<(size > otherSize)? size + 1 : otherSize + 1> operator+(ca_int<otherSize> val){
+		 ca_int<(size > otherSize)? size + 1 : otherSize + 1> result = value + val.value;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	 ca_uint<(size > otherSize)? size + 1 : otherSize + 1> operator+(ca_uint<otherSize> val){
+		 ca_int<(size > otherSize)? size + 1 : otherSize + 1> result = value + val.value;
+		 return result;
+	 }
+
+	 //************** Operator -
+
+	 ca_uint<size+1> operator-(int val){
+		 ca_int<size+1> result = value - val;
+		 return result;
+	 }
+
+	 template <int otherSize, bool sign>
+	 ca_uint<(size > otherSize)? size + 1 : otherSize + 1> operator-(ac_int<otherSize, sign> val){
+		 ca_int<(size > otherSize)? size + 1 : otherSize + 1> result = value - val;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	 ca_uint<(size > otherSize)? size + 1 : otherSize + 1> operator-(ca_int<otherSize> val){
+		 ca_int<(size > otherSize)? size + 1 : otherSize + 1> result = value - val.value;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	 ca_uint<(size > otherSize)? size + 1 : otherSize + 1> operator-(ca_uint<otherSize> val){
+		 ca_int<(size > otherSize)? size + 1 : otherSize + 1> result = value - val.value;
+		 return result;
+	 }
+
+	 //************** Operator *
+
+	 ca_uint<size+32> operator*(int val){
+		 ca_int<size+32> result = value * val;
+		 return result;
+	 }
+
+	 template <int otherSize, bool sign>
+	 ca_uint<size+otherSize> operator*(ac_int<otherSize, sign> val){
+		 ca_int<size+otherSize> result = value * val;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	 ca_uint<size+otherSize> operator*(ca_int<otherSize> val){
+		 ca_int<size+otherSize> result = value * val.value;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	 ca_uint<size+otherSize> operator*(ca_uint<otherSize> val){
+		 ca_int<size+otherSize> result = value * val.value;
+		 return result;
+	 }
+
+	 //******************************** Operator ==
+
+	 ca_uint<1> operator==(int val){
+		 ca_int<1> result = value == val;
+		 return result;
+	 }
+
+	 template <int otherSize, bool sign>
+	 ca_uint<1> operator==(ac_int<otherSize, sign> val){
+		 ca_int<1> result = value == val;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	 ca_uint<1> operator==(ca_int<otherSize> val){
+		 ca_int<1> result = value == val.value;
+		 return result;
+	 }
+
+	 template <int otherSize>
+	 ca_uint<1> operator==(ca_uint<otherSize> val){
+		 ca_int<1> result = value == val.value;
+		 return result;
+	 }
+
+	 //********************************* Operator <
+
+	 template <int otherSize, bool sign>
+	 bool operator<(ac_int<otherSize, sign> val){
+		 return value < val;
+	 }
+
+	 template <int otherSize>
+	 bool operator<(ca_int<otherSize> val){
+		 return value < val;
+	 }
+
+	 template <int otherSize>
+	 bool operator<(ca_uint<otherSize> val){
+		 return value < val;
+	 }
+
+	 //********************************* Operator >
+
+	 template <int otherSize, bool sign>
+	 bool operator>(ac_int<otherSize, sign> val){
+		 return value > val;
+	 }
+
+	 template <int otherSize>
+	 bool operator>(ca_int<otherSize> val){
+		 return value > val;
+	 }
+
+	 template <int otherSize>
+	 bool operator>(ca_uint<otherSize> val){
+		 return value > val;
+	 }
+
+	 //********************************* Operator []
+
+	 ca_uint<1> operator[](int val){
+		 return ca_uint<1>(value.slc<1>(val));
+	 }
+
+	 //********************************* Operator ++ and --
+
+	 ca_uint<size+1> operator ++(int){
+		 value++;
+		 return this;
+	 }
+
+	 ca_uint<size+1> operator --(int){
+		 value--;
+		 return this;
+	 }
+
+	 ca_uint<size+1> operator +=(int val){
+		 value += val;
+		 return this;
+	 }
+
+	 ca_uint<size+1> operator -=(int val){
+		 value -= val;
+		 return this;
+	 }
+
+	 //*********************************** Implicit and explicit conversions
+
+	 inline operator size_t() const {return value.to_uint64();}
+	 inline unsigned int to_uint() const {return value.to_uint();}
+	 inline int to_int() const {return value.to_int();}
+
+
+
 	#define CTOR(TYPE) \
-		inline ca_uint(TYPE val) : ac_int<size, false>(val) {}
+		inline ca_uint(TYPE val) : value(val) {}
 	CTOR(bool)
 	CTOR(char)
 	CTOR(signed char)
@@ -440,10 +931,11 @@ template<int size>
 	CTOR(long)
 	CTOR(unsigned long)
 	#undef CTOR
-	ca_uint(double val) : ac_int<size, false>(val) {}
-	ca_uint(float val) : ac_int<size, false>(val) {}
+	ca_uint(double val) : value(val) {}
+	ca_uint(float val) : value(val) {}
 
  };
+
 
 #endif
 
