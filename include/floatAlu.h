@@ -38,7 +38,6 @@ private :
 	ac_int<24,false> tmp = 0;
 	ac_int<32, false> localResult = 0;
 	ac_int<32,false> statusRegister = 0;
-	ac_int<9,false> exp = 0;
 	
 
 	
@@ -54,12 +53,12 @@ public :
 	  ac_int<9, true> f1Exp; 
 	  ac_int<9, true> f2Exp;
 	  
-	  ac_int<8,false> f1UExp;
 	  ac_int<8,false> f2UExp;
+	  ac_int<8,false> f1UExp;
 
 	  ac_int<1, false> outputSign;                 
 	  ac_int<48, false> outputMantissa;
-	  ac_int<24, false> resultMantissa;
+	  ac_int<48, false> resultMantissa;
  	  ac_int<9, false> outputExp;
 
 
@@ -72,36 +71,36 @@ public :
 
       stall =false;       
 
-	f1Mantissa = dctoEx.rhs.slc<23>(0);
-	f2Mantissa = dctoEx.lhs.slc<23>(0);
+	f1Mantissa = dctoEx.lhs.slc<23>(0);
+	f2Mantissa = dctoEx.rhs.slc<23>(0);
 	f1Mantissa[23] = 1;
 	f2Mantissa[23] = 1;
 	
-	if(dctoEx.rhs.slc<8>(23) != 0)
+	if(dctoEx.lhs.slc<8>(23) != 0)
 	{
 		f1Mantissa[23] = 1;
-		f1Exp = dctoEx.rhs.slc<8>(23) - 127;  
+		f1Exp = dctoEx.lhs.slc<8>(23) - 127;  
 	 }
 	 else 
 	 {
 		f1Exp = - 126;
 	 }
 	
-	 if(dctoEx.lhs.slc<8>(23) != 0)
+	 if(dctoEx.rhs.slc<8>(23) != 0)
 	 {
 		f2Mantissa[23] = 1;
-		 f2Exp = dctoEx.lhs.slc<8>(23) - 127;  
+		 f2Exp = dctoEx.rhs.slc<8>(23) - 127;  
 	 }
 	 else 
 	 {
 	  	f2Exp =  - 126;  
 	 }
 				
-	f1Sign = dctoEx.rhs.slc<1>(31);
-	f2Sign = dctoEx.lhs.slc<1>(31);
+	f1Sign = dctoEx.lhs.slc<1>(31);
+	f2Sign = dctoEx.rhs.slc<1>(31);
 	
-	f1UExp = dctoEx.rhs.slc<8>(23);
-	f2UExp = dctoEx.lhs.slc<8>(23);
+	f1UExp = dctoEx.lhs.slc<8>(23);
+	f2UExp = dctoEx.rhs.slc<8>(23);
 	
 
 	//  Nan handling
@@ -130,7 +129,7 @@ public :
 	   			if (dctoEx.useRs2)
 	   				localResult = dctoEx.rhs;  
 	   			else
-	   				localResult = CNAN; // seg fault
+	   				localResult = CNAN; 
 	    }
 	}
 	else if(dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 == RISCV_FLOAT_OP_CMP 
@@ -170,42 +169,106 @@ public :
 						   case RISCV_FLOAT_OP : 
 							  switch(dctoEx.funct7)
 							  {
+									  case RISCV_FLOAT_OP_SUB  : 
+											f2Sign = 1 - f2Sign;
 									  case  RISCV_FLOAT_OP_ADD :
 										  if(f1Exp != 0xff & f2Exp != 0xff) // operand are not exceptions
 										  {
 										  
 											if(!subState)
 											{
-												state = 1;
+												state = f1UExp - f2UExp;
 												subState = 1;
 												stall = true;
-												f1Val  = f1Mantissa;
-												f2Val = f2Mantissa;
+												f1Val = (ac_int<48,false>) f1Mantissa;
+												f2Val = (ac_int<48,false>) f2Mantissa;
 											}
 											else
 											{
-													
+															
 												subState = 0;	
 												stall = false;					
+												
+												// Compute result Mantissa, it have to be > 0
 												if(f1Sign == f2Sign)
-													localResult.set_slc(31, f1Sign);
+												{
+														resultMantissa = f1Val + f2Val;
+												}
 												else
 												{
 													if(f1Val > f2Val)
-														localResult.set_slc(31,f1Sign);
+													{
+														resultMantissa = f1Val - f2Val;
+													} 
 													else
-														localResult.set_slc(31,f2Sign);
+													{
+														resultMantissa = f2Val - f1Val;
+													}
 												}
-
-														
-												resultMantissa = f1Val + f2Val;
+												
+												// Compute the sign 
 												
 
+													if(f1UExp > f2UExp)
+													{
+														outputSign = f1Sign;
+													}
+													else
+													{
+														if(f1UExp == f2UExp)
+														{
+															if(f1Mantissa > f2Mantissa)
+															{
+																outputSign = f1Sign;
+															}
+															else
+															{
+																outputSign = f2Sign;
+															}
+														}
+														else
+														{
+															outputSign = f2Sign;
+														}
+													}
+												
+												
+												localResult.set_slc(31,outputSign);
 													
-												outputExp = exp +126;
+												if(f1UExp > f2UExp)
+													outputExp = f1UExp;
+												else
+													outputExp = f2UExp;
+												
 
-												localResult.set_slc(0, resultMantissa.slc<23>(1));
-												localResult.set_slc(23, outputExp.slc<8>(0));   
+												
+												
+												for(i = 47; i >= 0; i--)  //Find the MSB
+													if (resultMantissa[i])
+														break;
+														
+
+												if (i > 23) 
+												{
+													localResult.set_slc(0, resultMantissa.slc<23>(i - 23) );
+													outputExp += i - 23;
+												}
+												else 
+												{
+													if(outputExp > 23 - i)
+													{
+															outputExp -=23 - i;
+															resultMantissa = resultMantissa << (23 - i);
+															localResult.set_slc(0,resultMantissa.slc<23>(0));
+													}
+													else
+													{
+															localResult.set_slc(0,resultMantissa.slc<23>(0));
+															outputExp = 0;
+													}	
+												}
+																								
+												localResult.set_slc(23,outputExp.slc<8>(0));
 												
 												if(outputExp.slc<8>(0) > 254) // over and underflow handeling with return of infty
 												{
@@ -242,75 +305,7 @@ public :
 															
 										      break;                                                  
 										                                                              
-									  case RISCV_FLOAT_OP_SUB  : 
-											if(f1Exp != 0xff & f2Exp != 0xff) // float are not exceptions
-										  	{
-												if(!subState)
-												{
-													state = 1;
-													subState = 1;
-													stall = true;
-													f1Val  = f1Mantissa;
-													f2Val = f2Mantissa;
-												}
-												else
-												{
-
-													subState = 0;	
-													stall = false;					
-													if(f1Sign == f2Sign)
-														localResult.set_slc(31, f1Sign);
-													else
-													{
-														if(f1Val > f2Val)
-															localResult.set_slc(31,f1Sign);
-														else
-															localResult.set_slc(31,f2Sign);
-													}
-													
-													f2Sign = f2Sign ^ f2Sign;										
-													resultMantissa = f1Val + f2Val;
-													
-								
-															
-													outputExp = f1Exp +128;
-
-													localResult.set_slc(0, resultMantissa.slc<23>(1));
-													localResult.set_slc(23, outputExp);   
-													
-													if(outputExp > 254) // over and underflow handeling with return of infty
-														if(f1Sign != 0)
-															{
-															UNDERF = 1;		
-															localResult = INFN;
-															}
-														else
-															{
-															OVERF = 1;		
-															localResult = INFP;
-															}                                   
-												}                        
-										  }
-										  else // one of the operand is an exception
-										  {
-										  	if (f1Exp == 0xff)
-										  	{
-										  		if (f2Exp == 0xff)
-										  		{
-										  			if(f1Sign == f2Sign)
-										  				localResult = dctoEx.rhs; // infty + infty = infty if they have the same sign
-										  			else
-										  				localResult = CNAN; // + infty - infty = Nan 
-										  		}
-										  		else
-										  			localResult = dctoEx.rhs; // infty + float = infty 
-										  	}
-										  	else
-										  		localResult = dctoEx.lhs; // infty + float = infty 
-										  }  
-											
-													  break;                                                  
-										                                                              
+										                
 									  case RISCV_FLOAT_OP_DIV  : 
 									  	if(f1Exp != 0xff & f2Exp != 0xff) // float are not exceptions
 										{
@@ -320,9 +315,9 @@ public :
 													 quotient = 0;
 													 remainder = 0;
 													 stall = true;
-													 f1Val.set_slc(23,f1Mantissa);
-													 f2Val.set_slc(0, f2Mantissa);	
-											  	}
+													 f1Val.set_slc(24,f1Mantissa);
+													 f2Val.set_slc(0,f2Mantissa);
+ 											  	}
 												else
 												{
 													DIV0 = 1;
@@ -359,7 +354,7 @@ public :
 						 							outputExp++;                                                    
 
 												localResult.set_slc(31, outputSign); 
-						 						localResult.set_slc(0, resultMantissa);
+						 						localResult.set_slc(0, resultMantissa.slc<23>(0));
 						 						localResult.set_slc(23, outputExp.slc<8>(0));
 						 						
 						 						if(outputExp.slc<8>(0) > 254) // over and underflow handeling with return of infty
@@ -560,7 +555,7 @@ public :
 								break;                                                  
 										                                                              
 									  case RISCV_FLOAT_OP_CMP  :
-									  localResult = 0;
+									  localResult = 1;
 
 										switch(dctoEx.funct3)
 												{
@@ -570,13 +565,13 @@ public :
 															if(f1Sign.slc<1>(0) != 0) // negative
 															{
 																if (f1UExp < f2UExp)
-																	localResult =  1;
+																	localResult =  0;
 																else 
 																{
 																	if(f2UExp == f1UExp)
 																	{
 																		if(f1Mantissa <= f2Mantissa)
-																		localResult = 1;
+																		localResult = 0;
 																	}
 																																	
 																}	
@@ -584,13 +579,13 @@ public :
 															else
 															{
 																if (f1UExp > f2UExp)
-																	localResult = 1;
+																	localResult = 0;
 																else
 																{
 																	if(f2UExp == f1UExp)
 																	{	
 																		if(f1Mantissa >= f2Mantissa)
-																			localResult = 1;
+																			localResult = 0;
 																	}
 																}
 															}
@@ -598,7 +593,7 @@ public :
 														else
 														{
 															if(f1Sign < f2Sign)
-																localResult = 1 ;
+																localResult = 0 ;
 														}
 
 													break;
@@ -609,13 +604,13 @@ public :
 															if(f1Sign.slc<1>(0) != 0) // negative
 															{
 																if (f1UExp < f2UExp)
-																	localResult =  1;
+																	localResult =  0;
 																else 
 																{
 																	if(f2UExp == f1UExp)
 																	{
 																		if(f1Mantissa < f2Mantissa)
-																		localResult = 1;
+																		localResult = 0;
 																	}
 																																	
 																}	
@@ -623,13 +618,13 @@ public :
 															else
 															{
 																if (f1UExp > f2UExp)
-																	localResult = 1;
+																	localResult = 0;
 																else
 																{
 																	if(f2UExp == f1UExp)
 																	{	
 																		if(f1Mantissa > f2Mantissa)
-																			localResult = 1;
+																			localResult = 0;
 																	}
 																}
 															}
@@ -637,7 +632,7 @@ public :
 														else
 														{
 															if(f1Sign < f2Sign)
-																localResult = 1 ;
+																localResult = 0 ;
 														}
 
 													break;
@@ -649,63 +644,40 @@ public :
 												}                                    
 										      break;                                                  
 										                                                              
-									  case RISCV_FLOAT_OP_CVTSW :   													if( (f1Exp != 0 & f1Mantissa != 0 ) & f1Exp != 0xff) // if f1 is not an exception (exception are Nan infty and 0)
-									  				{
-										  				
-														if(dctoEx.rs2) // FCVT.S.WU
-														{
-															for(i = 31; i >= 0; i--)
-																if (dctoEx.rhs[i])
-																		break;
-
-															localResult.set_slc(23, (ac_int<8,false>) (127 + i));
-															localResult.set_slc(0, (dctoEx.rhs << (31 - i)).slc<23>(8) );
-														}
-														else // FCVT.S.W
-														{
-															if(dctoEx.rhs[31]) // the number is negative -> 2's complement
-															{
-																for(i = 30; i >= 0; i--)
-																	if (!dctoEx.rhs[i])
-																			break;
-																			
-																localResult.set_slc(23, (ac_int<8,false>) (127 + i-1));
-																localResult.set_slc(0, (dctoEx.rhs << (31 - i+1)).slc<23>(8) );
-
-															
-															}
-															else 
-															{
-																for(i = 31; i >= 0; i--)
-																	if (dctoEx.rhs[i])
-																		break;
-																localResult.set_slc(23, (ac_int<8,false>) (127 + i));
-																localResult.set_slc(0, (dctoEx.rhs << (31 - i)).slc<23>(8) );
-															}
-														}
-									  				}   
-													else //f1 is an exception
-													{
-														if(f1Exp != 0) // infty or Nan 
-														{
-															if(f1Mantissa != 0) // f1Mantissa != 0 -> Nan
-																{
-																	localResult = CNAN;	
-																}
-															else // infty --> max int
-																localResult = 0xffffffff;
-															
-														}
-														else // 0
-														{
-															localResult.set_slc(0, (ac_int<31, false>) 0);
-															localResult.set_slc(31, f1Sign);
-														}
+									  case RISCV_FLOAT_OP_CVTSW :  
+											if(dctoEx.rs2 != 0 ) // FCVT.S.WU
+											{
+												for(i = 31; i >= 0; i--)
+													if (dctoEx.lhs[i])
+															break;
+												localResult.set_slc(23, (ac_int<8,false>) (127 + i));
+												localResult.set_slc(0, (dctoEx.lhs << (31 - i)).slc<23>(8) );
+											}
+											else // FCVT.S.W
+											{
+												if(dctoEx.lhs[31]) // the number is negative -> 2's complement
+												{
+													for(i = 30; i >= 0; i--)
+														if (!dctoEx.lhs[i])
+																break;
+																	
+													localResult.set_slc(23, (ac_int<8,false>) (127 + i-1));
+													localResult.set_slc(0, (dctoEx.rhs << (31 - i+1)).slc<23>(8) );
 													}
-										      break;                                                  
-										                                                              
+												else 
+												{
+													for(i = 30; i >= 0; i--)
+														if (dctoEx.lhs[i])
+															break;
+													localResult.set_slc(23, (ac_int<8,false>) (127 + i));
+													localResult.set_slc(0, (dctoEx.lhs << (31 - i)).slc<23>(8) );
+												}
+											}
+							  				  
+									      break;                                                  
+									                                                              
 									  case RISCV_FLOAT_OP_MVWX :                                      
-								  localResult = dctoEx.lhs;
+									  localResult = dctoEx.lhs;
 										      break;                                                  
 										                                                              
 									  case RISCV_FLOAT_OP_CLASSMVXW :                                 
@@ -750,7 +722,7 @@ public :
 							if(!state)
 							{
 								outputSign = f1Sign ^ f2Sign;
-							  	outputExp = f1Exp - f2Exp + 127;
+							  	outputExp = f1Exp - f2Exp + 126;
 								
 								for(i = 47; i >= 0; i--)  //Find the MSB
 									if (quotient[i])
@@ -784,6 +756,7 @@ public :
 										OVERF = 1;		
 										localResult = INFP;
 									}
+							 localResult.set_slc(31, outputSign);
 						
 							}
 							break;
@@ -791,23 +764,24 @@ public :
 								
 							case RISCV_FLOAT_OP_ADD :
 							case RISCV_FLOAT_OP_SUB: 
-								if (f2Exp < f1Exp)
+								stall = true;
+
+								if (state > 0)
 								{
-									if (f1Exp - f2Exp > 32)
-										{f2Val = f2Val >> 32; f2Exp -= 32;}
+									if (state > 32)
+										{f2Val = f2Val >> 32; state -=32;}
 									else
-										{f2Val = f2Val >> (f1Exp - f2Exp); f2Exp = f1Exp; state = 0;}
+										{f2Val = f2Val >> state; state =0;}
 								}
 								else
 								{
-									if (f2Exp - f1Exp > 32)
-				  						{f1Val = f1Val >> 32; f1Exp -= 32;}
+									if (state < -32)
+										{f1Val = f1Val >> 32; state +=32;}
 									else
-										{f1Val = f1Val >> (f2Exp - f1Exp); f1Exp = f2Exp; state = 0;}
+										{f1Val = f1Val >> - state; state =0;}
 								
 								}
-								
-								exp = f1Exp;
+
 								break;  
 								
 							default: 

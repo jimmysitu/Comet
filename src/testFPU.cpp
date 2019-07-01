@@ -15,7 +15,8 @@
 #include <cstdlib>
 #include <ctime>
 #include <random>
-
+#include <cmath>
+ 
  
 #include <core.h>
 
@@ -39,7 +40,15 @@ std::uniform_real_distribution<float> distribution(-5000,5000);
 // Int random init
 std::uniform_int_distribution<int> distributionFunct7(0,10);
 std::uniform_int_distribution<int> distributionFunct3(0,2);
+std::uniform_int_distribution<int> idistribution(-5000,5000);
 
+
+// Not use yet
+std::uniform_int_distribution<int> mantisse(0,8388607);
+std::uniform_int_distribution<int> exposant(0,255);
+std::uniform_int_distribution<int> signe(0,1);
+ 
+ 
 int sgn(float x)
 {
 	if (x > 0)
@@ -51,33 +60,34 @@ int sgn(float x)
 void setTest(struct processorState &initialState, struct processorState &finalState,
 			 unsigned int &instruction, float &p)
 {
-
+	int sa,ma,ea,sb,mb,eb,d;
 	float fa,fb,fc;
 	float *a,*b,*c;
 	int opCode, funct7, funct3;
 
 	opCode = 2; 
-	funct7 = 3;//distributionFunct3(generator);
-	funct3 = 0;//distributionFunct3(generator);
+	funct7 = distributionFunct3(generator);
+	funct3 = distributionFunct3(generator);
 	
 	
+	d = idistribution(generator);
 	
-	fa = distribution(generator); 
+	fa = distribution(generator);
 	fb = distribution(generator);
+	
 
-	p = 0.05 ;//* fa*sgn(fa);
+	p = 0.005* fa*sgn(fa);
+	
 
 	a = &fa;
 	b = &fb;
 
-	printf("%f /  %f = %f\n", fa, fb , fa/fb);
-
-	initialState.regs[1] = *((int*) a);
+	initialState.regs[1] = d;
 	initialState.regs[32] = *((int*) a);
 	initialState.regs[33] = *( (int*) b);
 	
 
-	finalState.regs[1] = *((int*) a);
+	finalState.regs[1] = d;
 	finalState.regs[32] = *((int*) a);
 	finalState.regs[33] = *((int*) b); 
 
@@ -105,7 +115,7 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 					fc = fa - fb;
 					c = &fc;
 					finalState.regs[34] = *( (int*) c); 
-					instruction = 0x10200153;
+					instruction = 0x8100153;
 					break;
 
 				case 2 : //Mul
@@ -194,7 +204,7 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 					break;
 
 				case 9 : //Cvt.s.w
-					fc = (float) *((int*) a);
+					fc = (float) d;
 					c= &fc;
 					finalState.regs[34] = *((int*) c);
 					instruction = 0xd0008153;
@@ -215,7 +225,7 @@ int main(int argc, char** argv)
 {
 		srand(time(NULL));
 		float p;
-		
+		int a = 0,c = 0;
 
 		unsigned int instruction, numberOfCycles;
 		struct processorState initialState, finalState;
@@ -226,8 +236,8 @@ int main(int argc, char** argv)
 
 		core.im = new SimpleMemory(im);
 		core.dm = new SimpleMemory(dm);
-	while(1){
-	
+	while(a<100000){
+		a++;
 		for(int i =0; i <64; i++)
 		{
 			initialState.regs[i] = 0;
@@ -323,7 +333,7 @@ int main(int argc, char** argv)
 		bool worked = true;
 
 		if ((int)core.regFile[2] != (int)finalState.regs[2] )
-			printf("Issue with instruction : %x at register 2, awnser is %x and should be %x\n", instruction,core.regFile[2], finalState.regs[2]);
+			{c++; printf("Issue with instruction : %x at register 2, awnser is %x and should be %x\n", instruction,core.regFile[2], finalState.regs[2]);}
 
 
 		float diff; 
@@ -341,13 +351,12 @@ int main(int argc, char** argv)
 		
 		
 		if (diff*sgn(diff) > p )
-			printf("Issue with instruction : %x at register 34, awnser is %x and should be %x\n", instruction,core.regFile[34], finalState.regs[34]);
+			{c++;printf("Issue with instruction : %x at register 34, awnser is %x and should be %x\n", instruction,core.regFile[34], finalState.regs[34]);}
 
 		
-		
-
 
 	}
+	printf("error rate = %d / %d\n",c,a);
 
 	return 0;
 
