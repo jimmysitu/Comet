@@ -2,7 +2,7 @@ XLEN?=32
 CCRV=riscv$(XLEN)-unknown-elf-gcc
 CCHOST=gcc
 CFLAGS=-Wno-overflow
-EXEC=matmul
+EXEC=qsort
 
 all: $(EXEC).riscv$(XLEN)
 
