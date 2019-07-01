@@ -2,7 +2,7 @@
 
 SUBFOLDERS=$(ls -d */)
 COMETSIM="../../build/bin/comet.sim"
-TIMEOUT="90s"
+TIMEOUT="30s"
 
 for TEST in $SUBFOLDERS
 do
