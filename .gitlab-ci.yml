@@ -60,3 +60,10 @@ test:applications:
   script:
     - cd tests
     - ./runTests.sh
+    
+    
+test:float:
+	stage: test
+	script:
+	-cd build/bin
+	- ./testFPU
