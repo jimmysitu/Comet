@@ -39,6 +39,16 @@ private :
 	ac_int<32, false> localResult = 0;
 	ac_int<32,false> statusRegister = 0;
 	
+	// var for sqrt
+	
+	bool performSqrt = false;
+	int iter = 0;
+	int step = 0;
+	bool doneSqrt = false;
+	ac_int<32,false> tempSqrt; // we should choose a value near the sqrt of lhs, the use of look up table may help.
+	ac_int<32,false> tempValue = 0;
+	
+	
 
 	
 public :
@@ -62,14 +72,97 @@ public :
  	  ac_int<9, false> outputExp;
 
 
-
       float f1;
 	  int g;
 	  int i;
 	  
+    stall =false;       
 
+	 	// Pretreatment for SQRT
+	 	
+		if(dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 == RISCV_FLOAT_OP_SQRT)
+		{
+			/* set the flags, opCode and funct to proceed the correct compute 
+				iteration = 5
+				u_n+1 = (u_n + a/u_n) >> 1
+			
+			while(iter > 0)
+				step n°0 : a/u_n
+				step n°1 : u_n + a/u_n
+				step n°2 : >> 1 & iter--
+			*/ 
+			
+			if(!iter) // iter == 0 case 1 : we haven't compute the value yet; case 2 : we have already compute it.
+			{
+				if(doneSqrt)
+				{
+					localResult = tempSqrt;
+					tempSqrt = dctoEx.lhs;
+					performSqrt = 0;
+					doneSqrt = 0;
+				}
+				else // init the sqrt
+				{
+							iter = 10;
+							performSqrt = 1;
+							step = 0;
+							tempValue = 0;
+							tempSqrt = dctoEx.lhs;
+							
+							//init the opCode funct and value for step 0
+							
+							dctoEx.opCode  = RISCV_FLOAT_OP;
+							dctoEx.funct7 = RISCV_FLOAT_OP_DIV;
+							dctoEx.rhs = tempSqrt;
+							stall = true;
+				}
+			}
+			else // iter != 0, we are computing a sqrt, we juste have to set the value 
+			{
+				switch(step)
+				{
+					case 0 :
+						performSqrt = 1;
+						dctoEx.opCode  = RISCV_FLOAT_OP;
+						dctoEx.funct7 = RISCV_FLOAT_OP_DIV;
+						dctoEx.rhs = tempSqrt;
+						stall = true;
+						break;
+						
+					case 1 :
+						performSqrt = 1;
+						dctoEx.opCode = RISCV_FLOAT_OP;
+						dctoEx.funct7 = RISCV_FLOAT_OP_ADD;
+						dctoEx.lhs = tempValue;
+						dctoEx.rhs = tempSqrt;
+						stall = true;
+						break; 	
+						
+					case 2 : 
+						performSqrt = 1;
+						dctoEx.opCode  = RISCV_FLOAT_OP;
+						dctoEx.funct7 = RISCV_FLOAT_OP_DIV;
+						dctoEx.lhs = tempValue;
+						dctoEx.rhs = 0x40000000;
+						stall = true;
+						break;
+						
+					case 3 :
+						if(iter == 1)
+							doneSqrt = 1;
+						
+						performSqrt = 1;
+						iter--;
+						step = 0;
+						stall = true;
+						tempSqrt = tempValue;
+						break;
+				}
+			}
+		}
+		
+	// Initialisation	
 
-      stall =false;       
 
 	f1Mantissa = dctoEx.lhs.slc<23>(0);
 	f2Mantissa = dctoEx.rhs.slc<23>(0);
@@ -138,9 +231,7 @@ public :
 	
 	else// Normal case
 	{
-
-
-				   if(!state)                                              
+					   if(!state)                                              
 					 {
 						 switch(dctoEx.opCode)                                                   
 						  {                                                                       
@@ -270,6 +361,7 @@ public :
 																								
 												localResult.set_slc(23,outputExp.slc<8>(0));
 												
+												
 												if(outputExp.slc<8>(0) > 254) // over and underflow handeling with return of infty
 												{
 													if(f1Sign != 0)
@@ -283,6 +375,13 @@ public :
 														localResult = INFP;
 														}    
 												}                     
+												
+												if(performSqrt)
+												{
+													tempValue = localResult;
+													step++;
+													stall = true;
+												}
 											}
 										  }
 										  else // one of the operand is an exception
@@ -299,7 +398,7 @@ public :
 										  		else
 										  			localResult = dctoEx.rhs; // infty + float = infty 
 										  	}
-										  	else // Nan are not handle yet
+										  	else 
 										  		localResult = dctoEx.lhs; // infty + float = infty 
 										  }  
 															
@@ -307,6 +406,7 @@ public :
 										                                                              
 										                
 									  case RISCV_FLOAT_OP_DIV  : 
+
 									  	if(f1Exp != 0xff & f2Exp != 0xff) // float are not exceptions
 										{
 											  	if(dctoEx.lhs != 0)
@@ -404,10 +504,12 @@ public :
 										  }  
 										      break; 
 										      
-										                                                              
-									  case RISCV_FLOAT_OP_SQRT :                                      
-										      break;                                                  
-										                                                              
+									  /*case RISCV_FLOAT_OP_SQRT:
+										
+										 everything is handle in pretreatment
+											                                                                                         
+								      */ 	                                 
+								                                   
 									  case RISCV_FLOAT_OP_SGN  :
 										switch(dctoEx.funct3)
 										{
@@ -758,6 +860,13 @@ public :
 									}
 							 localResult.set_slc(31, outputSign);
 						
+							
+								if(performSqrt)
+								{
+									step++;
+									tempValue = localResult;
+									stall = true;
+								}
 							}
 							break;
 
@@ -781,6 +890,8 @@ public :
 										{f1Val = f1Val >> - state; state =0;}
 								
 								}
+								
+
 
 								break;  
 								
@@ -793,7 +904,6 @@ public :
    if(( (dctoEx.opCode == RISCV_FLOAT_OP)|(dctoEx.opCode == RISCV_FLOAT_MADD)|(dctoEx.opCode == RISCV_FLOAT_MSUB)|(dctoEx.opCode == RISCV_FLOAT_NMADD)|(dctoEx.opCode == RISCV_FLOAT_NMSUB) ))
    {
    	   extoMem.result = localResult;
-
 		   
    }
 
