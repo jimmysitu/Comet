@@ -85,7 +85,8 @@ public :
 	}
 
 
-	void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall)
+
+  bool process(struct DCtoEx dctoEx, ac_int<32, false> &result, bool &stall) 
 {		
    	  ac_int<1, false> f1Sign;
 	  ac_int<1, false> f2Sign;
@@ -270,12 +271,10 @@ public :
 						 switch(dctoEx.opCode)                                                   
 						  {                                                                       
 							 case RISCV_FLOAT_LW:
-							 	extoMem.isLongInstruction = 1;                                  
 							 	localResult = dctoEx.lhs + dctoEx.rhs;   
 							 break; 
 
 						   case RISCV_FLOAT_SW:
-									extoMem.datac = dctoEx.datac;                                   
 									localResult = dctoEx.lhs + dctoEx.rhs;  
 							 break;
 					 
@@ -1007,11 +1006,12 @@ public :
    		
    		
    	
-   	   extoMem.result = localResult;
+   	   result = localResult;
+   	   return true;
 		   
    }
 
-
+	return false;
 
 } 
 
