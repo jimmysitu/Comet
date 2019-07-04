@@ -23,6 +23,7 @@ int main(void)
     int k;
     int sum;
 
+    for(int z = 0; z < 2000; z++)
     for (i=0; i<4; i++)
     {
         for (j=0; j<4; j++)

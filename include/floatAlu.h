@@ -19,7 +19,7 @@
 #define OVERF statusRegister[2]
 #define UNDERF statusRegister[1]
 #define INEX statusRegister[0]
-#define RNDM statusRegister.slc<3>(5)
+#define RNDM 1 //statusRegister.slc<3>(5)
 #define CNAN 0x7fc00000
 #define INFP 0x7f800000
 #define INFN 0xff800000
@@ -39,17 +39,25 @@ private :
 	ac_int<24,false> tmp = 0;
 	ac_int<32, false> localResult = 0;
 	ac_int<32,false> statusRegister = 0;
-	enum roundingMode {RNE, RTZ, RDN, RUP, RMM};
 	
-	// var for sqrt
+	enum roundingMode {
+	 RNE = 0,
+	 RTZ = 1,
+	 RDN = 2, 
+	 RUP = 3, 
+	 RMM = 4};
+	
+	// var for pretreatment
 	
 	bool performSqrt = false;
+	bool performFused = 0;
 	int iter = 0;
 	int step = 0;
+	ac_int<32,false> tempValue = 0;
 	bool doneSqrt = false;
 	ac_int<32,false> tempSqrt; // we should choose a value near the sqrt of lhs, the use of look up table may help.
-	ac_int<32,false> tempValue = 0;
 	
+
 	
 
 	
@@ -110,9 +118,9 @@ public :
 
       float f1;
 	  int g,i,k;
-	  bool isHalf = false;
+	  bool isHalf = false, changeResult = false;
 	  
-    stall =false;       
+    stall = false;       
 
 	 	// Pretreatment for SQRT
 	 	
@@ -136,6 +144,7 @@ public :
 					tempSqrt = dctoEx.lhs;
 					performSqrt = 0;
 					doneSqrt = 0;
+					changeResult = true;
 				}
 				else // init the sqrt
 				{
@@ -197,6 +206,88 @@ public :
 			}
 		}
 		
+	if((dctoEx.opCode == RISCV_FLOAT_MADD)|(dctoEx.opCode == RISCV_FLOAT_MSUB)|(dctoEx.opCode == RISCV_FLOAT_NMADD)|(dctoEx.opCode == RISCV_FLOAT_NMSUB))
+	{
+		/*
+		FMADD 
+			step n°0 : rs1 * rs2
+			step n°1 : rs1 * rs2 + rs3 
+			
+		FMSUB 
+			step n°0 : same as FMADD
+			step n°1 : same as FMADD with - rs3
+			
+		FNMADD 
+			step n°0 : same as FMADD with - rs1
+			step n°1 : same as FMADD
+			
+		FNMSUB 
+			step n°0 : same as FMADD with - rs1
+			step n°1 : same as FMSUB
+		
+		*/
+		
+	if(!performFused)
+	{	
+			performFused = 1;
+				switch(dctoEx.opCode)
+				{
+					case RISCV_FLOAT_NMADD : 
+					case RISCV_FLOAT_NMSUB : 
+						dctoEx.lhs[31] = 1 - dctoEx.lhs.slc<1>(31); 
+					case RISCV_FLOAT_MSUB : 
+					case RISCV_FLOAT_MADD : 
+						dctoEx.opCode = RISCV_FLOAT_OP;
+						dctoEx.funct7 = RISCV_FLOAT_OP_MUL;
+						// rhs and lhs are already set		
+						break;
+				}
+	}
+	else
+	{
+			if(step == 0)
+			{
+				switch(dctoEx.opCode)
+				{
+					case RISCV_FLOAT_NMADD : 
+					case RISCV_FLOAT_NMSUB : 
+						dctoEx.lhs[31] = 1 - dctoEx.lhs.slc<1>(31); 
+					case RISCV_FLOAT_MSUB : 
+					case RISCV_FLOAT_MADD : 
+						dctoEx.opCode = RISCV_FLOAT_OP;
+						dctoEx.funct7 = RISCV_FLOAT_OP_MUL;
+						// rhs and lhs are already set		
+						break;
+				}
+			}
+			else if(step == 1)
+			{
+				switch(dctoEx.opCode)
+				{
+					case RISCV_FLOAT_NMSUB : 
+					case RISCV_FLOAT_MSUB : 
+						dctoEx.mhs[31] = 1 - dctoEx.mhs.slc<1>(31);
+					case RISCV_FLOAT_NMADD : 
+					case RISCV_FLOAT_MADD : 
+						dctoEx.opCode = RISCV_FLOAT_OP;
+						dctoEx.funct7 = RISCV_FLOAT_OP_ADD;
+						dctoEx.lhs = tempValue;
+						dctoEx.rhs = dctoEx.mhs;
+						break;
+				}
+			}
+			else // step n°2 : return step
+			{
+				step = 0;
+				performFused = 0;
+				localResult = tempValue;
+				tempValue = 0;
+				changeResult = true;
+				stall = false;
+			}
+		}
+	}
+		
 	// Initialisation	
 
 
@@ -237,6 +328,7 @@ public :
 	if((dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 != RISCV_FLOAT_OP_CMP 
 	& (( ((ac_int<8,false>) dctoEx.rhs.slc<8>(23)) ==  0xff & f1Mantissa != 0) | ( ((ac_int<8,false>) dctoEx.lhs.slc<8>(23)) == 0xff & f2Mantissa != 0)) )) // we have a float instructions with at least a Nan
 	{ // Give seg fault
+		changeResult = true;
 	   if(((f1Exp == 0xff & f1Mantissa) & (f2Exp == 0xff & f2Mantissa))) // both are Nan
 	 	  localResult = CNAN;
 
@@ -262,7 +354,7 @@ public :
 	}
 	else if(dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 == RISCV_FLOAT_OP_CMP 
 			& ((f1Exp == 0xff & f1Mantissa != 0) | (f2Exp == 0xff & f2Mantissa != 0)) )// CMP case we return false all the time if one of the operand is a Nan 
-		{/* default value of localResult is already 0*/	}
+		{changeResult = true;}
 	
 	else// Normal case
 	{
@@ -271,10 +363,12 @@ public :
 						 switch(dctoEx.opCode)                                                   
 						  {                                                                       
 							 case RISCV_FLOAT_LW:
+							 changeResult = true;
 							 	localResult = dctoEx.lhs + dctoEx.rhs;   
 							 break; 
 
 						   case RISCV_FLOAT_SW:
+						   changeResult = true;
 									localResult = dctoEx.lhs + dctoEx.rhs;  
 							 break;
 					 
@@ -427,10 +521,20 @@ public :
 													step++;
 													stall = true;
 												}
+												
+												if(performFused)
+												{
+													tempValue = localResult;
+													step++;
+													stall = true;
+												}
+												
+												changeResult = true;
 											}
 										  }
 										  else // one of the operand is an exception
 										  {
+										  	changeResult = true;
 										  	if (f1Exp == 0xff)
 										  	{
 										  		if (f2Exp == 0xff)
@@ -517,9 +621,18 @@ public :
 													{
 													localResult = INFP;
 													}
+												changeResult = true;
+												
+												if(performFused)
+												{
+													tempValue = localResult;
+													step++;
+													stall = true;
+												}
 						 				}
 										  else // one of the operand is an exception
 										  {
+										  	changeResult = true;
 										  	if (f1Exp == 0xff)
 										  	{
 										  		if (f2Exp == 0xff)
@@ -552,14 +665,11 @@ public :
 										  	}	
 										  }  
 										      break; 
-										      
-									  /*case RISCV_FLOAT_OP_SQRT:
-										
-										 everything is handle in pretreatment
-											                                                                                         
-								      */ 	                                 
+										     											                                                             
+								      	                                 
 								                                   
 									  case RISCV_FLOAT_OP_SGN  :
+									  	changeResult = true;
 										switch(dctoEx.funct3)
 										{
 
@@ -578,6 +688,7 @@ public :
 										      break;                                                  
 										                                                              
 									  case RISCV_FLOAT_OP_MINMAX :  
+									  	changeResult = true;
 										if(dctoEx.funct3) //FMAX
 										{
 										localResult = dctoEx.lhs;
@@ -663,6 +774,7 @@ public :
 										      break;                                                  
 										                                                              
 									  case RISCV_FLOAT_OP_CVTWS :
+									  changeResult = true;
 									 	if( f1Exp > 0) // the float is normal and superior to 1 so it may be interesting to compute his value
 										{	
 											if(dctoEx.rs2 == 0)
@@ -707,6 +819,7 @@ public :
 										                                                              
 									  case RISCV_FLOAT_OP_CMP  :
 									  localResult = 1;
+									   changeResult = true;
 
 										switch(dctoEx.funct3)
 												{
@@ -796,6 +909,7 @@ public :
 										      break;                                                  
 										                                                              
 									  case RISCV_FLOAT_OP_CVTSW :  
+									  changeResult = true;
 											if(dctoEx.rs2 != 0 ) // FCVT.S.WU
 											{
 												for(i = 31; i >= 0; i--)
@@ -833,11 +947,13 @@ public :
 							  				  
 									      break;                                                  
 									                                                              
-									  case RISCV_FLOAT_OP_MVWX :                                      
+									  case RISCV_FLOAT_OP_MVWX :   
+									  changeResult = true;                                   
 									  localResult = dctoEx.lhs;
 										      break;                                                  
 										                                                              
-									  case RISCV_FLOAT_OP_CLASSMVXW :                                 
+									  case RISCV_FLOAT_OP_CLASSMVXW :    
+									  changeResult = true;                             
 								  if (dctoEx.funct3) // funct3 = 0 -> FMV.X.W
 								  {
 									localResult = dctoEx.lhs;
@@ -934,6 +1050,8 @@ public :
 									tempValue = localResult;
 									stall = true;
 								}
+								
+								changeResult = true;
 							}
 							break;
 
@@ -971,7 +1089,6 @@ public :
    if(( (dctoEx.opCode == RISCV_FLOAT_OP)|(dctoEx.opCode == RISCV_FLOAT_MADD)|(dctoEx.opCode == RISCV_FLOAT_MSUB)|(dctoEx.opCode == RISCV_FLOAT_NMADD)|(dctoEx.opCode == RISCV_FLOAT_NMSUB) ))
    {
    		// Rounding mode
-   		
    		switch(RNDM)
    		{
    			case RNE : 
@@ -1007,11 +1124,10 @@ public :
    		
    	
    	   result = localResult;
-   	   return true;
 		   
    }
 
-	return false;
+	return changeResult;
 
 } 
 

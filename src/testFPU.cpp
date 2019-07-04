@@ -16,9 +16,11 @@
 #include <ctime>
 #include <random>
 #include <cmath>
- 
+#include <cfenv>
  
 #include <core.h>
+
+ 
 
 
 #define MAX(a,b) (a<b)?b:a
@@ -41,6 +43,7 @@ std::uniform_real_distribution<float> distribution(-5000,5000);
 std::uniform_int_distribution<int> distributionFunct7(0,11);
 std::uniform_int_distribution<int> distributionFunct3(0,2);
 std::uniform_int_distribution<int> idistribution(-5000,5000);
+std::uniform_int_distribution<int> distributionOpCode(0,6);
 
 
 // Not use yet
@@ -61,37 +64,39 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 			 unsigned int &instruction, float &p)
 {
 	int sa,ma,ea,sb,mb,eb,d;
-	float fa,fb,fc;
-	float *a,*b,*c;
+	float fa,fb,fc,fz;
+	float *a,*b,*c, *z;
 	int opCode, funct7, funct3;
 
-	opCode = 2; 
+	opCode = distributionOpCode(generator); 
 	funct7 = distributionFunct3(generator);
 	funct3 = distributionFunct3(generator);
 	
 	
 	d = idistribution(generator);
 	
-	fa = distribution(generator);
-	fb = distribution(generator);
+	fa =  distribution(generator);
+	fb =  distribution(generator);
+	fz =  distribution(generator);
 	
 	fa = fa * sgn(fa);
 
 
-	
 
 	a = &fa;
 	b = &fb;
+	z = &fz;
 
 	initialState.regs[1] = d;
 	initialState.regs[32] = *((int*) a);
 	initialState.regs[33] = *( (int*) b);
-	
+	initialState.regs[35] = *( (int*) z);
 
 	
 	finalState.regs[1] = d;
 	finalState.regs[32] = *((int*) a);
 	finalState.regs[33] = *((int*) b); 
+	finalState.regs[35] = *( (int*) z);
 
 	switch(opCode)
 	{
@@ -106,21 +111,21 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 		case 2 : // op
 			switch(funct7)
 			{
-				case 0 : //Add
+				case 0 : //Add   
 					fc = fa + fb;
 					c = &fc;
 					finalState.regs[34] = *( (int*) c); // correct value is stored
 					instruction = 0x100153 ;
 					break;
 					
-				case 1 : //Sub
+				case 1 : //Sub  
 					fc = fa - fb;
 					c = &fc;
 					finalState.regs[34] = *( (int*) c); 
 					instruction = 0x8100153;
 					break;
 
-				case 2 : //Mul
+				case 2 : //Mul  // Rounding problems
 					fc = fa * fb;
 					c = &fc;
 					finalState.regs[34] = *( (int*) c); 
@@ -225,12 +230,42 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 
 			}
 			break;
+			
+		case 3 : // FMADD
+			fc = fa * fb + fz;
+			c = &fc;
+			finalState.regs[34] = *((int*) c);
+			instruction = 0x18100143;
+			break ; 
+			
+		case 4 : //FMSUB
+			fc = fa * fb - fz;
+			c = &fc;
+			finalState.regs[34] = *((int*) c);
+			instruction = 0x18100147;
+			break;
+			
+		case 5 : //FNMADD
+			fc =  - fa * fb + fz;
+			c = &fc;
+			finalState.regs[34] = *((int*) c);
+			instruction = 0x1810014F ;
+			break; 
+		
+		case 6 : //FNMSUB
+			fc = - fa * fb - fz;
+			c = &fc;
+			finalState.regs[34] = *((int*) c);
+			instruction = 0x1810014B;
+			break;
 	}
+	
 }
 
 
 int main(int argc, char** argv)
 {
+	#pragma STDC FE_TOWARDZERO ON
 		srand(time(NULL));
 		float p;
 		int a = 0,c = 0;
@@ -333,6 +368,7 @@ int main(int argc, char** argv)
 
 		// Execute the instruction
 	//	printf("Doing instruction %x\n", instruction);
+	
 		for (int oneCycle = 0; oneCycle < numberOfCycles; oneCycle++){
 			doCycle(core, 0);
 		}
@@ -357,7 +393,7 @@ int main(int argc, char** argv)
 		
 		diff =(float) *( (float*) val1_p) - *( (float*) val2_p);
 		
-		p = 0.0005*finalState.regs[34];
+		p = 0.0000001*finalState.regs[34];
 		
 		
 		if (diff*sgn(diff) > p )

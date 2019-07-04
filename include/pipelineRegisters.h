@@ -45,6 +45,7 @@ struct DCtoEx
 
     ac_int<32, true> lhs;   //  left hand side : operand 1
     ac_int<32, true> rhs;   // right hand side : operand 2
+	ac_int<32, true> mhs;   // middle hand side : operand 3 for fused operation
     ac_int<32, true> datac; // ST, BR, JAL/R,
 
     //For branch unit

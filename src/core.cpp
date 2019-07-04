@@ -28,10 +28,12 @@ void decode(struct FtoDC ftoDC,
     ac_int<7, false> funct7 = instruction.slc<7>(25);
     ac_int<6, false> rs2 = (ac_int<6,false>) instruction.slc<5>(20);
     ac_int<6, false> rs1 = (ac_int<6,false>) instruction.slc<5>(15);
+    ac_int<6, false> rs3 = (ac_int<6,false>) instruction.slc<5>(27);
     ac_int<6, false> frs1 = rs1;
     ac_int<6, false> frs2 = rs2;
     frs1[5]=1;   // In the case we use the float register 
     frs2[5]=1;	
+    rs3[5] = 1; // the only case we use rs3 it is a float register
 
     ac_int<3, false> funct3 = instruction.slc<3>(12);
     ac_int<6, false> rd = (ac_int<6,false>) instruction.slc<5>(7);
@@ -72,30 +74,42 @@ void decode(struct FtoDC ftoDC,
     //Register access
     ac_int<32, false> valueReg1;
     ac_int<32, false> valueReg2;
+    ac_int<32, false> valueReg3;
 
-    		valueReg1 = registerFile[rs1];
-     		valueReg2 = registerFile[rs2];
+
     if ( (funct7[3] & funct7[6] & opCode == RISCV_FLOAT_OP) | ( (opCode != RISCV_FLOAT_OP) & (opCode != RISCV_FLOAT_MADD) & (opCode != RISCV_FLOAT_MSUB) & (opCode != RISCV_FLOAT_NMADD) & (opCode != RISCV_FLOAT_NMSUB) ) )
 	{
     		valueReg1 = registerFile[rs1];
+    		dctoEx.rs1 = rs1;
 	}
     else
 	{
 		valueReg1 = registerFile[frs1];
+		dctoEx.rs1 = frs1;
 	}
 
      if ((opCode == RISCV_FLOAT_OP) | (opCode == RISCV_FLOAT_MADD) | (opCode == RISCV_FLOAT_MSUB) | (opCode == RISCV_FLOAT_NMADD) | (opCode == RISCV_FLOAT_NMSUB) | (opCode == RISCV_FLOAT_SW) )
 	{
      		valueReg2 = registerFile[frs2];
+     		dctoEx.rs2 = frs2;
 	}
      else
 	{
      		valueReg2 = registerFile[rs2];
+     		dctoEx.rs2 = rs2;
 	}
+	
+	if( (opCode == RISCV_FLOAT_MADD) | (opCode == RISCV_FLOAT_MSUB) | (opCode == RISCV_FLOAT_NMADD) | (opCode == RISCV_FLOAT_NMSUB))
+		{
+		valueReg3 = registerFile[rs3];
+  		dctoEx.rs3 = rs3;	
+		}
+	else
+		dctoEx.rs3 = rs2;
 
-    dctoEx.rs1 = rs1;
-    dctoEx.rs2 = rs2;
-    dctoEx.rs3 = rs2;
+
+
+
     dctoEx.rd = rd;
     dctoEx.opCode = opCode;
     dctoEx.funct3 = funct3;
@@ -231,6 +245,20 @@ void decode(struct FtoDC ftoDC,
         dctoEx.useRd = 0;                                                       
         dctoEx.rd = 0;
 	break;
+	
+	case RISCV_FLOAT_NMSUB : 
+	case RISCV_FLOAT_NMADD : 
+	case RISCV_FLOAT_MSUB :
+	case RISCV_FLOAT_MADD : 
+		dctoEx.lhs = valueReg1; 
+		dctoEx.rhs = valueReg2;
+		dctoEx.mhs = valueReg3;
+		dctoEx.useRs1 = 1;
+		dctoEx.useRs2 = 1;
+		dctoEx.useRs3 = 1;
+		dctoEx.useRd = 1;
+		dctoEx.rd[5] = 1;
+		break;
 	
     case RISCV_FLOAT_OP:
         dctoEx.useRs1 = 1;
