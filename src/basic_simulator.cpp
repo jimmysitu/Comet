@@ -398,7 +398,8 @@ void BasicSimulator::solveSyscall()
 
 		switch (syscallId)
 		{
-		case SYS_exit:
+		case SYS_exit:	
+			printf("At exit, spent %d cycles\n", core.cycle);
 			exitFlag = 1; //Currently we break on ECALL
 			break;
 		case SYS_read:

@@ -29,6 +29,8 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction);
 #define RISCV_OPIW              0x1B    //0x06
 #define RISCV_OPW               0x3B    //0x0E
 
+#define RISCV_EXTRAOP						0x0b
+
 // funct3 or funct7
 #define RISCV_BR_BEQ            0x0
 #define RISCV_BR_BNE            0x1

@@ -177,6 +177,15 @@ void decode(struct FtoDC ftoDC,
         dctoEx.useRd = 1;
 
         break;
+    case RISCV_EXTRAOP:
+        dctoEx.lhs = valueReg1;
+        dctoEx.rhs = valueReg2;
+        dctoEx.useRs1 = 1;
+        dctoEx.useRs2 = 1;
+        dctoEx.useRs3 = 0;
+        dctoEx.useRd = 1;
+
+    break;
     case RISCV_SYSTEM:
         //TODO
 

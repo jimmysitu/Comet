@@ -9,6 +9,7 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 
 
 add_executable(comet.sim 
+							./src/alu.cpp
 							./src/core.cpp
 							./src/elfFile.cpp
 							./src/main.cpp
@@ -17,6 +18,7 @@ add_executable(comet.sim
 							./src/basic_simulator.cpp)
 
 add_executable(atomicTests
+							./src/alu.cpp
 							./src/core.cpp
 							./src/atomicTest.cpp
 							./src/elfFile.cpp

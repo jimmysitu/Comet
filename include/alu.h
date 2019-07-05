@@ -11,7 +11,15 @@
 #include <riscvISA.h>
 #include <pipelineRegisters.h>
 
+#define abs(a) ( ((a) < 0) ? -(a) : (a) )
+
+// Lookup for butterfly calculations
+extern ac_int<16, false> sin_factor[126];
+
 //#include <cstdio>
+
+short FIX_MPY(short a, short b);
+
 
 class ALU {
 protected:
@@ -24,6 +32,9 @@ public:
 
 class BasicAlu: public ALU {
 public:
+	
+	ac_int<16, true> lastQi, lastQr, lastTi, lastTr, state4 = 1, state3 = 0, state1=0, state2=32, sin_index = 0; bool unchanged = true;
+
 	void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall){
 		stall = false;
 	    extoMem.pc = dctoEx.pc;
@@ -215,7 +226,85 @@ public:
 	            break;
 	        }
 	        break;
+
+		case RISCV_EXTRAOP:
+			if (dctoEx.funct3 == 0){
+
+
+				printf("Doing btf with %d %d %d %d sin factor of %d   --- inputs %x %x\n", state1, state2, state3, state4, sin_index,dctoEx.lhs, dctoEx.rhs);
+				bool reverse = dctoEx.funct7[6];
+
+				ac_int<16, false> W_Imag = sin_factor[sin_index];
+				ac_int<16, false> W_Real = sin_factor[sin_index+1];
+
+				if (reverse){
+					W_Imag = W_Imag >> 1;				
+					W_Real = W_Real >> 1;				
+					W_Real = -W_Real;
+				}
+
+				ac_int<16, true> ti = FIX_MPY(W_Imag,dctoEx.lhs.slc<16>(16)) - FIX_MPY(W_Real,dctoEx.lhs.slc<16>(00));
+        ac_int<16, true> tr = FIX_MPY(W_Imag,dctoEx.lhs.slc<16>(00)) + FIX_MPY(W_Real,dctoEx.lhs.slc<16>(16));
+        ac_int<16, true> qi = dctoEx.rhs.slc<16>(16);
+        ac_int<16, true> qr = dctoEx.rhs.slc<16>(0);
+
+        if (reverse) {
+          qi >>= 1;
+          qr >>= 1;
+        }
+
+				extoMem.result = 0;
+				ac_int<16, true> imag = qi - ti;
+				ac_int<16, true> real = qr - tr;
+				extoMem.result.set_slc(16, imag);
+				extoMem.result.set_slc(0, real);
+        
+				lastQi = qi;
+				lastQr = qr;
+				lastTi = ti;
+				lastTr = tr;
+			
+				unchanged = false;
+
+
+			}
+			else {
+				ac_int<16, true> imag = lastQi + lastTi;
+				ac_int<16, true> real = lastQr + lastTr;
+				extoMem.result.set_slc(16, imag);
+				extoMem.result.set_slc(0, real);
+				
+
+
+				if (!unchanged){
+					state1++;
+					if (state1>=state2){
+						state3++;
+						state1 = 0;
+						sin_index += 2;
+						if (state3 >= state4){
+							if (state2 == 1){
+								state1 = 0;
+								state2 = 32;	
+								state3 = 0;
+								state4 = 1;
+								sin_index = 0;
+							}
+							else {
+								state3 = 0;
+								state2 = state2 >> 1;
+								state4 = state4 << 1;
+							}
+						}
+					}	
+					unchanged = true;				
+				}
+			}
+
+		break;
+
 	    }
+
 
 
 	    //If the instruction was dropped, we ensure that isBranch is at zero
