@@ -114,7 +114,7 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 	fb = *( (float*) b);
 	fz = *( (float*) z);
 	
-	printf("fa = %x , fb = %x \n", *a, *b);
+	//printf("fa = %x , fb = %x \n", *a, *b);
 	
 	switch(opCode)
 	{
@@ -420,7 +420,6 @@ int Test()
 		
 
 		p = 0.0001 * (*((float*) val1_p) * sgn(*((float*) val1_p)));
-		
 		
 		if (!( !(diff > p) | (val1 ^ val2 > 4)) )
 			{c++;printf("Issue with instruction : %x at register 34, awnser is %x and should be %x\n", instruction,core.regFile[34], finalState.regs[34]);}
