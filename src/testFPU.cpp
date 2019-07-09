@@ -47,7 +47,7 @@ std::uniform_int_distribution<int> distributionOpCode(0,6);
 
 
 // Not use yet
-std::uniform_int_distribution<int> mantisse(0,8388607);
+std::uniform_int_distribution<int> mantisse(0,16777215);
 std::uniform_int_distribution<int> exposant(0,255);
 std::uniform_int_distribution<int> signe(0,1);
  
@@ -63,11 +63,17 @@ int sgn(float x)
 void setTest(struct processorState &initialState, struct processorState &finalState,
 			 unsigned int &instruction, float &p)
 {
-	int sa,ma,ea,sb,mb,eb,d;
 	float fa,fb,fc,fz;
-	float *a,*b,*c, *z;
+	int *a,*b,*z,d;
+	float *c;
 	int opCode, funct7, funct3;
 
+
+	a = new int;
+	b = new int;
+	z = new int;
+	
+	
 	opCode = distributionOpCode(generator); 
 	funct7 = distributionFunct3(generator);
 	funct3 = distributionFunct3(generator);
@@ -75,29 +81,41 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 	
 	d = idistribution(generator);
 	
-	fa =  distribution(generator);
-	fb =  distribution(generator);
-	fz =  distribution(generator);
+	int faSign = signe(generator);
+	int faExp =  exposant(generator);
+	int faMantissa = mantisse(generator);
 	
-	fa = fa * sgn(fa);
+	int fbSign = signe(generator);
+	int fbExp = exposant(generator);
+	int fbMantissa = mantisse(generator);
+	
+	int fzSign = signe(generator);
+	int fzExp = exposant(generator);
+	int fzMantissa = mantisse(generator);
 
 
+	*a =  (faSign << 31) + (faExp << 23) + faMantissa;
+	*b =  (fbSign << 31) + (fbExp << 23) + fbMantissa;
+	*z =  (fzSign << 31) + (fzExp << 23) + fzMantissa;
 
-	a = &fa;
-	b = &fb;
-	z = &fz;
-
+	
 	initialState.regs[1] = d;
-	initialState.regs[32] = *((int*) a);
-	initialState.regs[33] = *( (int*) b);
-	initialState.regs[35] = *( (int*) z);
+	initialState.regs[32] = *a;
+	initialState.regs[33] = *b;
+	initialState.regs[35] = *z;
 
 	
 	finalState.regs[1] = d;
-	finalState.regs[32] = *((int*) a);
-	finalState.regs[33] = *((int*) b); 
-	finalState.regs[35] = *( (int*) z);
+	finalState.regs[32] = *a;
+	finalState.regs[33] = *b;
+	finalState.regs[35] = *z;
 
+	fa = *( (float*) a);
+	fb = *( (float*) b);
+	fz = *( (float*) z);
+	
+	printf("fa = %x , fb = %x \n", *a, *b);
+	
 	switch(opCode)
 	{
 		case 0 : // load 
@@ -115,7 +133,7 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 					fc = fa + fb;
 					c = &fc;
 					finalState.regs[34] = *( (int*) c); // correct value is stored
-					instruction = 0x100153 ;
+					instruction = 0x100153;
 					break;
 					
 				case 1 : //Sub  
@@ -179,14 +197,14 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 					break;
 
 				case 6 : //Cvt.w.s
-					finalState.regs[1] = (int) fa ; 
+					finalState.regs[1] = (int) fa ;
 					instruction = 0xc00000d3;
 					break;
 
 				case 7 : //MvClass
-					c = &fa;
-					finalState.regs[1] = *( (int*) c) ; 
-					instruction = 0xe0000153;
+					finalState.regs[2] = *a;
+					 
+					instruction = 0xE0000153;
 					break;
 
 				case 8 : //Cmp 
@@ -260,6 +278,10 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 			break;
 	}
 	
+	delete a;
+	delete b;
+	delete z;
+	
 }
 
 
@@ -276,9 +298,9 @@ int main(int argc, char** argv)
 		ac_int<32, false> im[8192], dm[8192];
 		Core core;
 
-
 		core.im = new SimpleMemory(im);
 		core.dm = new SimpleMemory(dm);
+
 	while(a<100000){
 		a++;
 		for(int i =0; i <64; i++)
@@ -369,6 +391,7 @@ int main(int argc, char** argv)
 		// Execute the instruction
 	//	printf("Doing instruction %x\n", instruction);
 	
+		
 		for (int oneCycle = 0; oneCycle < numberOfCycles; oneCycle++){
 			doCycle(core, 0);
 		}
@@ -393,10 +416,11 @@ int main(int argc, char** argv)
 		
 		diff =(float) *( (float*) val1_p) - *( (float*) val2_p);
 		
-		p = 0.0000001*finalState.regs[34];
+
+		p = 0.0001 * (*((float*) val1_p) * sgn(*((float*) val1_p)));
 		
 		
-		if (diff*sgn(diff) > p )
+		if (!( !(diff > p) | (val1 ^ val2 > 4)) )
 			{c++;printf("Issue with instruction : %x at register 34, awnser is %x and should be %x\n", instruction,core.regFile[34], finalState.regs[34]);}
 
 		

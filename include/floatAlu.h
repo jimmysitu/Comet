@@ -1,7 +1,7 @@
 /*
  * floatAlu.h
  *
- *  Created on 23 jun. 2019
+ *  Created on S_MTS jun. 2019
  *      Author :  Lauric 
  */
 
@@ -24,7 +24,9 @@
 #define INFP 0x7f800000
 #define INFN 0xff800000
 
-
+#define BIAS 127
+#define S_MTS 23
+#define S_EXP 8
 
 
 class FloatAlu : public ALU
@@ -64,14 +66,14 @@ private :
 public :
 	void iterMantissa(ac_int<32,false> &f)
 	{
-		ac_int<24,false> mantissa = f.slc<23>(0);
-		ac_int<9,false> exp = f.slc<8>(23);
+		ac_int<24,false> mantissa = f.slc<S_MTS>(0);
+		ac_int<9,false> exp = f.slc<S_EXP>(S_MTS);
 		
 
 			
 			mantissa++;
 			
-			if(mantissa[23] != 0)
+			if(mantissa[S_MTS] != 0)
 			{
 				exp++;
 				if(exp[8] != 0)
@@ -80,13 +82,13 @@ public :
 				}
 				else
 				{
-					f.set_slc(23,exp.slc<8>(0));
+					f.set_slc(S_MTS,exp.slc<S_EXP>(0));
 				}
-				f.set_slc(0,mantissa.slc<23>(1));
+				f.set_slc(0,mantissa.slc<S_MTS>(1));
 			}
 			else
 			{
-				f.set_slc(0,mantissa.slc<23>(0));
+				f.set_slc(0,mantissa.slc<S_MTS>(0));
 			}
 		
 		
@@ -105,13 +107,13 @@ public :
 	  ac_int<9, true> f1Exp; 
 	  ac_int<9, true> f2Exp;
 	  
-	  ac_int<8,false> f2UExp;
-	  ac_int<8,false> f1UExp;
+	  ac_int<S_EXP,false> f2UExp;
+	  ac_int<S_EXP,false> f1UExp;
 
 	  ac_int<1, false> outputSign;                 
 	  ac_int<48, false> outputMantissa;
 	  ac_int<48, false> resultMantissa;
- 	  ac_int<9, false> outputExp;
+ 	  ac_int<9, true> outputExp;
  	  
  	  ac_int<2,false> roundingFlags; // roundingFlags[0] = (cuttedBits >= 0.5) et roundingFlags[1] = (cuttedBits == 0.5) 
 
@@ -291,25 +293,25 @@ public :
 	// Initialisation	
 
 
-	f1Mantissa = dctoEx.lhs.slc<23>(0);
-	f2Mantissa = dctoEx.rhs.slc<23>(0);
-	f1Mantissa[23] = 1;
-	f2Mantissa[23] = 1;
+	f1Mantissa = dctoEx.lhs.slc<S_MTS>(0);
+	f2Mantissa = dctoEx.rhs.slc<S_MTS>(0);
+	f1Mantissa[S_MTS] = 1;
+	f2Mantissa[S_MTS] = 1;
 	
-	if(dctoEx.lhs.slc<8>(23) != 0)
+	if(dctoEx.lhs.slc<S_EXP>(S_MTS) != 0)
 	{
-		f1Mantissa[23] = 1;
-		f1Exp = dctoEx.lhs.slc<8>(23) - 127;  
+		f1Mantissa[S_MTS] = 1;
+		f1Exp = dctoEx.lhs.slc<S_EXP>(S_MTS) - BIAS;  
 	 }
 	 else 
 	 {
 		f1Exp = - 126;
 	 }
 	
-	 if(dctoEx.rhs.slc<8>(23) != 0)
+	 if(dctoEx.rhs.slc<S_EXP>(S_MTS) != 0)
 	 {
-		f2Mantissa[23] = 1;
-		 f2Exp = dctoEx.rhs.slc<8>(23) - 127;  
+		f2Mantissa[S_MTS] = 1;
+		 f2Exp = dctoEx.rhs.slc<S_EXP>(S_MTS) - BIAS;  
 	 }
 	 else 
 	 {
@@ -319,26 +321,28 @@ public :
 	f1Sign = dctoEx.lhs.slc<1>(31);
 	f2Sign = dctoEx.rhs.slc<1>(31);
 	
-	f1UExp = dctoEx.lhs.slc<8>(23);
-	f2UExp = dctoEx.rhs.slc<8>(23);
+	f1UExp = dctoEx.lhs.slc<S_EXP>(S_MTS);
+	f2UExp = dctoEx.rhs.slc<S_EXP>(S_MTS);
 	
 
 	//  Nan handling
 
 	if((dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 != RISCV_FLOAT_OP_CMP 
-	& (( ((ac_int<8,false>) dctoEx.rhs.slc<8>(23)) ==  0xff & f1Mantissa != 0) | ( ((ac_int<8,false>) dctoEx.lhs.slc<8>(23)) == 0xff & f2Mantissa != 0)) )) // we have a float instructions with at least a Nan
-	{ // Give seg fault
+	& (( f1UExp ==  0xff & f1Mantissa != 0) | ( f2UExp == 0xff & f2Mantissa != 0)) )) // we have a float instructions with at least a Nan
+	{ 
 		changeResult = true;
-	   if(((f1Exp == 0xff & f1Mantissa) & (f2Exp == 0xff & f2Mantissa))) // both are Nan
+	   if(((f1UExp == 0xff & f1Mantissa) & (f2UExp == 0xff & f2Mantissa))) // both are Nan
 	 	  localResult = CNAN;
 
-	   else if (f1Exp == 0xff & f1Mantissa) // f1 is a Nan
+	   else if (f1UExp == 0xff & f1Mantissa) // f1 is a Nan
 	   {
 	   		if (f1Mantissa[22]) // f1 is a signaling Nan
 	   			localResult = CNAN;
 	   		
-	   		else // f1 is a quiet Nan and f2 is not a Nan
-	   			localResult = dctoEx.lhs; 
+	   		else if(dctoEx.useRs2)// f1 is a quiet Nan and f2 is not a Nan
+	   			localResult = dctoEx.rhs; 
+	   		else
+	   			localResult = CNAN;
 	   }
 	 	 else // f1 is not a Nan and f2 is a Nan 
 	   	{
@@ -346,15 +350,14 @@ public :
 	   			localResult = CNAN;
 	   		
 	   		else // f2 is a quiet Nan and f1 is not a Nan
-	   			if (dctoEx.useRs2)
-	   				localResult = dctoEx.rhs;  
-	   			else
-	   				localResult = CNAN; 
+	   			localResult = dctoEx.lhs;  
+	   			
 	    }
+	    
 	}
 	else if(dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 == RISCV_FLOAT_OP_CMP 
-			& ((f1Exp == 0xff & f1Mantissa != 0) | (f2Exp == 0xff & f2Mantissa != 0)) )// CMP case we return false all the time if one of the operand is a Nan 
-		{changeResult = true;}
+			& ((f1UExp == 0xff & f1Mantissa != 0) | (f2UExp == 0xff & f2Mantissa != 0)) )// CMP case we return false all the time if one of the operand is a Nan 
+		{changeResult = true;localResult = 0;}
 	
 	else// Normal case
 	{
@@ -466,11 +469,11 @@ public :
 														break;
 														
 
-												if (i > 23) 
+												if (i > S_MTS) 
 												{
-													localResult.set_slc(0, resultMantissa.slc<23>(i - 23) );
-													outputExp += i - 23;
-													roundingFlags[0] = resultMantissa.slc<23>(i - 24);
+													localResult.set_slc(0, resultMantissa.slc<S_MTS>(i - S_MTS) );
+													outputExp += i - S_MTS;
+													roundingFlags[0] = resultMantissa.slc<1>(i - 24);
 													
 													if(i == 24)
 														roundingFlags[1] = roundingFlags[0];
@@ -485,24 +488,24 @@ public :
 												}
 												else 
 												{
-													if(outputExp > 23 - i)
+													if(outputExp > S_MTS - i)
 													{
-															outputExp -=23 - i;
-															resultMantissa = resultMantissa << (23 - i);
-															localResult.set_slc(0,resultMantissa.slc<23>(0));
+															outputExp -=S_MTS - i;
+															resultMantissa = resultMantissa << (S_MTS - i);
+															localResult.set_slc(0,resultMantissa.slc<S_MTS>(0));
 													}
 													else
 													{
-															localResult.set_slc(0,resultMantissa.slc<23>(0));
+															localResult.set_slc(0,resultMantissa.slc<S_MTS>(0));
 															outputExp = 0;
 													}
 													roundingFlags = 0;
 												}
 																								
-												localResult.set_slc(23,outputExp.slc<8>(0));
+												localResult.set_slc(S_MTS,outputExp.slc<S_EXP>(0));
 												
 												
-												if(outputExp.slc<8>(0) > 254) // over and underflow handeling with return of infty
+												if(outputExp.slc<S_EXP>(0) > 254) // over and underflow handeling with return of infty
 												{
 													OVERF = 1;		
 													if(f1Sign != 0)
@@ -594,41 +597,91 @@ public :
 										{                                    
 												outputSign = f1Sign ^ f2Sign;                 
 												outputMantissa = f1Mantissa * f2Mantissa;
-												resultMantissa = (outputMantissa[47] ? outputMantissa.slc<23>(24) : outputMantissa.slc<23>(23));
-												roundingFlags[0] = (outputMantissa[47] ? outputMantissa.slc<23>(23) : outputMantissa.slc<23>(22));
-												if(outputMantissa[47])
-													roundingFlags[1] = (outputMantissa.slc<23>(0) == 0x400000);
-												else
-													roundingFlags[1] = (outputMantissa.slc<22>(0) == 0x200000);
-						 						outputExp = f1Exp + f2Exp - 129; 
-						 
-						 						
-														
-						 						if (outputMantissa[47])                                                 
-						 							outputExp++;                                                    
+												outputExp = f1Exp + f2Exp - BIAS - 25;
 
-												localResult.set_slc(31, outputSign); 
-						 						localResult.set_slc(0, resultMantissa.slc<23>(0));
-						 						localResult.set_slc(23, outputExp.slc<8>(0));
-						 						
-						 						if(outputExp.slc<8>(0) > 254) // over and underflow handeling with return of infty
-												if(f1Sign != 0)
+						 						if(f1UExp + f2UExp >= 255 + BIAS) // overflow 
+						 						{
+						 							if(outputSign != 0)
 													{
 													localResult = INFN;
 													OVERF = 1;		
 													}
 												else
 													{
+													OVERF = 1;		
 													localResult = INFP;
 													}
+						 						}
+						 						else 
+						 						{
+							 						if(f1UExp + f2UExp >= BIAS)
+							 						{
+								 						
+								 						for(i = 47; i >= 0; i--)  //Find the MSB
+															if (outputMantissa[i])
+																break;
+															
+														if (i > S_MTS) 
+														{
+															localResult.set_slc(0, outputMantissa.slc<S_MTS>(i - S_MTS) );
+															outputExp += i - S_MTS;
+															roundingFlags[0] = outputMantissa.slc<S_MTS>(i - 24);
+															
+															if(i == 24)
+																roundingFlags[1] = roundingFlags[0];
+															else
+															{
+															
+																for(k = i - 25; i != 0; i--)
+																	isHalf = isHalf & outputMantissa[k];
+																
+																roundingFlags[1] = isHalf;
+															}
+														}
+														else 
+														{
+															if(outputExp > S_MTS - i)
+															{
+																	outputExp -=S_MTS - i;
+																	outputMantissa = outputMantissa << (S_MTS - i);
+																	localResult.set_slc(0,outputMantissa.slc<S_MTS>(0));
+															}
+															else
+															{
+																	localResult.set_slc(0,outputMantissa.slc<S_MTS>(0));
+																	outputExp = 0;
+															}
+															roundingFlags = 0;
+														}
+								 					}
+								 					else if (f1UExp + f2UExp >= BIAS - S_MTS)
+								 					{
+								 						outputExp = 0;
+								 						
+								 						outputMantissa = outputMantissa >> (BIAS + 24 - (f1UExp + f2UExp) );
+								 						localResult.set_slc(0, outputMantissa.slc<S_MTS>(0));
+								 					}
+								 					else
+								 						{
+								 						localResult = 0;	
+								 						outputExp = 0;
+								 						outputSign = 0;
+								 						}
+
+								  				localResult.set_slc(S_MTS, outputExp.slc<S_EXP>(0));
+								  				localResult.set_slc(31, outputSign);
+
+											}
+						 					
+												
 												changeResult = true;
 												
-												if(performFused)
-												{
-													tempValue = localResult;
-													step++;
-													stall = true;
-												}
+											if(performFused)
+											{
+												tempValue = localResult;
+												step++;
+												stall = true;
+											}
 						 				}
 										  else // one of the operand is an exception
 										  {
@@ -783,7 +836,7 @@ public :
 												localResult =(unsigned int) f1Mantissa;
 			
 									  
-									  		state = 23 - ((int) f1Exp) ;
+									  		state = S_MTS - ((int) f1Exp) ;
 	
 											if (state >= 0)
 											{
@@ -915,9 +968,9 @@ public :
 												for(i = 31; i >= 0; i--)
 													if (dctoEx.lhs[i])
 															break;
-												localResult.set_slc(23, (ac_int<8,false>) (127 + i));
-												localResult.set_slc(0, (dctoEx.lhs << (31 - i)).slc<23>(8));
-												roundingFlags[0] = (dctoEx.lhs << (31 - i)).slc<23>(7);
+												localResult.set_slc(S_MTS, (ac_int<S_EXP,false>) (BIAS + i));
+												localResult.set_slc(0, (dctoEx.lhs << (31 - i)).slc<S_MTS>(8));
+												roundingFlags[0] = (dctoEx.lhs << (31 - i)).slc<S_MTS>(7);
 												roundingFlags[1] = (dctoEx.lhs << (31 - i)).slc<7>(0) == 0x40;
 											}
 											else // FCVT.S.W
@@ -928,9 +981,9 @@ public :
 														if (!dctoEx.lhs[i])
 																break;
 																	
-													localResult.set_slc(23, (ac_int<8,false>) (127 + i-1));
-													localResult.set_slc(0, (dctoEx.rhs << (31 - i+1)).slc<23>(8) );
-													roundingFlags[0] = (dctoEx.rhs << (31 - i+1)).slc<23>(7);
+													localResult.set_slc(S_MTS, (ac_int<S_EXP,false>) (BIAS + i-1));
+													localResult.set_slc(0, (dctoEx.rhs << (31 - i+1)).slc<S_MTS>(8) );
+													roundingFlags[0] = (dctoEx.rhs << (31 - i+1)).slc<S_MTS>(7);
 												roundingFlags[1] = (dctoEx.rhs << (31 - i+1)).slc<7>(0) == 0x40;
 													}
 												else 
@@ -938,9 +991,9 @@ public :
 													for(i = 30; i >= 0; i--)
 														if (dctoEx.lhs[i])
 															break;
-													localResult.set_slc(23, (ac_int<8,false>) (127 + i));
-													localResult.set_slc(0, (dctoEx.lhs << (31 - i)).slc<23>(8) );
-													roundingFlags[0] = (dctoEx.lhs << (31 - i)).slc<23>(7);
+													localResult.set_slc(S_MTS, (ac_int<S_EXP,false>) (BIAS + i));
+													localResult.set_slc(0, (dctoEx.lhs << (31 - i)).slc<S_MTS>(8) );
+													roundingFlags[0] = (dctoEx.lhs << (31 - i)).slc<S_MTS>(7);
 													roundingFlags[1] = (dctoEx.lhs << (31 - i)).slc<7>(0) == 0x40;
 												}
 											}
@@ -954,7 +1007,8 @@ public :
 										                                                              
 									  case RISCV_FLOAT_OP_CLASSMVXW :    
 									  changeResult = true;                             
-								  if (dctoEx.funct3) // funct3 = 0 -> FMV.X.W
+								  if (!
+								  dctoEx.funct3) // funct3 = 0 -> FMV.X.W
 								  {
 									localResult = dctoEx.lhs;
 								  }
@@ -1001,10 +1055,10 @@ public :
 									if (quotient[i])
 										break;
 										
-								if (i > 23) // the result is normal
+								if (i > S_MTS) // the result is normal
 								{
-									localResult.set_slc(0, quotient.slc<23>(i - 23) );
-									outputExp += i - 23;
+									localResult.set_slc(0, quotient.slc<S_MTS>(i - S_MTS) );
+									outputExp += i - S_MTS;
 									roundingFlags[0] = quotient[i - 24];
 									
 									if(i == 24)
@@ -1020,17 +1074,17 @@ public :
 								else // the result is a subnormal 
 								{
 								outputExp = 0;
-								localResult.set_slc(0,quotient.slc<23>(0));
+								localResult.set_slc(0,quotient.slc<S_MTS>(0));
 								roundingFlags = 0;
 								}
 
 								
 
-					  			localResult.set_slc(23, outputExp.slc<8>(0));
+					  			localResult.set_slc(S_MTS, outputExp.slc<S_EXP>(0));
 					  			localResult.set_slc(31, outputSign);
 								stall = false;
 
-					  			if(outputExp.slc<8>(0) > 254)  // over and underflow handling with return of infty
+					  			if(outputExp.slc<S_EXP>(0) > 254)  // over and underflow handling with return of infty
 									if(f1Sign != 0)
 									{
 										OVERF = 1;		
