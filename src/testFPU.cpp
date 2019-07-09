@@ -445,5 +445,5 @@ int main(int argc, char** argv)
 	
 		printf("error rate = %d / %d\n",c,a);
 		
-	return c < 10;
+	return (c > 10);
 }
