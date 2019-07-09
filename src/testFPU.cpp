@@ -285,12 +285,13 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 }
 
 
-int main(int argc, char** argv)
+int Test()
 {
 	#pragma STDC FE_TOWARDZERO ON
 		srand(time(NULL));
 		float p;
-		int a = 0,c = 0;
+		int c = 0;
+
 
 		unsigned int instruction, numberOfCycles;
 		struct processorState initialState, finalState;
@@ -301,14 +302,15 @@ int main(int argc, char** argv)
 		core.im = new SimpleMemory(im);
 		core.dm = new SimpleMemory(dm);
 
-	while(a<100000){
-		a++;
+	
 		for(int i =0; i <64; i++)
 		{
 			initialState.regs[i] = 0;
 			finalState.regs[i] = 0;
 			core.regFile[i] = 0;	
 		}
+
+		
 		setTest(initialState, finalState, instruction,p);
 
 
@@ -425,10 +427,24 @@ int main(int argc, char** argv)
 
 		
 
-	}
-	printf("error rate = %d / %d\n",c,a);
+	
+
 	
 	return c;
 
 
+}
+
+int main(int argc, char** argv)
+{
+	int a = 0,c = 0;
+	while(a<100000)
+	{
+		a++;
+		c += Test();
+	}
+	
+		printf("error rate = %d / %d\n",c,a);
+		
+	return c < 10;
 }
