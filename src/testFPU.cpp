@@ -1,7 +1,7 @@
 /*
  * This file exists to test the floating point instructions
  *
- * Date : 19/06/2019 
+ * Date : 15/07/2019 
  *
  * Author : Lauric 
  *
@@ -19,12 +19,14 @@
 #include <cfenv>
  
 #include <core.h>
-
  
 
 
 #define MAX(a,b) (a<b)?b:a
 #define MIN(a,b) (a<b)?a:b
+#define CNAN 0x7fc00000
+#define INFP 0x7f800000
+#define INFN 0xff800000
 
 struct processorState{
 	unsigned int regs[64];
@@ -46,11 +48,11 @@ std::uniform_int_distribution<int> idistribution(-5000,5000);
 std::uniform_int_distribution<int> distributionOpCode(0,6);
 
 
-// Not use yet
 std::uniform_int_distribution<int> mantisse(0,16777215);
 std::uniform_int_distribution<int> exposant(0,255);
 std::uniform_int_distribution<int> signe(0,1);
- 
+
+std::uniform_int_distribution<int> floatType(0,3);
  
 int sgn(float x)
 {
@@ -60,44 +62,51 @@ int sgn(float x)
 		return -1;
 }
 
+int setFloat()
+{
+	int fType = floatType(generator), result = 0, fSign = 0, fExp = 0,fMantissa = 0;
+	switch(fType)
+	{	
+		case 0 : // normal float
+			 fExp = exposant(generator);
+		case 1 : // subnormal  float 
+			fSign = signe(generator);
+			fMantissa = mantisse(generator);
+			
+			return (fSign << 31) + (fExp << 23) + fMantissa;
+			break;
+			
+		case 2 : // infinite 
+			fSign = signe(generator);
+			
+			if(fSign)
+				return INFN;
+			else
+				return INFP;
+				
+			break; 
+		
+		case 3 : // Nan
+			fSign = signe(generator);
+			
+			if(fSign)
+				return CNAN;
+			else 
+				return 0x7fa0000;
+		 	break;
+		 	
+	}
+	return CNAN;
+}
+
 void setTest(struct processorState &initialState, struct processorState &finalState,
-			 unsigned int &instruction, float &p)
+			 unsigned int &instruction, int opCode, int funct7, int funct3, int *a, int *b, int *z)
 {
 	float fa,fb,fc,fz;
-	int *a,*b,*z,d;
 	float *c;
-	int opCode, funct7, funct3;
+	int d;
 
-
-	a = new int;
-	b = new int;
-	z = new int;
-	
-	
-	opCode = distributionOpCode(generator); 
-	funct7 = distributionFunct3(generator);
-	funct3 = distributionFunct3(generator);
-	
-	
 	d = idistribution(generator);
-	
-	int faSign = signe(generator);
-	int faExp =  exposant(generator);
-	int faMantissa = mantisse(generator);
-	
-	int fbSign = signe(generator);
-	int fbExp = exposant(generator);
-	int fbMantissa = mantisse(generator);
-	
-	int fzSign = signe(generator);
-	int fzExp = exposant(generator);
-	int fzMantissa = mantisse(generator);
-
-
-	*a =  (faSign << 31) + (faExp << 23) + faMantissa;
-	*b =  (fbSign << 31) + (fbExp << 23) + fbMantissa;
-	*z =  (fzSign << 31) + (fzExp << 23) + fzMantissa;
-
 	
 	initialState.regs[1] = d;
 	initialState.regs[32] = *a;
@@ -114,7 +123,7 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 	fb = *( (float*) b);
 	fz = *( (float*) z);
 	
-	//printf("fa = %x , fb = %x \n", *a, *b);
+	//printf("fa = %x , fb = %x , fz = %x\n", *a, *b, *z);
 	
 	switch(opCode)
 	{
@@ -204,7 +213,7 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 				case 7 : //MvClass
 					finalState.regs[2] = *a;
 					 
-					instruction = 0xE0000153;
+					instruction = 0xe0000153;
 					break;
 
 				case 8 : //Cmp 
@@ -236,7 +245,7 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 					break;
 
 				case 10 : //mv.w.x
-					finalState.regs[34] = *( (int*) a);
+					finalState.regs[34] = d;
 					instruction = 0xf0008153;
 					break;
 					
@@ -278,24 +287,19 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 			break;
 	}
 	
-	delete a;
-	delete b;
-	delete z;
+
 	
 }
 
-
-int Test()
+int Test(int opCode, int funct7, int funct3, int *a, int *b, int *z)
 {
-	#pragma STDC FE_TOWARDZERO ON
 		srand(time(NULL));
 		float p;
-		int c = 0;
 
 
 		unsigned int instruction, numberOfCycles;
 		struct processorState initialState, finalState;
-		numberOfCycles = 900;
+		numberOfCycles = 500;
 		ac_int<32, false> im[8192], dm[8192];
 		Core core;
 
@@ -311,8 +315,8 @@ int Test()
 		}
 
 		
-		setTest(initialState, finalState, instruction,p);
-
+		setTest(initialState, finalState, instruction, opCode, funct7, funct3, a, b , z);
+		int c = 0;
 
 		//We initialize a simulator with the state
 
@@ -396,6 +400,7 @@ int Test()
 		
 		for (int oneCycle = 0; oneCycle < numberOfCycles; oneCycle++){
 			doCycle(core, 0);
+			//printf("oneCycle = %d\n", oneCycle);
 		}
 
 
@@ -417,33 +422,52 @@ int Test()
 		val2_p = &val2;
 		
 		diff =(float) *( (float*) val1_p) - *( (float*) val2_p);
-		
+		diff *= sgn(diff);
 
-		p = 0.0001 * (*((float*) val1_p) * sgn(*((float*) val1_p)));
 		
-		if (!( !(diff > p) | (val1 ^ val2 > 4)) )
+		if (!( (diff == 0) | (val1 ^ val2 < 2) ))
 			{c++;printf("Issue with instruction : %x at register 34, awnser is %x and should be %x\n", instruction,core.regFile[34], finalState.regs[34]);}
-
-		
-
-	
-
-	
 	return c;
 
 
 }
 
+
+
 int main(int argc, char** argv)
 {
-	int a = 0,c = 0;
-	while(a<100000)
+	int a_c = 0,c = 0, d= 0, opCode, funct7, funct3;
+	int *a, *b, *z;
+	a = new int;
+	b = new int;
+	z = new int;
+	while(d<10000)
 	{
-		a++;
-		c += Test();
+		d++;
+	
+		*a = setFloat();
+		*b = setFloat(); 
+		*z = setFloat();
+
+
+		opCode = 2;
+		funct7 = 7;
+		funct3 = 0;
+
+		for(opCode = 0; opCode < 7; opCode++)
+			for(funct7 = 0; funct7 < 12; funct7++)
+				for(funct3 = 0; funct3 < 3 ; funct3++)
+					{					
+						a_c++;
+						c += Test(opCode, funct7, funct3, a, b, z);
+					}
 	}
 	
-		printf("error rate = %d / %d\n",c,a);
-		
-	return (c > 10);
+	printf("error rate = %d / %d\n",c,a_c);
+	
+	delete a;
+	delete b;
+	delete z;
+	
+	return c;
 }

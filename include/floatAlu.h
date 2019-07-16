@@ -228,10 +228,10 @@ public :
 			step n°1 : same as FMSUB
 		
 		*/
-		
 	if(!performFused)
 	{	
-			performFused = 1;
+				performFused = 1;
+				//printf("step 0.0\n");
 				switch(dctoEx.opCode)
 				{
 					case RISCV_FLOAT_NMADD : 
@@ -249,6 +249,7 @@ public :
 	{
 			if(step == 0)
 			{
+				//printf("step 0.1\n");
 				switch(dctoEx.opCode)
 				{
 					case RISCV_FLOAT_NMADD : 
@@ -258,12 +259,14 @@ public :
 					case RISCV_FLOAT_MADD : 
 						dctoEx.opCode = RISCV_FLOAT_OP;
 						dctoEx.funct7 = RISCV_FLOAT_OP_MUL;
+						stall = true;
 						// rhs and lhs are already set		
 						break;
 				}
 			}
 			else if(step == 1)
 			{
+				//printf("step 1\n");
 				switch(dctoEx.opCode)
 				{
 					case RISCV_FLOAT_NMSUB : 
@@ -275,11 +278,13 @@ public :
 						dctoEx.funct7 = RISCV_FLOAT_OP_ADD;
 						dctoEx.lhs = tempValue;
 						dctoEx.rhs = dctoEx.mhs;
+						stall = true;
 						break;
 				}
 			}
 			else // step n°2 : return step
 			{
+				//printf("return result\n");
 				step = 0;
 				performFused = 0;
 				localResult = tempValue;
@@ -291,6 +296,7 @@ public :
 	}
 		
 	// Initialisation	
+	
 
 
 	f1Mantissa = dctoEx.lhs.slc<S_MTS>(0);
@@ -326,42 +332,54 @@ public :
 	
 
 	//  Nan handling
+	
+	
+	//printf("lhs = %x , rhs = %x\n", dctoEx.lhs, dctoEx.rhs);
 
-	if((dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 != RISCV_FLOAT_OP_CMP 
-	& (( f1UExp ==  0xff & f1Mantissa != 0) | ( f2UExp == 0xff & f2Mantissa != 0)) )) // we have a float instructions with at least a Nan
+	if(dctoEx.useRs2 & (dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 != RISCV_FLOAT_OP_CMP 
+	& (( f1UExp ==  0xff & f1Mantissa.slc<23>(0) != 0) | ( f2UExp == 0xff & f2Mantissa.slc<23>(0) != 0)) )) // we have a float instructions at two operand with at least a Nan
 	{ 
 		changeResult = true;
-	   if(((f1UExp == 0xff & f1Mantissa) & (f2UExp == 0xff & f2Mantissa))) // both are Nan
+	   if(((f1UExp == 0xff & f1Mantissa.slc<23>(0) != 0) & (f2UExp == 0xff & f2Mantissa.slc<23>(0) != 0))) // both are Nan
 	 	  localResult = CNAN;
 
-	   else if (f1UExp == 0xff & f1Mantissa) // f1 is a Nan
+	   else if (f1UExp == 0xff & f1Mantissa.slc<23>(0) != 0) // f1 is a Nan
 	   {
-	   		if (f1Mantissa[22]) // f1 is a signaling Nan
+	   		//if (f1Mantissa[22]) // f1 is a signaling Nan
 	   			localResult = CNAN;
 	   		
-	   		else if(dctoEx.useRs2)// f1 is a quiet Nan and f2 is not a Nan
-	   			localResult = dctoEx.rhs; 
-	   		else
-	   			localResult = CNAN;
+	   		//else 
+	   		//	localResult = dctoEx.rhs; 
 	   }
 	 	 else // f1 is not a Nan and f2 is a Nan 
 	   	{
-	   		if (f2Mantissa[22]) // f2 is a signaling Nan
+	   		//if (f2Mantissa[22]) // f2 is a signaling Nan
 	   			localResult = CNAN;
 	   		
-	   		else // f2 is a quiet Nan and f1 is not a Nan
-	   			localResult = dctoEx.lhs;  
+	   		//else // f2 is a quiet Nan and f1 is not a Nan
+	   		//	localResult = dctoEx.lhs;  
 	   			
 	    }
 	    
+	if(performFused | performSqrt)
+		{
+			step++;
+			tempValue = localResult;
+		}
+		
+	
+
 	}
 	else if(dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 == RISCV_FLOAT_OP_CMP 
-			& ((f1UExp == 0xff & f1Mantissa != 0) | (f2UExp == 0xff & f2Mantissa != 0)) )// CMP case we return false all the time if one of the operand is a Nan 
-		{changeResult = true;localResult = 0;}
+			& ((f1UExp == 0xff & f1Mantissa.slc<23>(0) != 0) | (f2UExp == 0xff & f2Mantissa.slc<23>(0) != 0)) )// CMP case we return false all the time if one of the operand is a Nan
+		{
+			changeResult = true;
+			localResult = 0;
+		}
 	
 	else// Normal case
 	{
-					   if(!state)                                              
+				   if(!state)                                              
 					 {
 						 switch(dctoEx.opCode)                                                   
 						  {                                                                       
@@ -393,9 +411,8 @@ public :
 									  case RISCV_FLOAT_OP_SUB  : 
 											f2Sign = 1 - f2Sign;
 									  case  RISCV_FLOAT_OP_ADD :
-										  if(f1Exp != 0xff & f2Exp != 0xff) // operand are not exceptions
-										  {
-										  
+										  if(f1UExp != 0xff & f2UExp != 0xff) // operand are not exceptions
+										  {										  
 											if(!subState)
 											{
 												state = f1UExp - f2UExp;
@@ -518,14 +535,7 @@ public :
 														}    
 												}                     
 												
-												if(performSqrt)
-												{
-													tempValue = localResult;
-													step++;
-													stall = true;
-												}
-												
-												if(performFused)
+												if(performSqrt | performFused)
 												{
 													tempValue = localResult;
 													step++;
@@ -538,9 +548,9 @@ public :
 										  else // one of the operand is an exception
 										  {
 										  	changeResult = true;
-										  	if (f1Exp == 0xff)
+										  	if (f1UExp == 0xff)
 										  	{
-										  		if (f2Exp == 0xff)
+										  		if (f2UExp == 0xff)
 										  		{
 										  			if(f1Sign == f2Sign)
 										  				localResult = dctoEx.rhs; // infty + infty = infty if they have the same sign
@@ -548,18 +558,27 @@ public :
 										  				localResult = NAN; // + infty - infty = Nan 
 										  		}
 										  		else
-										  			localResult = dctoEx.rhs; // infty + float = infty 
+										  			localResult = dctoEx.lhs; // infty + float = infty 
 										  	}
 										  	else 
-										  		localResult = dctoEx.lhs; // infty + float = infty 
-										  }  
+										  		localResult = dctoEx.rhs; // infty + float = infty 
+																																						
+				
+
+												if(performSqrt | performFused)
+												{
+													tempValue = localResult;
+													step++;
+													stall = true;
+												}
+									}  
 															
 										      break;                                                  
 										                                                              
 										                
 									  case RISCV_FLOAT_OP_DIV  : 
 
-									  	if(f1Exp != 0xff & f2Exp != 0xff) // float are not exceptions
+									  	if(f1UExp != 0xff & f2UExp != 0xff) // float are not exceptions
 										{
 											  	if(dctoEx.lhs != 0)
 											  	{
@@ -579,9 +598,9 @@ public :
 										}
 										  else // one of the operand is an exception
 										  {
-										  	if (f1Exp == 0xff)
+										  	if (f1UExp == 0xff)
 										  	{
-										  		if (f2Exp == 0xff) // infty / infty -> NaN
+										  		if (f2UExp == 0xff) // infty / infty -> NaN
 										  		{
 										  			localResult = CNAN;
 										  		}
@@ -589,11 +608,19 @@ public :
 										  		localResult = dctoEx.rhs;
 										  			
 										  	} // else float / infty -> 0 
+										  	
+											if(performSqrt)
+											{
+												step++;	
+												tempValue = localResult;
+												stall = true;
+											}
+											
 										  }  
 													  break;                                                  
 										                                                              
 									  case RISCV_FLOAT_OP_MUL  :  
-									  	if(f1Exp != 0xff & f2Exp != 0xff) // float are not exceptions
+									  	if(f1UExp != 0xff & f2UExp != 0xff) // float are not exceptions
 										{                                    
 												outputSign = f1Sign ^ f2Sign;                 
 												outputMantissa = f1Mantissa * f2Mantissa;
@@ -673,22 +700,21 @@ public :
 
 											}
 						 					
-												
-												changeResult = true;
-												
 											if(performFused)
 											{
 												tempValue = localResult;
 												step++;
 												stall = true;
 											}
+												changeResult = true;
+												
 						 				}
 										  else // one of the operand is an exception
 										  {
 										  	changeResult = true;
-										  	if (f1Exp == 0xff)
+										  	if (f1UExp == 0xff)
 										  	{
-										  		if (f2Exp == 0xff)
+										  		if (f2UExp == 0xff)
 										  		{
 										  			if(f1Sign == f2Sign)
 										  				localResult = INFP;
@@ -699,8 +725,8 @@ public :
 										  		{	
 										  			if(dctoEx.lhs != 0) // infty * float 
 										  			{
-											  			localResult = dctoEx.rhs;
-											  			localResult = f1Sign ^ f2Sign; 
+											  			localResult = INFP;
+											  			localResult.set_slc(31, (ac_int<1,false>) f1Sign ^ f2Sign); 
 										  			}
 										  			else // infty * 0 
 										  				localResult = CNAN; 
@@ -710,13 +736,21 @@ public :
 										  	{				          	
 										  		if(dctoEx.rhs != 0) // infty * float 
 										  			{
-											  			localResult = dctoEx.lhs;
-											  			localResult = f1Sign ^ f2Sign; 
+											  			localResult = INFP;
+											  			localResult.set_slc(31, (ac_int<1,false>) f1Sign ^ f2Sign); 
 										  			}
 										  			else // infty * 0 
 										  				localResult = CNAN; 
 										  	}	
+										  	
+										  	if(performFused)
+											{
+												tempValue = localResult;
+												step++;
+												stall = true;
+											}
 										  }  
+										  	
 										      break; 
 										     											                                                             
 								      	                                 
@@ -887,7 +921,7 @@ public :
 																{
 																	if(f2UExp == f1UExp)
 																	{
-																		if(f1Mantissa <= f2Mantissa)
+																		if(f1Mantissa < f2Mantissa)
 																		localResult = 0;
 																	}
 																																	
@@ -901,7 +935,7 @@ public :
 																{
 																	if(f2UExp == f1UExp)
 																	{	
-																		if(f1Mantissa >= f2Mantissa)
+																		if(f1Mantissa > f2Mantissa)
 																			localResult = 0;
 																	}
 																}
@@ -926,7 +960,7 @@ public :
 																{
 																	if(f2UExp == f1UExp)
 																	{
-																		if(f1Mantissa < f2Mantissa)
+																		if(f1Mantissa <= f2Mantissa)
 																		localResult = 0;
 																	}
 																																	
@@ -940,7 +974,7 @@ public :
 																{
 																	if(f2UExp == f1UExp)
 																	{	
-																		if(f1Mantissa > f2Mantissa)
+																		if(f1Mantissa >= f2Mantissa)
 																			localResult = 0;
 																	}
 																}
@@ -1001,23 +1035,23 @@ public :
 									      break;                                                  
 									                                                              
 									  case RISCV_FLOAT_OP_MVWX :   
-									  changeResult = true;                                   
-									  localResult = dctoEx.lhs;
+										  changeResult = true;                                   
+										  localResult = dctoEx.lhs;
 										      break;                                                  
 										                                                              
 									  case RISCV_FLOAT_OP_CLASSMVXW :    
-									  changeResult = true;                             
-								  if (!
-								  dctoEx.funct3) // funct3 = 0 -> FMV.X.W
-								  {
-									localResult = dctoEx.lhs;
-								  }
-								  else  // FCLASS.S
-								  {
-									
-								  }
-										      break;                                                  
-										                                                              
+										  changeResult = true;                             
+										  if (!
+										  dctoEx.funct3) // funct3 = 0 -> FMV.X.W
+										  {
+											localResult = dctoEx.lhs;
+										  }
+										  else  // FCLASS.S
+										  {
+											
+										  }
+										  break;                                                  
+												                                                          
 									  default :                                                       
 										      break;   
 							  }                                               
@@ -1176,11 +1210,9 @@ public :
    		}
    		
    		
-   	
    	   result = localResult;
 		   
    }
-
 	return changeResult;
 
 } 
