@@ -46,26 +46,26 @@ public:
 	ac_int<1, false> dataValid[SET_SIZE][ASSOCIATIVITY];
 
 
-	ac_int<4, false> cacheState; //Used for the internal state machine
+	ac_int<4, false> cacheState = 0; //Used for the internal state machine
 	ac_int<LOG_ASSOCIATIVITY, false> older = 0; //Set where the miss occurs
 
 	//Variables for next level access
-	ac_int<LINE_SIZE*8+TAG_SIZE, false> newVal, oldVal;
-	ac_int<32, false> nextLevelAddr;
-	memOpType nextLevelOpType;
-	ac_int<32, false> nextLevelDataIn;
-	ac_int<32, false> nextLevelDataOut;
-	ac_int<40, false> cycle;
-	ac_int<LOG_ASSOCIATIVITY, false> setMiss;
-	bool isValid;
+	ac_int<LINE_SIZE*8+TAG_SIZE, false> newVal = 0, oldVal = 0;
+	ac_int<32, false> nextLevelAddr = 0;
+	memOpType nextLevelOpType = NONE;
+	ac_int<32, false> nextLevelDataIn = 0;
+	ac_int<32, false> nextLevelDataOut = 0;
+	ac_int<40, false> cycle = 0;
+	ac_int<LOG_ASSOCIATIVITY, false> setMiss = 0;
+	bool isValid = true;
 	
-    	bool wasStore = false;
-	ac_int<LOG_ASSOCIATIVITY, false> setStore;
-	ac_int<LOG_SET_SIZE, false> placeStore;
-	ac_int<LINE_SIZE*8+TAG_SIZE, false> valStore;
-	ac_int<32, false> dataOutStore;
+    bool wasStore = false;
+	ac_int<LOG_ASSOCIATIVITY, false> setStore = 0;
+	ac_int<LOG_SET_SIZE, false> placeStore = 0;
+	ac_int<LINE_SIZE*8+TAG_SIZE, false> valStore = 0;
+	ac_int<32, false> dataOutStore = 0;
 
-	bool nextLevelWaitOut;
+	bool nextLevelWaitOut = false;
 
 	bool VERBOSE = false;
 

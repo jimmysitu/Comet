@@ -228,7 +228,7 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction){
 			break;
 
 			case RISCV_FLOAT_OP_CLASSMVXW:
-			if(funct3)
+			if(!funct3)
 				stream << "FMV.X.W r" << (int) rd << " = rf" << (int) rs1;
 			else 
 				stream << "FCLASS r" << (int) rd << " = rf" << (int) rs1;

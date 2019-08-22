@@ -132,3 +132,4 @@ The following persons contributed to the Comet project:
 - Edwin Mascarenhas 
 - Gurav Datta
 - Olivier Sentieys
+- Lauric Desauw

@@ -33,11 +33,12 @@ void decode(struct FtoDC ftoDC,
     ac_int<6, false> frs2 = rs2;
     frs1[5]=1;   // In the case we use the float register 
     frs2[5]=1;	
-    rs3[5] = 1; // the only case we use rs3 it is a float register
+    rs3[5] = 1; // the only case we use rs3 is as a float register
 
     ac_int<3, false> funct3 = instruction.slc<3>(12);
     ac_int<6, false> rd = (ac_int<6,false>) instruction.slc<5>(7);
-    ac_int<7, false> opCode = instruction.slc<7>(0);    // could be reduced to 5 bits because 1:0 is always 11
+    ac_int<7, false> opCode = 0;
+    opCode = ftoDC.instruction.slc<7>(0);    // could be reduced to 5 bits because 1:0 is always 11
 
     //Construction of different immediate values
     ac_int<12, false> imm12_I = instruction.slc<12>(20);
@@ -75,9 +76,12 @@ void decode(struct FtoDC ftoDC,
     ac_int<32, false> valueReg1;
     ac_int<32, false> valueReg2;
     ac_int<32, false> valueReg3;
+    
+    bool cond1 = (funct7[3] && funct7[6] && instruction.slc<7>(0) == RISCV_FLOAT_OP);
+    bool cond2 =  ( (opCode != RISCV_FLOAT_OP) && (opCode != RISCV_FLOAT_MADD) && (opCode != RISCV_FLOAT_MSUB) && (opCode != RISCV_FLOAT_NMADD) && (opCode != RISCV_FLOAT_NMSUB) );
 
 
-    if ( (funct7[3] & funct7[6] & opCode == RISCV_FLOAT_OP) | ( (opCode != RISCV_FLOAT_OP) & (opCode != RISCV_FLOAT_MADD) & (opCode != RISCV_FLOAT_MSUB) & (opCode != RISCV_FLOAT_NMADD) & (opCode != RISCV_FLOAT_NMSUB) ) )
+    if ( cond1 || cond2 )
 	{
     		valueReg1 = registerFile[rs1];
     		dctoEx.rs1 = rs1;
@@ -88,7 +92,7 @@ void decode(struct FtoDC ftoDC,
 		dctoEx.rs1 = frs1;
 	}
 
-     if ((opCode == RISCV_FLOAT_OP) | (opCode == RISCV_FLOAT_MADD) | (opCode == RISCV_FLOAT_MSUB) | (opCode == RISCV_FLOAT_NMADD) | (opCode == RISCV_FLOAT_NMSUB) | (opCode == RISCV_FLOAT_SW) )
+     if ((opCode == RISCV_FLOAT_OP) || (opCode == RISCV_FLOAT_MADD) || (opCode == RISCV_FLOAT_MSUB) || (opCode == RISCV_FLOAT_NMADD) || (opCode == RISCV_FLOAT_NMSUB) || (opCode == RISCV_FLOAT_SW) )
 	{
      		valueReg2 = registerFile[frs2];
      		dctoEx.rs2 = frs2;
@@ -99,7 +103,7 @@ void decode(struct FtoDC ftoDC,
      		dctoEx.rs2 = rs2;
 	}
 	
-	if( (opCode == RISCV_FLOAT_MADD) | (opCode == RISCV_FLOAT_MSUB) | (opCode == RISCV_FLOAT_NMADD) | (opCode == RISCV_FLOAT_NMSUB))
+	if( (opCode == RISCV_FLOAT_MADD) || (opCode == RISCV_FLOAT_MSUB) || (opCode == RISCV_FLOAT_NMADD) || (opCode == RISCV_FLOAT_NMSUB))
 		{
 		valueReg3 = registerFile[rs3];
   		dctoEx.rs3 = rs3;	
@@ -108,8 +112,7 @@ void decode(struct FtoDC ftoDC,
 		dctoEx.rs3 = rs2;
 
 
-
-
+    		
     dctoEx.rd = rd;
     dctoEx.opCode = opCode;
     dctoEx.funct3 = funct3;
@@ -238,7 +241,7 @@ void decode(struct FtoDC ftoDC,
     case RISCV_FLOAT_SW : 
         dctoEx.lhs = valueReg1;                                                 
         dctoEx.rhs = imm12_S_signed;                                            
-        dctoEx.datac = valueReg2; //Value to store in memory                    
+        dctoEx.datac = valueReg2; // Value to store in memory                    
         dctoEx.useRs1 = 1;                                                      
         dctoEx.useRs2 = 0;                                                      
         dctoEx.useRs3 = 1;                                                      
@@ -339,6 +342,9 @@ void decode(struct FtoDC ftoDC,
 	}
 	break;
 
+	/***************************************************************************
+	 * End of F instructions
+	 **************************************************************************/
 
     default:
 
@@ -726,7 +732,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
     if (wbOut_temp.we && wbOut_temp.useRd && !localStall && !core.stallIm && !core.stallDm){
     	core.regFile[wbOut_temp.rd] = wbOut_temp.value;
     	core.cycle++;
-    	//printf("Writting %d in %d \n", (int) wbOut_temp.value, (int)wbOut_temp.rd);
+    	//printf("Writting %x in %d \n", (int) wbOut_temp.value, (int)wbOut_temp.rd);
     }
 
 

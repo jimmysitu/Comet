@@ -21,7 +21,7 @@ go compile
 solution library add C28SOI_SC_12_CORE_LL_ccs -file /opt/DesignKit/catapult_lib/C28SOI_SC_12_CORE_LL_ccs.lib
 solution library add ST_singleport_8192x32
 go libraries
-directive set -CLOCKS {clk {-CLOCK_PERIOD 2 -CLOCK_EDGE rising -CLOCK_UNCERTAINTY 0.0 -CLOCK_HIGH_TIME 1.0 -RESET_SYNC_NAME rst -RESET_ASYNC_NAME arst_n -RESET_KIND sync -RESET_SYNC_ACTIVE high -RESET_ASYNC_ACTIVE low -ENABLE_ACTIVE high}}
+directive set -CLOCKS {clk {-CLOCK_PERIOD 2.5 -CLOCK_EDGE rising -CLOCK_UNCERTAINTY 0.0 -CLOCK_HIGH_TIME 1.0 -RESET_SYNC_NAME rst -RESET_ASYNC_NAME arst_n -RESET_KIND sync -RESET_SYNC_ACTIVE high -RESET_ASYNC_ACTIVE low -ENABLE_ACTIVE high}}
 go assembly
 directive set /doCore/globalStall:rsc -MAP_TO_MODULE {[DirectInput]}
 directive set /doCore/core/core.regFile:rsc -MAP_TO_MODULE {[Register]}
@@ -30,3 +30,4 @@ directive set /doCore/imData:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB
 directive set /doCore/dmData:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
 go architect
 go extract
+

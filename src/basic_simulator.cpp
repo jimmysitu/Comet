@@ -19,8 +19,10 @@ BasicSimulator::BasicSimulator (
     const char *outFile,
     const char *tFile)
 {
-
+	core.ftoDC.instruction = 0;
 	core.ftoDC.we = false;
+	core.ftoDC.nextPCFetch = 0;
+	
 
 	core.dctoEx.pc = 0;
 	core.dctoEx.instruction = 0;
@@ -31,6 +33,7 @@ BasicSimulator::BasicSimulator (
 
 	core.dctoEx.lhs = 0;
 	core.dctoEx.rhs = 0;
+	core.dctoEx.mhs = 0;
 	core.dctoEx.datac = 0;
 
 	//For branch unit
@@ -81,6 +84,7 @@ BasicSimulator::BasicSimulator (
 
 	//Register for all stages
 	core.memtoWB.we = false;
+	
 
 	im = new ac_int<32, false>[DRAM_SIZE >> 2];
 	dm = new ac_int<32, false>[DRAM_SIZE >> 2];
@@ -97,7 +101,7 @@ BasicSimulator::BasicSimulator (
 			core.regFile[i] = 0;
 	}
 //	Initialize float memory
-	for(int i=32; i<64; i++) {
+	for(int i=31; i<64; i++) {
 			core.regFile[i] = 0;
 	}
 	/*
@@ -376,7 +380,7 @@ ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
 void BasicSimulator::solveSyscall()
 {
 
-	if((core.extoMem.opCode == RISCV_SYSTEM) && !core.stallSignals[2] && !core.stallIm && !core.stallDm && !core.stallAlu){
+	if((core.extoMem.opCode == RISCV_SYSTEM) && core.extoMem.instruction.slc<25>(7) == 0 && !core.stallSignals[2] && !core.stallIm && !core.stallDm && !core.stallAlu){
 
 		ac_int<32, true> syscallId = core.regFile[17];
 		ac_int<32, true> arg1 = core.regFile[10];

@@ -299,7 +299,7 @@ int Test(int opCode, int funct7, int funct3, int *a, int *b, int *z)
 
 		unsigned int instruction, numberOfCycles;
 		struct processorState initialState, finalState;
-		numberOfCycles = 500;
+		numberOfCycles = 1000;
 		ac_int<32, false> im[8192], dm[8192];
 		Core core;
 

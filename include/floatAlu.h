@@ -1,7 +1,7 @@
 /*
  * floatAlu.h
  *
- *  Created on S_MTS jun. 2019
+ *  Created on 23 jun. 2019
  *      Author :  Lauric 
  */
 
@@ -27,6 +27,22 @@
 #define BIAS 127
 #define S_MTS 23
 #define S_EXP 8
+#define BIT_W 32
+#define SUB_BIAS 126
+#define MAX_EXP 0xff
+
+// S_MTS + 1 is for having a variable wich contain a mantissa with the hidden bit
+//  S_EXP + 1 is for adding two exp and keeping the precision
+
+// S_MTS + 2 is for the same meaning with full mantissa (and to not use a 48 bits adder)
+
+// 2*(S_MTS + 1) is for keeping precision when computing with two full mantissa
+// 2*(S_MTS + 1) - 1 is the number of the MSB in a 2*(S_MTS + 1) bits variable
+
+//MAX_EXP is the maximal value of the exposant : tipically 2^S_EXP -1 
+
+// BIAS and SUB_BIAS are the value of the bias in the IEE-754 norm
+
 
 
 class FloatAlu : public ALU
@@ -34,13 +50,13 @@ class FloatAlu : public ALU
 private :
 	int state = 0;
 	int subState = 0;
-	ac_int<48, false> quotient = 0;
-	ac_int<48,false> remainder = 0;
-	ac_int<48,false> f1Val = 0;
-	ac_int<48,false> f2Val = 0;
-	ac_int<24,false> tmp = 0;
-	ac_int<32, false> localResult = 0;
-	ac_int<32,false> statusRegister = 0;
+	ac_int<2*(S_MTS + 1), false> quotient = 0;
+	ac_int<2*(S_MTS + 1),false> remainder = 0;
+	ac_int<2*(S_MTS + 1),false> f1Val = 0;
+	ac_int<2*(S_MTS + 1),false> f2Val = 0;
+	ac_int<(S_MTS + 1),false> tmp = 0;
+	ac_int<BIT_W, false> localResult = 0;
+	ac_int<BIT_W,false> statusRegister = 0;
 	
 	enum roundingMode {
 	 RNE = 0,
@@ -55,19 +71,19 @@ private :
 	bool performFused = 0;
 	int iter = 0;
 	int step = 0;
-	ac_int<32,false> tempValue = 0;
+	ac_int<BIT_W,false> tempValue = 0;
 	bool doneSqrt = false;
-	ac_int<32,false> tempSqrt; // we should choose a value near the sqrt of lhs, the use of look up table may help.
+	ac_int<BIT_W,false> tempSqrt; // we should choose a value near the sqrt of lhs, the use of look up table may help.
 	
 
 	
 
 	
 public :
-	void iterMantissa(ac_int<32,false> &f)
+	void iterMantissa(ac_int<BIT_W,false> &f)
 	{
-		ac_int<24,false> mantissa = f.slc<S_MTS>(0);
-		ac_int<9,false> exp = f.slc<S_EXP>(S_MTS);
+		ac_int<(S_MTS + 1),false> mantissa = f.slc<S_MTS>(0);
+		ac_int<(S_EXP + 1),false> exp = f.slc<S_EXP>(S_MTS);
 		
 
 			
@@ -76,7 +92,7 @@ public :
 			if(mantissa[S_MTS] != 0)
 			{
 				exp++;
-				if(exp[8] != 0)
+				if(exp[S_EXP] != 0)
 				{
 					OVERF = 1;
 				}
@@ -96,30 +112,29 @@ public :
 
 
 
-  bool process(struct DCtoEx dctoEx, ac_int<32, false> &result, bool &stall) 
+  bool process(struct DCtoEx dctoEx, ac_int<BIT_W, false> &result, bool &stall) 
 {		
    	  ac_int<1, false> f1Sign;
 	  ac_int<1, false> f2Sign;
  
-	  ac_int<24, false> f1Mantissa;
-	  ac_int<24, false> f2Mantissa;
+	  ac_int<(S_MTS + 1), false> f1Mantissa;
+	  ac_int<(S_MTS + 1), false> f2Mantissa;
  
-	  ac_int<9, true> f1Exp; 
-	  ac_int<9, true> f2Exp;
+	  ac_int<(S_EXP + 1), true> f1Exp; 
+	  ac_int<(S_EXP + 1), true> f2Exp;
 	  
 	  ac_int<S_EXP,false> f2UExp;
 	  ac_int<S_EXP,false> f1UExp;
 
 	  ac_int<1, false> outputSign;                 
-	  ac_int<48, false> outputMantissa;
-	  ac_int<48, false> resultMantissa;
- 	  ac_int<9, true> outputExp;
+	  ac_int<2*(S_MTS + 1), false> outputMantissa;
+	  ac_int<2*(S_MTS + 1), false> resultMantissa;
+ 	  ac_int<(S_EXP + 1), true> outputExp;
  	  
  	  ac_int<2,false> roundingFlags; // roundingFlags[0] = (cuttedBits >= 0.5) et roundingFlags[1] = (cuttedBits == 0.5) 
 
 
-      float f1;
-	  int g,i,k;
+	  int i,k;
 	  bool isHalf = false, changeResult = false;
 	  
     stall = false;       
@@ -236,7 +251,7 @@ public :
 				{
 					case RISCV_FLOAT_NMADD : 
 					case RISCV_FLOAT_NMSUB : 
-						dctoEx.lhs[31] = 1 - dctoEx.lhs.slc<1>(31); 
+						dctoEx.lhs[(BIT_W -1)] = 1 - dctoEx.lhs.slc<1>((BIT_W -1)); 
 					case RISCV_FLOAT_MSUB : 
 					case RISCV_FLOAT_MADD : 
 						dctoEx.opCode = RISCV_FLOAT_OP;
@@ -254,7 +269,7 @@ public :
 				{
 					case RISCV_FLOAT_NMADD : 
 					case RISCV_FLOAT_NMSUB : 
-						dctoEx.lhs[31] = 1 - dctoEx.lhs.slc<1>(31); 
+						dctoEx.lhs[(BIT_W -1)] = 1 - dctoEx.lhs.slc<1>((BIT_W -1)); 
 					case RISCV_FLOAT_MSUB : 
 					case RISCV_FLOAT_MADD : 
 						dctoEx.opCode = RISCV_FLOAT_OP;
@@ -271,7 +286,7 @@ public :
 				{
 					case RISCV_FLOAT_NMSUB : 
 					case RISCV_FLOAT_MSUB : 
-						dctoEx.mhs[31] = 1 - dctoEx.mhs.slc<1>(31);
+						dctoEx.mhs[(BIT_W -1)] = 1 - dctoEx.mhs.slc<1>((BIT_W -1));
 					case RISCV_FLOAT_NMADD : 
 					case RISCV_FLOAT_MADD : 
 						dctoEx.opCode = RISCV_FLOAT_OP;
@@ -311,7 +326,7 @@ public :
 	 }
 	 else 
 	 {
-		f1Exp = - 126;
+		f1Exp = - SUB_BIAS;
 	 }
 	
 	 if(dctoEx.rhs.slc<S_EXP>(S_MTS) != 0)
@@ -321,11 +336,11 @@ public :
 	 }
 	 else 
 	 {
-	  	f2Exp =  - 126;  
+	  	f2Exp =  - SUB_BIAS;  
 	 }
 				
-	f1Sign = dctoEx.lhs.slc<1>(31);
-	f2Sign = dctoEx.rhs.slc<1>(31);
+	f1Sign = dctoEx.lhs.slc<1>((BIT_W -1));
+	f2Sign = dctoEx.rhs.slc<1>((BIT_W -1));
 	
 	f1UExp = dctoEx.lhs.slc<S_EXP>(S_MTS);
 	f2UExp = dctoEx.rhs.slc<S_EXP>(S_MTS);
@@ -334,31 +349,22 @@ public :
 	//  Nan handling
 	
 	
-	//printf("lhs = %x , rhs = %x\n", dctoEx.lhs, dctoEx.rhs);
 
 	if(dctoEx.useRs2 & (dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 != RISCV_FLOAT_OP_CMP 
-	& (( f1UExp ==  0xff & f1Mantissa.slc<23>(0) != 0) | ( f2UExp == 0xff & f2Mantissa.slc<23>(0) != 0)) )) // we have a float instructions at two operand with at least a Nan
+	& (( f1UExp ==  MAX_EXP & f1Mantissa.slc<S_MTS>(0) != 0) | ( f2UExp == MAX_EXP & f2Mantissa.slc<S_MTS>(0) != 0)) )) // we have a float instructions at two operand with at least a Nan
 	{ 
 		changeResult = true;
-	   if(((f1UExp == 0xff & f1Mantissa.slc<23>(0) != 0) & (f2UExp == 0xff & f2Mantissa.slc<23>(0) != 0))) // both are Nan
+	   if(((f1UExp == MAX_EXP & f1Mantissa.slc<S_MTS>(0) != 0) & (f2UExp == MAX_EXP & f2Mantissa.slc<S_MTS>(0) != 0))) // both are Nan
 	 	  localResult = CNAN;
 
-	   else if (f1UExp == 0xff & f1Mantissa.slc<23>(0) != 0) // f1 is a Nan
+	   else if (f1UExp == MAX_EXP & f1Mantissa.slc<S_MTS>(0) != 0) // f1 is a Nan
 	   {
-	   		//if (f1Mantissa[22]) // f1 is a signaling Nan
-	   			localResult = CNAN;
-	   		
-	   		//else 
-	   		//	localResult = dctoEx.rhs; 
+
+	   		localResult = CNAN;
 	   }
 	 	 else // f1 is not a Nan and f2 is a Nan 
 	   	{
-	   		//if (f2Mantissa[22]) // f2 is a signaling Nan
-	   			localResult = CNAN;
-	   		
-	   		//else // f2 is a quiet Nan and f1 is not a Nan
-	   		//	localResult = dctoEx.lhs;  
-	   			
+	   		localResult = CNAN;
 	    }
 	    
 	if(performFused | performSqrt)
@@ -371,7 +377,7 @@ public :
 
 	}
 	else if(dctoEx.opCode == RISCV_FLOAT_OP & dctoEx.funct7 == RISCV_FLOAT_OP_CMP 
-			& ((f1UExp == 0xff & f1Mantissa.slc<23>(0) != 0) | (f2UExp == 0xff & f2Mantissa.slc<23>(0) != 0)) )// CMP case we return false all the time if one of the operand is a Nan
+			& ((f1UExp == MAX_EXP & f1Mantissa.slc<S_MTS>(0) != 0) | (f2UExp == MAX_EXP & f2Mantissa.slc<S_MTS>(0) != 0)) )// CMP case we return false all the time if one of the operand is a Nan
 		{
 			changeResult = true;
 			localResult = 0;
@@ -411,15 +417,15 @@ public :
 									  case RISCV_FLOAT_OP_SUB  : 
 											f2Sign = 1 - f2Sign;
 									  case  RISCV_FLOAT_OP_ADD :
-										  if(f1UExp != 0xff & f2UExp != 0xff) // operand are not exceptions
+										  if(f1UExp != MAX_EXP & f2UExp != MAX_EXP) // operand are not exceptions
 										  {										  
 											if(!subState)
 											{
 												state = f1UExp - f2UExp;
 												subState = 1;
 												stall = true;
-												f1Val = (ac_int<48,false>) f1Mantissa;
-												f2Val = (ac_int<48,false>) f2Mantissa;
+												f1Val = (ac_int<2*(S_MTS + 1),false>) f1Mantissa;
+												f2Val = (ac_int<2*(S_MTS + 1),false>) f2Mantissa;
 											}
 											else
 											{
@@ -471,7 +477,7 @@ public :
 													}
 												
 												
-												localResult.set_slc(31,outputSign);
+												localResult.set_slc((BIT_W -1),outputSign);
 													
 												if(f1UExp > f2UExp)
 													outputExp = f1UExp;
@@ -481,7 +487,7 @@ public :
 
 												
 												
-												for(i = 47; i >= 0; i--)  //Find the MSB
+												for(i = (2*(S_MTS + 1) - 1); i >= 0; i--)  //Find the MSB
 													if (resultMantissa[i])
 														break;
 														
@@ -490,14 +496,14 @@ public :
 												{
 													localResult.set_slc(0, resultMantissa.slc<S_MTS>(i - S_MTS) );
 													outputExp += i - S_MTS;
-													roundingFlags[0] = resultMantissa.slc<1>(i - 24);
+													roundingFlags[0] = resultMantissa.slc<1>(i - (S_MTS + 1));
 													
-													if(i == 24)
+													if(i == (S_MTS + 1))
 														roundingFlags[1] = roundingFlags[0];
 													else
 													{
 													
-														for(k = i - 25; i != 0; i--)
+														for(k = i - (S_MTS + 2); i != 0; i--)
 															isHalf = isHalf & resultMantissa[k];
 														
 														roundingFlags[1] = isHalf;
@@ -522,7 +528,7 @@ public :
 												localResult.set_slc(S_MTS,outputExp.slc<S_EXP>(0));
 												
 												
-												if(outputExp.slc<S_EXP>(0) > 254) // over and underflow handeling with return of infty
+												if(outputExp.slc<S_EXP>(0) > (MAX_EXP - 1)) // over and underflow handeling with return of infty
 												{
 													OVERF = 1;		
 													if(f1Sign != 0)
@@ -548,9 +554,9 @@ public :
 										  else // one of the operand is an exception
 										  {
 										  	changeResult = true;
-										  	if (f1UExp == 0xff)
+										  	if (f1UExp == MAX_EXP)
 										  	{
-										  		if (f2UExp == 0xff)
+										  		if (f2UExp == MAX_EXP)
 										  		{
 										  			if(f1Sign == f2Sign)
 										  				localResult = dctoEx.rhs; // infty + infty = infty if they have the same sign
@@ -578,29 +584,29 @@ public :
 										                
 									  case RISCV_FLOAT_OP_DIV  : 
 
-									  	if(f1UExp != 0xff & f2UExp != 0xff) // float are not exceptions
+									  	if(f1UExp != MAX_EXP & f2UExp != MAX_EXP) // float are not exceptions
 										{
 											  	if(dctoEx.lhs != 0)
 											  	{
-													 state = 48;
+													 state = 2*(S_MTS + 1);
 													 quotient = 0;
 													 remainder = 0;
 													 stall = true;
-													 f1Val.set_slc(24,f1Mantissa);
+													 f1Val.set_slc((S_MTS + 1),f1Mantissa);
 													 f2Val.set_slc(0,f2Mantissa);
  											  	}
 												else
 												{
 													DIV0 = 1;
 													localResult = INFP;
-													localResult[31] = f2Sign;
+													localResult[(BIT_W -1)] = f2Sign;
 												}
 										}
 										  else // one of the operand is an exception
 										  {
-										  	if (f1UExp == 0xff)
+										  	if (f1UExp == MAX_EXP)
 										  	{
-										  		if (f2UExp == 0xff) // infty / infty -> NaN
+										  		if (f2UExp == MAX_EXP) // infty / infty -> NaN
 										  		{
 										  			localResult = CNAN;
 										  		}
@@ -620,13 +626,13 @@ public :
 													  break;                                                  
 										                                                              
 									  case RISCV_FLOAT_OP_MUL  :  
-									  	if(f1UExp != 0xff & f2UExp != 0xff) // float are not exceptions
+									  	if(f1UExp != MAX_EXP & f2UExp != MAX_EXP) // float are not exceptions
 										{                                    
 												outputSign = f1Sign ^ f2Sign;                 
 												outputMantissa = f1Mantissa * f2Mantissa;
-												outputExp = f1Exp + f2Exp - BIAS - 25;
+												outputExp = f1Exp + f2Exp - BIAS - (S_MTS + 2);
 
-						 						if(f1UExp + f2UExp >= 255 + BIAS) // overflow 
+						 						if(f1UExp + f2UExp >= MAX_EXP + BIAS) // overflow 
 						 						{
 						 							if(outputSign != 0)
 													{
@@ -644,7 +650,7 @@ public :
 							 						if(f1UExp + f2UExp >= BIAS)
 							 						{
 								 						
-								 						for(i = 47; i >= 0; i--)  //Find the MSB
+								 						for(i = (2*(S_MTS + 1) - 1); i >= 0; i--)  //Find the MSB
 															if (outputMantissa[i])
 																break;
 															
@@ -652,14 +658,14 @@ public :
 														{
 															localResult.set_slc(0, outputMantissa.slc<S_MTS>(i - S_MTS) );
 															outputExp += i - S_MTS;
-															roundingFlags[0] = outputMantissa.slc<S_MTS>(i - 24);
+															roundingFlags[0] = outputMantissa.slc<S_MTS>(i - (S_MTS + 1));
 															
-															if(i == 24)
+															if(i == (S_MTS + 1))
 																roundingFlags[1] = roundingFlags[0];
 															else
 															{
 															
-																for(k = i - 25; i != 0; i--)
+																for(k = i - (S_MTS + 2); i != 0; i--)
 																	isHalf = isHalf & outputMantissa[k];
 																
 																roundingFlags[1] = isHalf;
@@ -685,7 +691,7 @@ public :
 								 					{
 								 						outputExp = 0;
 								 						
-								 						outputMantissa = outputMantissa >> (BIAS + 24 - (f1UExp + f2UExp) );
+								 						outputMantissa = outputMantissa >> (BIAS + (S_MTS + 1) - (f1UExp + f2UExp) );
 								 						localResult.set_slc(0, outputMantissa.slc<S_MTS>(0));
 								 					}
 								 					else
@@ -696,7 +702,7 @@ public :
 								 						}
 
 								  				localResult.set_slc(S_MTS, outputExp.slc<S_EXP>(0));
-								  				localResult.set_slc(31, outputSign);
+								  				localResult.set_slc((BIT_W -1), outputSign);
 
 											}
 						 					
@@ -712,9 +718,9 @@ public :
 										  else // one of the operand is an exception
 										  {
 										  	changeResult = true;
-										  	if (f1UExp == 0xff)
+										  	if (f1UExp == MAX_EXP)
 										  	{
-										  		if (f2UExp == 0xff)
+										  		if (f2UExp == MAX_EXP)
 										  		{
 										  			if(f1Sign == f2Sign)
 										  				localResult = INFP;
@@ -726,7 +732,7 @@ public :
 										  			if(dctoEx.lhs != 0) // infty * float 
 										  			{
 											  			localResult = INFP;
-											  			localResult.set_slc(31, (ac_int<1,false>) f1Sign ^ f2Sign); 
+											  			localResult.set_slc((BIT_W -1), (ac_int<1,false>) f1Sign ^ f2Sign); 
 										  			}
 										  			else // infty * 0 
 										  				localResult = CNAN; 
@@ -737,7 +743,7 @@ public :
 										  		if(dctoEx.rhs != 0) // infty * float 
 										  			{
 											  			localResult = INFP;
-											  			localResult.set_slc(31, (ac_int<1,false>) f1Sign ^ f2Sign); 
+											  			localResult.set_slc((BIT_W -1), (ac_int<1,false>) f1Sign ^ f2Sign); 
 										  			}
 										  			else // infty * 0 
 										  				localResult = CNAN; 
@@ -761,15 +767,15 @@ public :
 										{
 
 											case 0 :
-												localResult[31] = (bool) f2Sign; 
+												localResult[(BIT_W -1)] = (bool) f2Sign; 
 											break;
 
 											case 1: 
-												localResult[31] = !( (bool) f2Sign);
+												localResult[(BIT_W -1)] = !( (bool) f2Sign);
 											break;
 									
 											case 2:
-												localResult[31] = ((bool) f1Sign) ^ ((bool) f2Sign);
+												localResult[(BIT_W -1)] = ((bool) f1Sign) ^ ((bool) f2Sign);
 											break;
 										}                                      
 										      break;                                                  
@@ -874,14 +880,14 @@ public :
 	
 											if (state >= 0)
 											{
-												if (state >= 32)
+												if (state >= BIT_W)
 													localResult = 0;
 												else
 													localResult = localResult >> state ; 
 											}
 											else
 											{
-												if (state <= -32)
+												if (state <= -BIT_W)
 													localResult = 0;
 												else
 													localResult = localResult << (- state);
@@ -890,9 +896,9 @@ public :
 
 																	
 										}
-									  	else // the float is subnormal so his value is near 0 --> do not need to compute his exact value
+									  	else // the float is subnormal --> we return 0
 									  	{
-									  		localResult = (ac_int<32,false>) 0;
+									  		localResult = (ac_int<BIT_W,false>) 0;
 													  	
 									  	}
 
@@ -999,36 +1005,38 @@ public :
 									  changeResult = true;
 											if(dctoEx.rs2 != 0 ) // FCVT.S.WU
 											{
-												for(i = 31; i >= 0; i--)
+												for(i = (BIT_W -1); i >= 0; i--)
 													if (dctoEx.lhs[i])
 															break;
+															
 												localResult.set_slc(S_MTS, (ac_int<S_EXP,false>) (BIAS + i));
-												localResult.set_slc(0, (dctoEx.lhs << (31 - i)).slc<S_MTS>(8));
-												roundingFlags[0] = (dctoEx.lhs << (31 - i)).slc<S_MTS>(7);
-												roundingFlags[1] = (dctoEx.lhs << (31 - i)).slc<7>(0) == 0x40;
+												localResult.set_slc(0, (dctoEx.lhs << ((BIT_W -1) - i)).slc<S_MTS>(S_EXP));
+												roundingFlags[0] = (dctoEx.lhs << ((BIT_W -1) - i)).slc<S_MTS>(7);
+												roundingFlags[1] = (dctoEx.lhs << ((BIT_W -1) - i)).slc<7>(0) == 0x40;
 											}
 											else // FCVT.S.W
 											{
-												if(dctoEx.lhs[31]) // the number is negative -> 2's complement
+												if(dctoEx.lhs[(BIT_W -1)]) // the number is negative -> 2's complement
 												{
 													for(i = 30; i >= 0; i--)
 														if (!dctoEx.lhs[i])
 																break;
 																	
 													localResult.set_slc(S_MTS, (ac_int<S_EXP,false>) (BIAS + i-1));
-													localResult.set_slc(0, (dctoEx.rhs << (31 - i+1)).slc<S_MTS>(8) );
-													roundingFlags[0] = (dctoEx.rhs << (31 - i+1)).slc<S_MTS>(7);
-												roundingFlags[1] = (dctoEx.rhs << (31 - i+1)).slc<7>(0) == 0x40;
-													}
+													localResult.set_slc(0, (dctoEx.rhs << ((BIT_W -1) - i+1)).slc<S_MTS>(S_EXP) );
+													roundingFlags[0] = (dctoEx.rhs << ((BIT_W -1) - i+1)).slc<S_MTS>(7);
+													roundingFlags[1] = (dctoEx.rhs << ((BIT_W -1) - i+1)).slc<7>(0) == 0x40;
+												}
 												else 
 												{
 													for(i = 30; i >= 0; i--)
 														if (dctoEx.lhs[i])
 															break;
+															
 													localResult.set_slc(S_MTS, (ac_int<S_EXP,false>) (BIAS + i));
-													localResult.set_slc(0, (dctoEx.lhs << (31 - i)).slc<S_MTS>(8) );
-													roundingFlags[0] = (dctoEx.lhs << (31 - i)).slc<S_MTS>(7);
-													roundingFlags[1] = (dctoEx.lhs << (31 - i)).slc<7>(0) == 0x40;
+													localResult.set_slc(0, (dctoEx.lhs << ((BIT_W -1) - i)).slc<S_MTS>(S_EXP) );
+													roundingFlags[0] = (dctoEx.lhs << ((BIT_W -1) - i)).slc<S_MTS>(7);
+													roundingFlags[1] = (dctoEx.lhs << ((BIT_W -1) - i)).slc<7>(0) == 0x40;
 												}
 											}
 							  				  
@@ -1041,14 +1049,15 @@ public :
 										                                                              
 									  case RISCV_FLOAT_OP_CLASSMVXW :    
 										  changeResult = true;                             
-										  if (!
-										  dctoEx.funct3) // funct3 = 0 -> FMV.X.W
+										  if (!dctoEx.funct3) // funct3 = 0 -> FMV.X.W
 										  {
 											localResult = dctoEx.lhs;
 										  }
 										  else  // FCLASS.S
 										  {
-											
+										  	#ifndef __CATAPULT
+											printf("FCLASS not implemented yet\n");
+											#endif
 										  }
 										  break;                                                  
 												                                                          
@@ -1073,19 +1082,20 @@ public :
 								state--;
 								remainder = remainder << 1;
 								remainder[0] = f1Val[state];
+								quotient = quotient << 1;
 								if(remainder >= f2Val)
 								{
 									remainder = remainder - f2Val;
-									quotient[state] = 1;
+									quotient[0] = 1;
 								}
 							}
 										 
 							if(!state)
 							{
 								outputSign = f1Sign ^ f2Sign;
-							  	outputExp = f1Exp - f2Exp + 126;
+							  	outputExp = f1Exp - f2Exp + SUB_BIAS;
 								
-								for(i = 47; i >= 0; i--)  //Find the MSB
+								for(i = (2*(S_MTS + 1) - 1); i >= 0; i--)  //Find the MSB
 									if (quotient[i])
 										break;
 										
@@ -1093,14 +1103,14 @@ public :
 								{
 									localResult.set_slc(0, quotient.slc<S_MTS>(i - S_MTS) );
 									outputExp += i - S_MTS;
-									roundingFlags[0] = quotient[i - 24];
+									roundingFlags[0] = quotient[i - (S_MTS + 1)];
 									
-									if(i == 24)
+									if(i == (S_MTS + 1))
 										roundingFlags[1] = 0;
 									else
 									{
 									
-										for( k = i - 24; k != 0; k--)
+										for( k = i - (S_MTS + 1); k != 0; k--)
 											isHalf = isHalf & quotient[k];
 										roundingFlags[1] = isHalf;											
 									}
@@ -1115,10 +1125,10 @@ public :
 								
 
 					  			localResult.set_slc(S_MTS, outputExp.slc<S_EXP>(0));
-					  			localResult.set_slc(31, outputSign);
+					  			localResult.set_slc((BIT_W -1), outputSign);
 								stall = false;
 
-					  			if(outputExp.slc<S_EXP>(0) > 254)  // over and underflow handling with return of infty
+					  			if(outputExp.slc<S_EXP>(0) > (MAX_EXP - 1))  // over and underflow handling with return of infty
 									if(f1Sign != 0)
 									{
 										OVERF = 1;		
@@ -1129,7 +1139,7 @@ public :
 										OVERF = 1;		
 										localResult = INFP;
 									}
-							 localResult.set_slc(31, outputSign);
+							 localResult.set_slc((BIT_W -1), outputSign);
 						
 							
 								if(performSqrt)
@@ -1150,15 +1160,15 @@ public :
 
 								if (state > 0)
 								{
-									if (state > 32)
-										{f2Val = f2Val >> 32; state -=32;}
+									if (state > BIT_W)
+										{f2Val = f2Val >> BIT_W; state -=BIT_W;}
 									else
 										{f2Val = f2Val >> state; state =0;}
 								}
 								else
 								{
-									if (state < -32)
-										{f1Val = f1Val >> 32; state +=32;}
+									if (state < -BIT_W)
+										{f1Val = f1Val >> BIT_W; state +=BIT_W;}
 									else
 										{f1Val = f1Val >> - state; state =0;}
 								
@@ -1191,12 +1201,12 @@ public :
    				break;
    				
    			case RDN :
-   				if(localResult[31] & roundingFlags[0] != 0)
+   				if(localResult[(BIT_W -1)] & roundingFlags[0] != 0)
    						iterMantissa(localResult);
    				break;
    				
    			case RUP : 
-   				if(!localResult[31] & roundingFlags[0] != 0)
+   				if(!localResult[(BIT_W -1)] & roundingFlags[0] != 0)
    					iterMantissa(localResult);
    				break; 
    			

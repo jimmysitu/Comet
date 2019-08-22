@@ -34,6 +34,7 @@ public:
 	    extoMem.isBranch = 0;
 	    extoMem.useRd = dctoEx.useRd;
 	    extoMem.isLongInstruction = 0;
+	    extoMem.instruction = dctoEx.instruction;
 
 
 
