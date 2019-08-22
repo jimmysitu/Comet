@@ -80,7 +80,6 @@ void decode(struct FtoDC ftoDC,
     bool cond1 = (funct7[3] && funct7[6] && instruction.slc<7>(0) == RISCV_FLOAT_OP);
     bool cond2 =  ( (opCode != RISCV_FLOAT_OP) && (opCode != RISCV_FLOAT_MADD) && (opCode != RISCV_FLOAT_MSUB) && (opCode != RISCV_FLOAT_NMADD) && (opCode != RISCV_FLOAT_NMSUB) );
 
-
     if ( cond1 || cond2 )
 	{
     		valueReg1 = registerFile[rs1];
@@ -445,21 +444,21 @@ void branchUnit(ac_int<32, false> nextPC_fetch,
 }
 
 void forwardUnit(
-		ac_int<5, false> decodeRs1,
+		ac_int<6, false> decodeRs1,
 		bool decodeUseRs1,
-		ac_int<5, false> decodeRs2,
+		ac_int<6, false> decodeRs2,
 		bool decodeUseRs2,
-		ac_int<5, false> decodeRs3,
+		ac_int<6, false> decodeRs3,
 		bool decodeUseRs3,
 
-		ac_int<5, false> executeRd,
+		ac_int<6, false> executeRd,
 		bool executeUseRd,
 		bool executeIsLongComputation,
 
-		ac_int<5, false> memoryRd,
+		ac_int<6, false> memoryRd,
 		bool memoryUseRd,
 
-		ac_int<5, false> writebackRd,
+		ac_int<6, false> writebackRd,
 		bool writebackUseRd,
 
 		bool stall[5],
@@ -621,7 +620,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
 
     //declare temporary register file
-    ac_int<32, false> nextInst, multResult,floatResult = 0;
+    ac_int<32, false> nextInst = 0, multResult,floatResult = 0;
 	
     if (!localStall && !core.stallDm)
     	core.im->process(core.pc, WORD, LOAD, 0, nextInst, core.stallIm);
