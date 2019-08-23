@@ -392,6 +392,8 @@ public :
 							 case RISCV_FLOAT_LW:
 							 changeResult = true;
 							 	localResult = dctoEx.lhs + dctoEx.rhs;   
+								 fprintf(stderr, "Changing the result for a load %x\n", localResult);
+
 							 break; 
 
 						   case RISCV_FLOAT_SW:
@@ -763,6 +765,7 @@ public :
 								                                   
 									  case RISCV_FLOAT_OP_SGN  :
 									  	changeResult = true;
+									  	localResult = dctoEx.lhs;
 										switch(dctoEx.funct3)
 										{
 
@@ -1220,10 +1223,12 @@ public :
    		}
    		
    		
-   	   result = localResult;
 		   
    }
-	return changeResult;
+
+   result = localResult;
+
+   return changeResult;
 
 } 
 

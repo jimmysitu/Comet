@@ -36,7 +36,7 @@ public:
 	    extoMem.isLongInstruction = 0;
 	    extoMem.instruction = dctoEx.instruction;
 
-
+	    extoMem.result = 0;
 
 	    ac_int<13, false> imm13 = 0;
 	    imm13[12] = dctoEx.instruction[31];
@@ -97,6 +97,12 @@ public:
 	            break;
 	        }
 	        break;
+		case RISCV_FLOAT_LW:
+			extoMem.isLongInstruction = 1;
+		break;
+		case RISCV_FLOAT_SW:
+	    	extoMem.datac = dctoEx.datac;
+		break;
 	    case RISCV_LD:
 	        extoMem.isLongInstruction = 1;
 	        extoMem.result = dctoEx.lhs + dctoEx.rhs;
@@ -230,11 +236,11 @@ public:
 
 class MultAlu: public ALU {
 public:
-    ac_int<32, false> quotient, remainder;
+    ac_int<32, false> quotient=0, remainder=0;
     //ac_int<33, false> 
     ac_int<6, false> state = 0; 
-    bool resIsNeg;
-    ac_int<32, false> dataAUnsigned, dataBUnsigned;
+    bool resIsNeg=false;
+    ac_int<32, false> dataAUnsigned=0, dataBUnsigned=0;
 
 	bool process(struct DCtoEx dctoEx, ac_int<32, false> &result, bool &stall){
         //no need to fill in the output register fields, the first ALU has that taken care of
