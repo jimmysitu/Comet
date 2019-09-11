@@ -108,7 +108,7 @@ void decode(struct FtoDC ftoDC,
   		dctoEx.rs3 = rs3;	
 		}
 	else
-		dctoEx.rs3 = rs2;
+		dctoEx.rs3 = dctoEx.rs2;
 
 
     		
@@ -125,6 +125,9 @@ void decode(struct FtoDC ftoDC,
     dctoEx.useRd = 0;
     dctoEx.we = ftoDC.we;
     dctoEx.isBranch = 0;
+    dctoEx.lhs = 0;
+    dctoEx.rhs = 0;
+    dctoEx.mhs = 0;
 
 
 
@@ -228,13 +231,13 @@ void decode(struct FtoDC ftoDC,
 	 * Author : Lauric
 	 ******************************************************************************************/
     case RISCV_FLOAT_LW : 
-	dctoEx.lhs = valueReg1;                                                 
+    	dctoEx.lhs = valueReg1;
         dctoEx.rhs = imm12_I_signed;                                            
         dctoEx.useRs1 = 1;                                                      
         dctoEx.useRs2 = 0;                                                      
         dctoEx.useRs3 = 0;                                                      
         dctoEx.useRd = 1;    		
-	dctoEx.rd[5] = 1;
+        dctoEx.rd[5] = 1;
 	break;
 
     case RISCV_FLOAT_SW : 

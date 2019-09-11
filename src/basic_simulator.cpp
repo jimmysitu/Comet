@@ -19,6 +19,7 @@ BasicSimulator::BasicSimulator (
     const char *outFile,
     const char *tFile)
 {
+	core.ftoDC.pc = 0;
 	core.ftoDC.instruction = 0;
 	core.ftoDC.we = false;
 	core.ftoDC.nextPCFetch = 0;
@@ -87,6 +88,8 @@ BasicSimulator::BasicSimulator (
 	
 
 	im = new ac_int<32, false>[DRAM_SIZE >> 2];
+	for (int oneval=0; oneval < (DRAM_SIZE>>2); oneval++)
+		im[oneval] = 0;
 	dm = new ac_int<32, false>[DRAM_SIZE >> 2];
 
 	core.cycle = 0;
@@ -254,10 +257,11 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 void BasicSimulator::printCycle(){
     // Use the trace file to separate program output from simulator output
 
-  if(!core.stallSignals[0] & 0) {
+  if(0) {
    
-	if (!core.stallSignals[0] && ! core.stallIm && !core.stallDm){
+	if (1){
 	printf("Debug trace : %x ",(unsigned int) core.ftoDC.instruction);
+	printf("(PC=%x) ", core.pc);
 	std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
 
 	for (int oneReg = 0; oneReg < 64; oneReg++){
