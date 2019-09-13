@@ -122,7 +122,7 @@ BasicSimulator::BasicSimulator (
 	for(unsigned int sectionCounter = 0; sectionCounter < elfFile.sectionTable->size(); sectionCounter++)
 	{
 		ElfSection *oneSection = elfFile.sectionTable->at(sectionCounter);
-		if(oneSection->address != 0 && strncmp(oneSection->getName().c_str(), ".text", 5))
+		if(oneSection->address != 0 && oneSection->size > 0 /*strncmp(oneSection->getName().c_str(), ".text", 5)*/)
 		{
 			//If the address is not null we place its content into memory
 			unsigned char* sectionContent = oneSection->getSectionCode();
@@ -130,16 +130,8 @@ BasicSimulator::BasicSimulator (
 			{
 				counter++;
 				insertDataMemoryMap(oneSection->address + byteNumber, sectionContent[byteNumber]);
-			}
-			free(sectionContent);
-		}
-
-		if(!strncmp(oneSection->getName().c_str(), ".text", 5))
-		{
-			unsigned char* sectionContent = oneSection->getSectionCode();
-			for(unsigned int byteNumber = 0; byteNumber < oneSection->size; byteNumber++)
-			{
 				insertInstructionMemoryMap((oneSection->address + byteNumber), sectionContent[byteNumber]);
+
 			}
 			free(sectionContent);
 		}
@@ -150,7 +142,7 @@ BasicSimulator::BasicSimulator (
 		ElfSymbol *symbol = elfFile.symbols->at(oneSymbol);
 		unsigned char* sectionContent = elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode();
 		const char* name = (const char*) &(sectionContent[symbol->name]);
-		if(strcmp(name, "_start") == 0)
+		if(strcmp(name, "_start") == 0 || strcmp(name, "__start") == 0)
 		{
 			core.pc = symbol->offset;
 		}
@@ -246,7 +238,7 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 void BasicSimulator::printCycle(){
     // Use the trace file to separate program output from simulator output
 
-  if(!core.stallSignals[0] && 0) {
+  if(!core.stallSignals[0] & 0) {
    
 	if (!core.stallSignals[0] && ! core.stallIm && !core.stallDm){
 	printf("Debug trace : %x ",(unsigned int) core.ftoDC.pc);
@@ -372,7 +364,7 @@ ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
 void BasicSimulator::solveSyscall()
 {
 
-	if((core.extoMem.opCode == RISCV_SYSTEM) && core.extoMem.instruction.slc<25>(7) == 0 && !core.stallSignals[2] && !core.stallIm && !core.stallDm && !core.stallAlu){
+	/*if((core.extoMem.opCode == RISCV_SYSTEM) && core.extoMem.instruction.slc<25>(7) == 0 && !core.stallSignals[2] && !core.stallIm && !core.stallDm && !core.stallAlu){
 
 		ac_int<32, true> syscallId = core.regFile[17];
 		ac_int<32, true> arg1 = core.regFile[10];
@@ -580,7 +572,7 @@ void BasicSimulator::solveSyscall()
 		if(core.dctoEx.useRs3 && (core.dctoEx.rs3 == 10))
 			core.dctoEx.datac = result;
 
-	}// if exToMem.opCode == RISCV_SYSTEM
+	}// if exToMem.opCode == RISCV_SYSTEM*/
 }
 
 ac_int<32, true> BasicSimulator::doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
