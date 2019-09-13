@@ -10,6 +10,7 @@
 #include <cacheMemory.h>
 #include <alu.h>
 #include <pipelineRegisters.h>
+#include <csrUnit.h>
 
 #ifndef MEMORY_INTERFACE
 #define MEMORY_INTERFACE SimpleMemory
@@ -42,6 +43,7 @@ struct Core
 
     BasicAlu basicALU;
 	MultAlu multALU;
+	CsrUnit csrUnit;
 
 	//memories, yay
 	MemoryInterface *dm, *im;

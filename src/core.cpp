@@ -178,6 +178,14 @@ void decode(struct FtoDC ftoDC,
 
         break;
     case RISCV_SYSTEM:
+    	if (funct3 != 0){
+    	//We are in a CSR
+    		dctoEx.useRs1 = 1;
+            dctoEx.useRs2 = 0;
+            dctoEx.useRs3 = 0;
+    		dctoEx.useRd = 1;
+    		dctoEx.lhs = valueReg1;
+    	}
         //TODO
 
         break;
@@ -454,7 +462,8 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
 
     //declare temporary register file
-    ac_int<32, false> nextInst, multResult = 0;
+    ac_int<32, false> nextInst, multResult = 0, csrResult=0;
+    bool csrSetPc = false;
 
     if (!localStall && !core.stallDm)
     	core.im->process(core.pc, WORD, LOAD, 0, nextInst, core.stallIm);
@@ -463,8 +472,15 @@ void doCycle(struct Core &core, 		 //Core containing all values
     decode(core.ftoDC, dctoEx_temp, core.regFile);
     core.basicALU.process(core.dctoEx, extoMem_temp, core.stallAlu);	//calling ALU: execute stage
     bool multUsed = core.multALU.process(core.dctoEx, multResult, core.stallAlu);	//calling ALU: execute stage
+    bool csrUsed = core.csrUnit.process(core.dctoEx, csrResult, csrSetPc);
     if (multUsed)
         extoMem_temp.result = multResult;
+    if (csrUsed)
+    	extoMem_temp.result = csrResult;
+    if (csrSetPc){
+    	extoMem_temp.nextPC = csrResult;
+    	extoMem_temp.isBranch = true;
+    }
 
 
     memory(core.extoMem, memtoWB_temp);
