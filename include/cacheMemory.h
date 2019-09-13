@@ -72,7 +72,12 @@ public:
 	//Stats
 	unsigned long numberAccess, numberMiss;
 
-
+#define UART_RXTX	((UART_BASE_ADDR) + 0x00)
+#define UART_TXFULL	((UART_BASE_ADDR) + 0x04)
+#define UART_RXEMPTY	((UART_BASE_ADDR) + 0x08)
+#define UART_EV_STATUS	((UART_BASE_ADDR) + 0x0c)
+#define UART_EV_PENDING	((UART_BASE_ADDR) + 0x10)
+#define UART_EV_ENABLE	((UART_BASE_ADDR) + 0x14)
 
 #ifdef __HLS__
 	CacheMemory(IncompleteMemory *nextLevel, bool v){
@@ -100,11 +105,14 @@ public:
 		ac_int<TAG_SIZE, false> tag = addr.slc<TAG_SIZE>(LOG_LINE_SIZE + LOG_SET_SIZE); // startAddress is log(lineSize) + log(setSize) + 2
 		ac_int<LOG_LINE_SIZE, false> offset = addr.slc<LOG_LINE_SIZE-2>(2); //bitSize is log(lineSize), start address is 2(because of #bytes in a word)
 
+		if (addr == 0x501804 && opType == LOAD){
+			dataOut = 0;
+		}
+		else if (addr == 0x501800 && opType == STORE){
+			fprintf(stderr, "%c", (char) dataIn.slc<8>(0));
+		}
 
-
-
-
-		if (!nextLevelWaitOut){
+		else if (!nextLevelWaitOut){
 			cycle++;
 
 			if (wasStore || cacheState == 1){
