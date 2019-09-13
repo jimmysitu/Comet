@@ -12,6 +12,7 @@ const char* riscvNamesLD[8] = {"LDB", "LDH", "LDW", "LDD", "LDBU", "LDHU", "LDWU
 const char* riscvNamesST[8] = {"STB", "STH", "STW", "STD"};
 const char* riscvNamesBR[8] = {"BEQ", "BNE", "", "", "BLT", "BGE", "BLTU", "BGEU"};
 const char* riscvNamesMUL[8] = {"MPYLO","MPYHI", "MPYHI", "MPYHI", "DIVHI", "DIVHI", "DIVLO", "DIVLO"};
+const char* riscvNamesCSR[8] = {"", "CSRRW", "CSRRS", "CSRRC", "CSRRWI", "CSRRSI", "CSRRCI", ""};
 
 std::string printDecodedInstrRISCV(unsigned int oneInstruction){
 	char opcode = oneInstruction & 0x7f;
@@ -94,7 +95,7 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction){
 				stream << "SRAi r" << (int) rd << " = r" << (int) rs1 << ", " << shamt;
 		else if (funct3 == RISCV_OPI_SLLI){
 			stream << riscvNamesOPI[funct3];
-			stream << " r" <<  rd << " = r" << (int) rs1 << ", " << shamt;
+			stream << " r" << (int) rd << " = r" << (int) rs1 << ", " << shamt;
 		}
 		else{
 			stream << riscvNamesOPI[funct3];
@@ -161,7 +162,17 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction){
 		}
 	break;
 	case RISCV_SYSTEM:
-		stream << "SYSTEM";
+		if (funct3 == 0){
+			if (funct7 == 0)
+				stream << "ECALL";
+			else
+				stream << "EBREAK";
+		}
+		else {
+			stream << riscvNamesCSR[funct3];
+			stream << " r" << (int) rd << " " << (int) imm12_I << " r" << (int) rs1 << " ";
+		}
+
 	break;
 	default:
 		stream << "??? ";
