@@ -112,12 +112,12 @@ public:
 				andMask = 0xffffffff;
 				orMask = dctoEx.lhs;
 			}
-			else if (dctoEx.funct3 == RISCV_SYSTEM_CSRRC && dctoEx.rs1 != 0){
+			else if (dctoEx.funct3 == RISCV_SYSTEM_CSRRSI && dctoEx.rs1 != 0){
 				//Its a read/write so the value to write is lhs
 				andMask = 0xffffffff;
 				orMask = dctoEx.rs1;
 			}
-			else if (dctoEx.funct3 == RISCV_SYSTEM_CSRRSI && dctoEx.rs1 != 0){
+			else if (dctoEx.funct3 == RISCV_SYSTEM_CSRRC && dctoEx.rs1 != 0){
 				//Its a read/write so the value to write is lhs
 				andMask = !dctoEx.lhs;
 				orMask = 0;
@@ -146,7 +146,6 @@ public:
 				break;
 				case CSR_MHARTID:
 					result = this->mhartid;
-					this->mhartid = (result & andMask) | orMask;
 				break;
 				case CSR_MSTATUS:
 					result = this->mstatus;
@@ -223,6 +222,10 @@ public:
 				//MRET jumps back to the address stored in mepc
 				result = this->mepc;
 				setPC = true;
+
+				//We change interupt enable bits (MIE = MPIE and MPIE = 1)
+				mstatus[3] = mstatus[7];
+				mstatus[7] = 1;
 			}
 
 

@@ -163,10 +163,10 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction){
 	break;
 	case RISCV_SYSTEM:
 		if (funct3 == 0){
-			if (funct7 == 0)
+			if (rs2 == 0)
 				stream << "ECALL";
 			else
-				stream << "EBREAK";
+				stream << "MRET";
 		}
 		else {
 			stream << riscvNamesCSR[funct3];

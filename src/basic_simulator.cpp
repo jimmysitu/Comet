@@ -20,82 +20,98 @@ BasicSimulator::BasicSimulator (
     const char *tFile)
 {
 
-	core.ftoDC.we = false;
+	for (int oneCore = 0; oneCore < 2; oneCore++){
+		cores[oneCore].ftoDC.we = false;
 
-	core.dctoEx.pc = 0;
-	core.dctoEx.instruction = 0;
+		cores[oneCore].dctoEx.pc = 0;
+		cores[oneCore].dctoEx.instruction = 0;
 
-	core.dctoEx.opCode = 0;
-	core.dctoEx.funct7 = 0;
-	core.dctoEx.funct3 = 0;
+		cores[oneCore].dctoEx.opCode = 0;
+		cores[oneCore].dctoEx.funct7 = 0;
+		cores[oneCore].dctoEx.funct3 = 0;
 
-	core.dctoEx.lhs = 0;
-	core.dctoEx.rhs = 0;
-	core.dctoEx.datac = 0;
+		cores[oneCore].dctoEx.lhs = 0;
+		cores[oneCore].dctoEx.rhs = 0;
+		cores[oneCore].dctoEx.datac = 0;
 
-	//For branch unit
-	core.dctoEx.nextPCDC = 0;
-	core.dctoEx.isBranch = false;
+		//For branch unit
+		cores[oneCore].dctoEx.nextPCDC = 0;
+		cores[oneCore].dctoEx.isBranch = false;
 
-	//Information for forward/stall unit
-	core.dctoEx.useRs1 = false;
-	core.dctoEx.useRs2 = false;
-	core.dctoEx.useRs3 = false;
-	core.dctoEx.useRd = false;
-	core.dctoEx.rs1 = 0;
-	core.dctoEx.rs2 = 0;
-	core.dctoEx.rs3 = 0;
-	core.dctoEx.rd = 0;
+		//Information for forward/stall unit
+		cores[oneCore].dctoEx.useRs1 = false;
+		cores[oneCore].dctoEx.useRs2 = false;
+		cores[oneCore].dctoEx.useRs3 = false;
+		cores[oneCore].dctoEx.useRd = false;
+		cores[oneCore].dctoEx.rs1 = 0;
+		cores[oneCore].dctoEx.rs2 = 0;
+		cores[oneCore].dctoEx.rs3 = 0;
+		cores[oneCore].dctoEx.rd = 0;
 
-	//Register for all stages
-	core.dctoEx.we = false;
+		//Register for all stages
+		cores[oneCore].dctoEx.we = false;
 
-	core.extoMem.pc = 0;
-	core.extoMem.instruction = 0;
+		cores[oneCore].extoMem.pc = 0;
+		cores[oneCore].extoMem.instruction = 0;
 
-	core.extoMem.result = 0;
-	core.extoMem.rd = 0;
-	core.extoMem.useRd = false;
-	core.extoMem.isLongInstruction = false;
-	core.extoMem.opCode = 0;
-	core.extoMem.funct3 = 0;
+		cores[oneCore].extoMem.result = 0;
+		cores[oneCore].extoMem.rd = 0;
+		cores[oneCore].extoMem.useRd = false;
+		cores[oneCore].extoMem.isLongInstruction = false;
+		cores[oneCore].extoMem.opCode = 0;
+		cores[oneCore].extoMem.funct3 = 0;
 
-	core.extoMem.datac = 0;
+		cores[oneCore].extoMem.datac = 0;
 
-	//For branch unit
-	core.extoMem.nextPC = 0;
-	core.extoMem.isBranch = false;
+		//For branch unit
+		cores[oneCore].extoMem.nextPC = 0;
+		cores[oneCore].extoMem.isBranch = false;
 
-	//Register for all stages
-	core.extoMem.we = false;
+		//Register for all stages
+		cores[oneCore].extoMem.we = false;
 
-	core.memtoWB.result = 0;
-	core.memtoWB.rd = 0;
-	core.memtoWB.useRd = false;
+		cores[oneCore].memtoWB.result = 0;
+		cores[oneCore].memtoWB.rd = 0;
+		cores[oneCore].memtoWB.useRd = false;
 
-	core.memtoWB.address = 0;
-	core.memtoWB.valueToWrite = 0;
-	core.memtoWB.byteEnable = 0;
-	core.memtoWB.isStore = false;
-	core.memtoWB.isLoad = false;
+		cores[oneCore].memtoWB.address = 0;
+		cores[oneCore].memtoWB.valueToWrite = 0;
+		cores[oneCore].memtoWB.byteEnable = 0;
+		cores[oneCore].memtoWB.isStore = false;
+		cores[oneCore].memtoWB.isLoad = false;
 
-	//Register for all stages
-	core.memtoWB.we = false;
+		//Register for all stages
+		cores[oneCore].memtoWB.we = false;
+
+		cores[oneCore].stallAlu = false;
+
+		cores[oneCore].cycle = 0;
+
+		cores[oneCore].csrUnit.mstatus = 0;
+		cores[oneCore].csrUnit.mie = 0;
+	}
+
+	cores[0].csrUnit.mhartid = 0;
+	cores[1].csrUnit.mhartid = 1;
 
 	im = new ac_int<32, false>[DRAM_SIZE >> 2];
 	dm = new ac_int<32, false>[DRAM_SIZE >> 2];
 
-	core.cycle = 0;
+	cores[0].im = new SimpleMemory(im);
+	cores[0].dm = new SimpleMemory(dm);
 
-//	core.im = new SimpleMemory(im);
-//	core.dm = new SimpleMemory(dm);
+	cores[1].im = new SimpleMemory(im);
+	cores[1].dm = new SimpleMemory(dm);
 
-	core.im = new CacheMemory(new SimpleMemory(im), false);
-	core.dm = new CacheMemory(new SimpleMemory(dm), false);
+//	core.im = new CacheMemory(new SimpleMemory(im), false);
+//	core.dm = new CacheMemory(new SimpleMemory(dm), false);
 
 	for(int i=0; i<32; i++) {
-			core.regFile[i] = 0;
+			cores[0].regFile[i] = 0;
+			cores[1].regFile[i] = 0;
 	}
+
+
 	/*
     dataMemory = new ac_int<32, false>[DRAM_SIZE];
     for(int i(0); i < DRAM_SIZE; i++)
@@ -144,7 +160,9 @@ BasicSimulator::BasicSimulator (
 		const char* name = (const char*) &(sectionContent[symbol->name]);
 		if(strcmp(name, "_start") == 0 || strcmp(name, "__start") == 0)
 		{
-			core.pc = symbol->offset;
+			cores[0].pc = symbol->offset;
+			cores[1].pc = symbol->offset;
+
 		}
 
 		free(sectionContent);
@@ -183,8 +201,7 @@ BasicSimulator::BasicSimulator (
 
 	heapAddress = heap;
 	fillMemory();
-	core.regFile[2] = STACK_INIT;
-	core.stallAlu = false;
+	cores[0].regFile[2] = STACK_INIT;
 }
 
 BasicSimulator::~BasicSimulator()
@@ -238,17 +255,43 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 void BasicSimulator::printCycle(){
     // Use the trace file to separate program output from simulator output
 
-  if(!core.stallSignals[0] & 0) {
+  if(!cores[0].stallSignals[0] & 0) {
    
-	if (!core.stallSignals[0] && ! core.stallIm && !core.stallDm){
-	printf("Debug trace : %x ",(unsigned int) core.ftoDC.pc);
-	std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
+	if (!cores[0].stallSignals[0] && ! cores[0].stallIm && !cores[0].stallDm){
+	printf("[0-%d] %x ", (int) cores[0].csrUnit.mstatus & 0x8, (unsigned int) cores[0].ftoDC.pc);
+	std::cout << printDecodedInstrRISCV(cores[0].ftoDC.instruction);
 
-	for (int oneReg = 0; oneReg < 32; oneReg++){
-		printf("%x  ", (unsigned int) core.regFile[oneReg]); //TODO use cout everywhere (had trouble printing them as hexa
+	fprintf(stdout, " mepc : %x ", cores[0].csrUnit.mepc);
+//	for (int oneReg = 0; oneReg < 32; oneReg++){
+//		printf("%x  ", (unsigned int) cores[0].regFile[oneReg]); //TODO use cout everywhere (had trouble printing them as hexa
+//	}
+
+
+	for (int oneThingInRQ = 0; oneThingInRQ<10; oneThingInRQ++){
+		printf("%x ",((SimpleMemory*) cores[0].dm)->data[(0x800698/4)+oneThingInRQ]);
 	}
+
 	std::cout << std::endl;
 	}
+	/*
+	if (core.memtoWB.isStore)
+		fprintf(stdout, "Doing a store at %x with value %x\n", (unsigned int) core.memtoWB.address, (unsigned int) core.memtoWB.valueToWrite);
+	if (core.memtoWB.isLoad)
+		fprintf(stdout, "Doing a load at %x. Value is %x\n", (unsigned int) core.memtoWB.address, (unsigned int) core.memtoWB.result);
+
+	} */
+
+//  if(!cores[1].stallSignals[0] & 0) {
+//
+//	if (!cores[1].stallSignals[0] && ! cores[1].stallIm && !cores[1].stallDm){
+//	printf("[1] %x ",(unsigned int) cores[1].ftoDC.pc);
+//	std::cout << printDecodedInstrRISCV(cores[1].ftoDC.instruction);
+//
+//	for (int oneReg = 0; oneReg < 32; oneReg++){
+//		printf("%x  ", (unsigned int) cores[1].regFile[oneReg]); //TODO use cout everywhere (had trouble printing them as hexa
+//	}
+//	std::cout << std::endl;
+//	}
 	/*
 	if (core.memtoWB.isStore)
 		fprintf(stdout, "Doing a store at %x with value %x\n", (unsigned int) core.memtoWB.address, (unsigned int) core.memtoWB.valueToWrite);
@@ -268,7 +311,7 @@ void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
 	ac_int<32, false> wordRes = 0;
 	bool stall = true;
 	while (stall)
-		core.dm->process(addr, BYTE_U, STORE, value, wordRes, stall);
+		cores[0].dm->process(addr, BYTE_U, STORE, value, wordRes, stall);
 
 }
 
@@ -320,7 +363,7 @@ ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
 	ac_int<32, false> wordRes = 0;
 	bool stall = true;
 	while (stall)
-		core.dm->process(addr, BYTE_U, LOAD, 0, wordRes, stall);
+		cores[0].dm->process(addr, BYTE_U, LOAD, 0, wordRes, stall);
 
 	result = wordRes.slc<8>(0);
 	return result;

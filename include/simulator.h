@@ -6,7 +6,7 @@
 class Simulator
 {
 protected:
-    Core core;
+    Core cores[2];
     bool exitFlag;
 
 public:
@@ -14,7 +14,8 @@ public:
     {
         exitFlag = false;
         while(!exitFlag){
-            doCycle(core, 0);
+            doCycle(cores[0], 0);
+//            doCycle(cores[1], 0);
             solveSyscall();
             extend();
             printCycle();

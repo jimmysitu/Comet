@@ -266,19 +266,20 @@ void branchUnit(ac_int<32, false> nextPC_fetch,
 		ac_int<32, false> &pc,
 		bool &we_fetch,
 		bool &we_decode,
+		bool we_execute,
 		bool stall_fetch){
 
 	if (!stall_fetch){
-		if (isBranch_execute){
+		if (isBranch_execute && we_execute){
 			we_fetch = 0;
 			we_decode = 0;
 			pc = nextPC_execute;
 		}
-		else if (isBranch_decode){
+		else if (isBranch_decode && we_decode){
 			we_fetch = 0;
 			pc = nextPC_decode;
 		}
-		else {
+		else if (we_fetch){
 			pc = nextPC_fetch;
 		}
 	}
@@ -574,7 +575,21 @@ void doCycle(struct Core &core, 		 //Core containing all values
     }
 
 
-	branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC, extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we, core.stallSignals[STALL_FETCH] || core.stallIm || core.stallDm || localStall);
+	//Handling an enventual trap:
+	if ((interruptTimer || interruptSoftware) && (core.csrUnit.mstatus & 0x8)){
+		//We have to trap : we wait for the pipeline to be emptied
+		core.ftoDC.we = 0;
+		if (!(core.memtoWB.we || core.extoMem.we || core.dctoEx.we)){
+			core.csrUnit.mepc = core.pc;
+			core.csrUnit.mcause = 0x80000000 | (interruptTimer ? 7 : 3); //FIXME currently only timer can cause interrupts
+			core.pc = core.csrUnit.mtvec;
+			core.csrUnit.mstatus[7] = 1;
+			core.csrUnit.mstatus[3] = 0;
+		}
+	}
+
+
+	branchUnit(core.ftoDC.nextPCFetch, core.dctoEx.nextPCDC, core.dctoEx.isBranch, core.extoMem.nextPC, core.extoMem.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we, core.extoMem.we, core.stallSignals[STALL_FETCH] || core.stallIm || core.stallDm || localStall);
 
 }
 
