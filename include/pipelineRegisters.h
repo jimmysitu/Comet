@@ -95,8 +95,10 @@ struct MemtoWB
     ac_int<32, true> address;
     ac_int<32, false> valueToWrite;
     ac_int<4, false> byteEnable;
+    ac_int<5, false> atomicCode;
     bool isStore;
     bool isLoad;
+    bool isAtomic;
 
     //Register for all stages
     bool we;

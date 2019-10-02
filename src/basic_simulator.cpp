@@ -97,11 +97,14 @@ BasicSimulator::BasicSimulator (
 	im = new ac_int<32, false>[DRAM_SIZE >> 2];
 	dm = new ac_int<32, false>[DRAM_SIZE >> 2];
 
-	cores[0].im = new SimpleMemory(im);
-	cores[0].dm = new SimpleMemory(dm);
+	ac_int<4, false> *iml = new ac_int<4, false>[DRAM_SIZE >> 2];
+	ac_int<4, false> *dml = new ac_int<4, false>[DRAM_SIZE >> 2];
 
-	cores[1].im = new SimpleMemory(im);
-	cores[1].dm = new SimpleMemory(dm);
+	cores[0].im = new SimpleMemory(im, iml);
+	cores[0].dm = new SimpleMemory(dm, dml);
+
+	cores[1].im = new SimpleMemory(im, iml);
+	cores[1].dm = new SimpleMemory(dm, dml);
 
 //	core.im = new CacheMemory(new SimpleMemory(im), false);
 //	core.dm = new CacheMemory(new SimpleMemory(dm), false);
@@ -255,31 +258,24 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 void BasicSimulator::printCycle(){
     // Use the trace file to separate program output from simulator output
 
-  if(!cores[0].stallSignals[0] & 0) {
-   
+  if(!cores[0].stallSignals[0] ) {
+
 	if (!cores[0].stallSignals[0] && ! cores[0].stallIm && !cores[0].stallDm){
 	printf("[0-%d] %x ", (int) cores[0].csrUnit.mstatus & 0x8, (unsigned int) cores[0].ftoDC.pc);
 	std::cout << printDecodedInstrRISCV(cores[0].ftoDC.instruction);
 
-	fprintf(stdout, " mepc : %x ", cores[0].csrUnit.mepc);
-//	for (int oneReg = 0; oneReg < 32; oneReg++){
-//		printf("%x  ", (unsigned int) cores[0].regFile[oneReg]); //TODO use cout everywhere (had trouble printing them as hexa
-//	}
+	for (int oneReg = 0; oneReg < 32; oneReg++){
+		printf("%x  ", (unsigned int) cores[0].regFile[oneReg]); //TODO use cout everywhere (had trouble printing them as hexa
+	}
+    std::cout << std::endl;
 
+	if (cores[0].memtoWB.isStore)
+		fprintf(stdout, "Doing a store at %x with value %x\n", (unsigned int) cores[0].memtoWB.address, (unsigned int) cores[0].memtoWB.valueToWrite);
+	if (cores[0].memtoWB.isLoad)
+		fprintf(stdout, "Doing a load at %x. Value is %x\n", (unsigned int) cores[0].memtoWB.address, (unsigned int) cores[0].memtoWB.result);
 
-	for (int oneThingInRQ = 0; oneThingInRQ<10; oneThingInRQ++){
-		printf("%x ",((SimpleMemory*) cores[0].dm)->data[(0x800698/4)+oneThingInRQ]);
 	}
 
-	std::cout << std::endl;
-	}
-	/*
-	if (core.memtoWB.isStore)
-		fprintf(stdout, "Doing a store at %x with value %x\n", (unsigned int) core.memtoWB.address, (unsigned int) core.memtoWB.valueToWrite);
-	if (core.memtoWB.isLoad)
-		fprintf(stdout, "Doing a load at %x. Value is %x\n", (unsigned int) core.memtoWB.address, (unsigned int) core.memtoWB.result);
-
-	} */
 
 //  if(!cores[1].stallSignals[0] & 0) {
 //
@@ -311,7 +307,7 @@ void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
 	ac_int<32, false> wordRes = 0;
 	bool stall = true;
 	while (stall)
-		cores[0].dm->process(addr, BYTE_U, STORE, value, wordRes, stall);
+		cores[0].dm->process(addr, BYTE_U, STORE, false, 0, value, wordRes, stall);
 
 }
 
@@ -363,7 +359,7 @@ ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
 	ac_int<32, false> wordRes = 0;
 	bool stall = true;
 	while (stall)
-		cores[0].dm->process(addr, BYTE_U, LOAD, 0, wordRes, stall);
+		cores[0].dm->process(addr, BYTE_U, LOAD, false, 0, 0, wordRes, stall);
 
 	result = wordRes.slc<8>(0);
 	return result;

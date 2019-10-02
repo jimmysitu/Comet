@@ -7,6 +7,7 @@ typedef enum {
   BYTE = 0,
   HALF,
   WORD,
+  LONG,
   BYTE_U,
   HALF_U
 } memMask;
@@ -22,7 +23,7 @@ protected:
   bool wait;
 
 public:
-  virtual void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut) =0;
+  virtual void process(ac_int<32, false> addr, memMask mask, memOpType opType, bool lockRelease, ac_int<4, false> hartid, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut) =0;
 };
 
 #endif //__MEMORY_INTERFACE_H__

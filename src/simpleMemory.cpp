@@ -34,7 +34,7 @@ ac_int<32, false> SimpleMemory::getWord(ac_int<32, false> addr) {
   return  data[addr>>2];
 }
 */
-void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut) {
+void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opType, bool lockRelease, ac_int<4, false> hartid, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut) {
   //no latency, wait is always set to false
 
   ac_int<32, true> temp;
@@ -58,6 +58,8 @@ void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opTyp
 		  interruptTimer = 1;
 	  }
   }
+
+  waitOut = false;
 
 
 	if (addr >= CLINT_BASE && addr < CLINT_BASE + 0xBFF8+8){
@@ -118,49 +120,69 @@ void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opTyp
 	else {
 		switch(opType) {
 		case STORE:
-		  switch(mask) {
-			case BYTE:
-			  temp = data[addr>>2];
-			  data[addr>>2].set_slc(((int) addr.slc<2>(0)) << 3, dataIn.slc<8>(0));
-			  break;
-			case HALF:
-			  temp = data[addr>>2];
-			  data[addr>>2].set_slc(addr[1] ? 16 : 0, dataIn.slc<16>(0));
+			//We ensure that the memory location is not locked
+			if (this->locks[addr>>4] == 0xf && this->locks[addr>>4] != hartid){
+				waitOut = true; //If we try accessing a locked value, we stall
+			}
+			else{
 
-			  break;
-			case WORD:
-			  temp = data[addr>>2];
-			  data[addr>>2] = dataIn;
-			  break;
-		  }
+				//First we handle the lock mechanism (on a store, we release)
+				if (lockRelease)
+					this->locks[addr>>4] = 0xf; //We remove the lock
+
+				switch(mask) {
+				case BYTE:
+				  temp = data[addr>>2];
+				  data[addr>>2].set_slc(((int) addr.slc<2>(0)) << 3, dataIn.slc<8>(0));
+				  break;
+				case HALF:
+				  temp = data[addr>>2];
+				  data[addr>>2].set_slc(addr[1] ? 16 : 0, dataIn.slc<16>(0));
+
+				  break;
+				case WORD:
+				  temp = data[addr>>2];
+				  data[addr>>2] = dataIn;
+				  break;
+				}
+			}
 		  break;
 		case LOAD:
-		  switch(mask) {
-			case BYTE:
-			  t8 = data[addr>>2].slc<8>(((int)addr.slc<2>(0)) << 3);
-			  bit = t8.slc<1>(7);
-			  dataOut.set_slc(0, t8);
-			  dataOut.set_slc(8, (ac_int<24, true>)bit);
-			  break;
-			case HALF:
-			  t16 = data[addr>>2].slc<16>(addr[1] ? 16 : 0);
-			  bit = t16.slc<1>(15);
-			  dataOut.set_slc(0, t16);
-			  dataOut.set_slc(16, (ac_int<16, true>)bit);
-			  break;
-			case WORD:
-			  dataOut = data[addr>>2];
-			  break;
-			case BYTE_U:
-			  dataOut = data[addr>>2].slc<8>(((int) addr.slc<2>(0))<<3) & 0xff;
-			  break;
-			case HALF_U:
-			  dataOut = data[addr>>2].slc<16>(addr[1] ? 16 : 0)& 0xffff;
-			  break;
-		  }
+			//We ensure that the memory location is not locked
+			if (this->locks[addr>>4] == 0xf && this->locks[addr>>4] != hartid){
+				waitOut = true; //If we try accessing a blocked value, we stall
+			}
+			else{
+				//First we handle the lock mechanism (on a load, we lock)
+				if (lockRelease)
+					this->locks[addr>>4] = 0xf; //We add a lock
+
+				switch(mask) {
+				case BYTE:
+				  t8 = data[addr>>2].slc<8>(((int)addr.slc<2>(0)) << 3);
+				  bit = t8.slc<1>(7);
+				  dataOut.set_slc(0, t8);
+				  dataOut.set_slc(8, (ac_int<24, true>)bit);
+				  break;
+				case HALF:
+				  t16 = data[addr>>2].slc<16>(addr[1] ? 16 : 0);
+				  bit = t16.slc<1>(15);
+				  dataOut.set_slc(0, t16);
+				  dataOut.set_slc(16, (ac_int<16, true>)bit);
+				  break;
+				case WORD:
+				  dataOut = data[addr>>2];
+				  break;
+				case BYTE_U:
+				  dataOut = data[addr>>2].slc<8>(((int) addr.slc<2>(0))<<3) & 0xff;
+				  break;
+				case HALF_U:
+				  dataOut = data[addr>>2].slc<16>(addr[1] ? 16 : 0)& 0xffff;
+				  break;
+				}
+			}
 
 		  break;
 		}
 	}
-  waitOut = false;
 }

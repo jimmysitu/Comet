@@ -177,44 +177,10 @@ public:
 	            }
 	        }
 	        break;
-	    case RISCV_MISC_MEM:    // this does nothing because all memory accesses are ordered and we have only one core
-	        break;
+	    case RISCV_MISC_MEM:
+	    	// this does nothing because all memory accesses are ordered and we have only one core
+	    break;
 
-	    case RISCV_SYSTEM:
-	        switch(dctoEx.funct3)
-	        { // case 0: mret instruction, dctoEx.memValue should be 0x302
-	        case RISCV_SYSTEM_ENV:
-	#ifndef __HLS__
-	        	//TODO handling syscall correctly
-	            //extoMem.result = sim->solveSyscall(dctoEx.lhs, dctoEx.rhs, dctoEx.datac, dctoEx.datad, dctoEx.datae, exit);
-	#endif
-	            break;
-	        case RISCV_SYSTEM_CSRRW:    // lhs is from csr, rhs is from reg[rs1]
-	            extoMem.datac = dctoEx.rhs;       // written back to csr
-	            extoMem.result = dctoEx.lhs;      // written back to rd
-	            break;
-	        case RISCV_SYSTEM_CSRRS:
-	            extoMem.datac = dctoEx.lhs | dctoEx.rhs;
-	            extoMem.result = dctoEx.lhs;
-	            break;
-	        case RISCV_SYSTEM_CSRRC:
-	            extoMem.datac = dctoEx.lhs & ((ac_int<32, false>)~dctoEx.rhs);
-	            extoMem.result = dctoEx.lhs;
-	            break;
-	        case RISCV_SYSTEM_CSRRWI:
-	            extoMem.datac = dctoEx.rhs;
-	            extoMem.result = dctoEx.lhs;
-	            break;
-	        case RISCV_SYSTEM_CSRRSI:
-	            extoMem.datac = dctoEx.lhs | dctoEx.rhs;
-	            extoMem.result = dctoEx.lhs;
-	            break;
-	        case RISCV_SYSTEM_CSRRCI:
-	            extoMem.datac = dctoEx.lhs & ((ac_int<32, false>)~dctoEx.rhs);
-	            extoMem.result = dctoEx.lhs;
-	            break;
-	        }
-	        break;
 	    }
 
 

@@ -21,8 +21,10 @@ void decode(struct FtoDC ftoDC,
             struct DCtoEx &dctoEx,
             ac_int<32, true> registerFile[32])
 {
+
     ac_int<32, false> pc = ftoDC.pc;
     ac_int<32, false> instruction = ftoDC.instruction;
+
 
     // R-type instruction
     ac_int<7, false> funct7 = instruction.slc<7>(25);
@@ -63,6 +65,7 @@ void decode(struct FtoDC ftoDC,
     ac_int<21, true> imm21_1_signed = 0;
     imm21_1_signed.set_slc(0, imm21_1);
 
+    ac_int<5, false> funct5 = instruction.slc<5>(27);
 
     //Register access
     ac_int<32, false> valueReg1 = registerFile[rs1];
@@ -186,9 +189,24 @@ void decode(struct FtoDC ftoDC,
     		dctoEx.useRd = 1;
     		dctoEx.lhs = valueReg1;
     	}
-        //TODO
 
         break;
+    case RISCV_ATOMIC:
+    	dctoEx.useRd = 1;
+		dctoEx.useRs1 = 1;
+        dctoEx.useRs2 = 0;
+
+		dctoEx.lhs = valueReg1;
+		dctoEx.rhs = 0;
+		dctoEx.datac = valueReg2;
+
+		//The Atomic LR does not use rs3, all other does
+		if (funct5 == RISCV_ATOMIC_LR)
+			dctoEx.useRs3 = 0;
+		else
+			dctoEx.useRs3 = 1;
+
+    break;
     default:
 
         break;
@@ -222,6 +240,7 @@ void memory(struct ExtoMem extoMem,
     memtoWB.result = extoMem.result;
     memtoWB.rd = extoMem.rd;
 
+    ac_int<5, false> funct5 = extoMem.instruction.slc<5>(27);
     ac_int<32, false> mem_read;
 
     switch(extoMem.opCode)
@@ -234,6 +253,7 @@ void memory(struct ExtoMem extoMem,
     //    formatread(extoMem.result, datasize, signenable, mem_read); //TODO
         break;
     case RISCV_ST:
+
 //        mem_read = dataMemory[extoMem.result >> 2];
        // if(extoMem.we) //TODO0: We do not handle non 32bit writes
 //        	dataMemory[extoMem.result >> 2] = extoMem.datac;
@@ -243,6 +263,26 @@ void memory(struct ExtoMem extoMem,
         	memtoWB.byteEnable = 0xf;
 
         break;
+    case RISCV_ATOMIC:
+    	if (funct5 == RISCV_ATOMIC_LR){
+            memtoWB.rd = extoMem.rd;
+           	memtoWB.address = extoMem.result;
+            memtoWB.isLoad = 1;
+    	}
+    	else if (funct5 == RISCV_ATOMIC_SC){
+        	memtoWB.isStore = 1;
+        	memtoWB.address = extoMem.result;
+        	memtoWB.valueToWrite = extoMem.datac;
+        	memtoWB.byteEnable = 0xf;
+    	}
+    	else {
+           	memtoWB.address = extoMem.result;
+            memtoWB.isAtomic = 1;
+        	memtoWB.valueToWrite = extoMem.datac;
+        	memtoWB.atomicCode = funct5;
+		}
+
+	break;
     }
 }
 
@@ -361,86 +401,6 @@ void forwardUnit(
 	}
 }
 
-/****************************************************************
- *  Copy functions 
- ****************************************************************
-
-void copyFtoDC(struct FtoDC &dest, struct FtoDC src){
-    dest.pc = src.pc;
-    dest.instruction = src.instruction;
-    dest.nextPCFetch = src.nextPCFetch;
-    dest.we = src.we;
-}
-
-void copyDCtoEx(struct DCtoEx &dest, struct DCtoEx src){
-    dest.pc = src.pc;       // used for branch
-    dest.instruction = src.instruction;
-
-    dest.opCode = src.opCode;    // opCode = instruction[6:0]
-    dest.funct7 = src.funct7;    // funct7 = instruction[31:25]
-    dest.funct3 = src.funct3;    // funct3 = instruction[14:12]
-
-    dest.lhs = src.lhs;   //  left hand side : operand 1
-    dest.rhs = src.rhs;   // right hand side : operand 2
-    dest.datac = src.datac; // ST, BR, JAL/R,
-
-    //For branch unit
-    dest.nextPCDC = src.nextPCDC;
-    dest.isBranch = src.isBranch;
-
-    //Information for forward/stall unit
-    dest.useRs1 = src.useRs1;
-    dest.useRs2 = src.useRs2;
-    dest.useRs3 = src.useRs3;
-    dest.useRd = src.useRd;
-    dest.rs1 = src.rs1;       // rs1    = instruction[19:15]
-    dest.rs2 = src.rs2;       // rs2    = instruction[24:20]
-    dest.rs3 = src.rs3;
-    dest.rd = src.rd;        // rd     = instruction[11:7]
-
-    //Register for all stages
-    dest.we = src.we;
-}
-
-void copyExtoMem(struct ExtoMem &dest, struct ExtoMem src){
-    dest.pc = src.pc;
-    dest.instruction = src.instruction;
-
-    dest.result = src.result;    // result of the EX stage
-    dest.rd = src.rd;        // destination register
-    dest.useRd = src.useRd;
-    dest.isLongInstruction = src.isLongInstruction;
-    dest.opCode = src.opCode;    // LD or ST (can be reduced to 2 bits)
-    dest.funct3 = src.funct3;    // datasize and sign extension bit
-
-    dest.datac = src.datac;     // data to be stored in memory or csr result
-
-    //For branch unit
-    dest.nextPC = src.nextPC;
-    dest.isBranch = src.isBranch;
-
-    //Register for all stages
-    dest.we = src.we;
-}
-
-void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
-    dest.result = src.result;    // Result to be written back
-    dest.rd = src.rd;        // destination register
-    dest.useRd = src.useRd;
-
-    dest.address = src.address;
-    dest.valueToWrite = src.valueToWrite;
-    dest.byteEnable = src.byteEnable;
-    dest.isStore = src.isStore;
-    dest.isLoad = src.isLoad;
-
-    //Register for all stages
-    dest.we = src.we;
-}
-*/
-
-
-
 
 
 void doCycle(struct Core &core, 		 //Core containing all values
@@ -456,7 +416,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
     struct FtoDC ftoDC_temp; ftoDC_temp.pc = 0; ftoDC_temp.instruction = 0; ftoDC_temp.nextPCFetch = 0; ftoDC_temp.we = 0;
     struct DCtoEx dctoEx_temp; dctoEx_temp.isBranch = 0; dctoEx_temp.useRs1 = 0; dctoEx_temp.useRs2 = 0; dctoEx_temp.useRs3 = 0; dctoEx_temp.useRd = 0; dctoEx_temp.we = 0;
     struct ExtoMem extoMem_temp; extoMem_temp.useRd = 0; extoMem_temp.isBranch = 0; extoMem_temp.we = 0;
-    struct MemtoWB memtoWB_temp; memtoWB_temp.useRd = 0; memtoWB_temp.isStore = 0; memtoWB_temp.we = 0; memtoWB_temp.isLoad = 0;
+    struct MemtoWB memtoWB_temp; memtoWB_temp.useRd = 0; memtoWB_temp.isStore = 0; memtoWB_temp.we = 0; memtoWB_temp.isLoad = 0; memtoWB_temp.isAtomic = 0;
     struct WBOut wbOut_temp; wbOut_temp.useRd = 0; wbOut_temp.we = 0; wbOut_temp.rd = 0;
     struct ForwardReg forwardRegisters; forwardRegisters.forwardExtoVal1 = 0; forwardRegisters.forwardExtoVal2 = 0; forwardRegisters.forwardExtoVal3 = 0; forwardRegisters.forwardMemtoVal1 = 0; forwardRegisters.forwardMemtoVal2 = 0; forwardRegisters.forwardMemtoVal3 = 0; forwardRegisters.forwardWBtoVal1 = 0; forwardRegisters.forwardWBtoVal2 = 0; forwardRegisters.forwardWBtoVal3 = 0;
 
@@ -467,7 +427,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
     bool csrSetPc = false;
 
     if (!localStall && !core.stallDm)
-    	core.im->process(core.pc, WORD, LOAD, 0, nextInst, core.stallIm);
+    	core.im->process(core.pc, WORD, LOAD, false, core.csrUnit.mhartid.slc<4>(0), 0, nextInst, core.stallIm);
 
     fetch(core.pc, ftoDC_temp, nextInst);
     decode(core.ftoDC, dctoEx_temp, core.regFile);
@@ -502,39 +462,41 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
     if (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.stallIm){
 
-       memMask mask;
+       memMask mask = static_cast<memMask>(core.extoMem.funct3.to_uint());
        //TODO: carry the data size to memToWb
-       switch (core.extoMem.funct3) {
-         case 0:
-          mask = BYTE;
-          break;
-         case 1:
-          mask = HALF;
-          break;
-        case 2:
-          mask = WORD;
-          break;
-        case 4:
-          mask = BYTE_U;
-          break;
-        case 5:
-          mask = HALF_U;
-          break;
-        //Should NEVER happen
-        default:
-          mask = WORD;
-          break;
-       }
-       core.dm->process(memtoWB_temp.address, mask, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE), memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm);
+//       switch (core.extoMem.funct3) {
+//         case 0:
+//          mask = BYTE;
+//          break;
+//         case 1:
+//          mask = HALF;
+//          break;
+//        case 2:
+//          mask = WORD;
+//          break;
+//        case 4:
+//          mask = BYTE_U;
+//          break;
+//        case 5:
+//          mask = HALF_U;
+//          break;
+//        //Should NEVER happen
+//        default:
+//          mask = WORD;
+//          break;
+//       } TODO
+       core.dm->process(memtoWB_temp.address, mask, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE), false, core.csrUnit.mhartid.slc<4>(0), memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm);
     }
-    //commit the changes to the pipeline register
+    //We commit the fetch stage if not stalled, not under cache stall and not under global stall
     if (!core.stallSignals[STALL_FETCH] && !localStall && !core.stallIm && !core.stallDm){
         core.ftoDC = ftoDC_temp;
     }
 
+    //We commit the decode stage if not stalled, not under cache stall and not under global stall
     if (!core.stallSignals[STALL_DECODE] && !localStall && !core.stallIm && !core.stallDm){
         core.dctoEx = dctoEx_temp;
 
+        //Commitings means also solving the forwarding
     	if (forwardRegisters.forwardExtoVal1 && extoMem_temp.we)
       	  core.dctoEx.lhs = extoMem_temp.result;
     	else if (forwardRegisters.forwardMemtoVal1 && memtoWB_temp.we)
@@ -557,25 +519,29 @@ void doCycle(struct Core &core, 		 //Core containing all values
     		core.dctoEx.datac = wbOut_temp.value;
     }
 
+    //If the decode is stalled but not the execute (and if there is no cache miss and so on), we insert a bubble in the pipeline
     if (core.stallSignals[STALL_DECODE] && !core.stallSignals[STALL_EXECUTE] && !core.stallIm && !core.stallDm && !localStall){
     	core.dctoEx.we = 0; core.dctoEx.useRd = 0; core.dctoEx.isBranch = 0; core.dctoEx.instruction = 0; core.dctoEx.pc = 0;
     }
 
+    //We commit the execute stage if not stalled, not under cache stall and not under global stall
     if (!core.stallSignals[STALL_EXECUTE] && !localStall && !core.stallIm && !core.stallDm){
         core.extoMem = extoMem_temp;
     }
 
+    //We commit the memory stage if not stalled, not under cache stall and not under global stall
     if (!core.stallSignals[STALL_MEMORY] && !localStall && !core.stallIm && !core.stallDm){
         core.memtoWB = memtoWB_temp;
     }
 
+    //We commit the WB stage if not stalled, not under cache stall and not under global stall and if WB is enabled
     if (wbOut_temp.we && wbOut_temp.useRd && !localStall && !core.stallIm && !core.stallDm){
     	core.regFile[wbOut_temp.rd] = wbOut_temp.value;
     	core.cycle++;
     }
 
 
-	//Handling an enventual trap:
+	//Handling an enventual trap/interruption
 	if ((interruptTimer || interruptSoftware) && (core.csrUnit.mstatus & 0x8)){
 		//We have to trap : we wait for the pipeline to be emptied
 		core.ftoDC.we = 0;

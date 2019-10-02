@@ -3,6 +3,7 @@
 
 #include "memoryInterface.h"
 #include "memory.h"
+#include <ac_int.h>
 
 class IncompleteMemory: public MemoryInterface {
 public:
@@ -13,7 +14,7 @@ public:
 	  data = arg;
   }
 
-  void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut) {
+  void process(ac_int<32, false> addr, memMask mask, memOpType opType, bool lockRelease, ac_int<4, false> hartid, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut) {
     //no latency, wait is always set to false
     waitOut = false;
     if (opType == STORE){
