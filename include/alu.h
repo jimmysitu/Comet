@@ -32,7 +32,7 @@ public:
 
 class BasicAlu: public ALU {
 public:
-	
+
 	ac_int<16, true> lastQi, lastQr, lastTi, lastTr, state4 = 1, state3 = 0, state1=0, state2=32, sin_index = 0; bool unchanged = true;
 
 	void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall){
@@ -227,56 +227,47 @@ public:
 	        }
 	        break;
 
+//************************************************************************************
 		case RISCV_EXTRAOP:
 			if (dctoEx.funct3 == 0){
 
-
-				printf("Doing btf with %d %d %d %d sin factor of %d   --- inputs %x %x\n", state1, state2, state3, state4, sin_index,dctoEx.lhs, dctoEx.rhs);
-				bool reverse = dctoEx.funct7[6];
-
+                //Reading twiddle factor
 				ac_int<16, false> W_Imag = sin_factor[sin_index];
 				ac_int<16, false> W_Real = sin_factor[sin_index+1];
 
-				if (reverse){
-					W_Imag = W_Imag >> 1;				
-					W_Real = W_Real >> 1;				
-					W_Real = -W_Real;
-				}
+                //Multiply LHS by twiddle factor
+				ac_int<16, true> ti = FIX_MPY(W_Imag,dctoEx.lhs.slc<16>(0)) - FIX_MPY(W_Real,dctoEx.lhs.slc<16>(16));
+                ac_int<16, true> tr = FIX_MPY(W_Imag,dctoEx.lhs.slc<16>(16)) + FIX_MPY(W_Real,dctoEx.lhs.slc<16>(0));
 
-				ac_int<16, true> ti = FIX_MPY(W_Imag,dctoEx.lhs.slc<16>(16)) - FIX_MPY(W_Real,dctoEx.lhs.slc<16>(00));
-        ac_int<16, true> tr = FIX_MPY(W_Imag,dctoEx.lhs.slc<16>(00)) + FIX_MPY(W_Real,dctoEx.lhs.slc<16>(16));
-        ac_int<16, true> qi = dctoEx.rhs.slc<16>(16);
-        ac_int<16, true> qr = dctoEx.rhs.slc<16>(0);
+                //Extract the two fields of RHS
+                ac_int<16, true> qi = dctoEx.rhs.slc<16>(16);
+                ac_int<16, true> qr = dctoEx.rhs.slc<16>(0);
 
-        if (reverse) {
-          qi >>= 1;
-          qr >>= 1;
-        }
-
-				extoMem.result = 0;
+                //Compute the first result (q-r)
 				ac_int<16, true> imag = qi - ti;
 				ac_int<16, true> real = qr - tr;
 				extoMem.result.set_slc(16, imag);
 				extoMem.result.set_slc(0, real);
-        
+
+                //Store computed intermediate value for next result
 				lastQi = qi;
 				lastQr = qr;
 				lastTi = ti;
 				lastTr = tr;
-			
-				unchanged = false;
-
 
 			}
 			else {
+                //Computing the next result (q+r)
 				ac_int<16, true> imag = lastQi + lastTi;
 				ac_int<16, true> real = lastQr + lastTr;
 				extoMem.result.set_slc(16, imag);
 				extoMem.result.set_slc(0, real);
-				
 
 
-				if (!unchanged){
+                /***************************************************************
+                **  State machine for twiddle factors
+                ****************************************************************/
+
 					state1++;
 					if (state1>=state2){
 						state3++;
@@ -285,7 +276,7 @@ public:
 						if (state3 >= state4){
 							if (state2 == 1){
 								state1 = 0;
-								state2 = 32;	
+								state2 = 32;
 								state3 = 0;
 								state4 = 1;
 								sin_index = 0;
@@ -296,13 +287,13 @@ public:
 								state4 = state4 << 1;
 							}
 						}
-					}	
-					unchanged = true;				
+					}
+					unchanged = true;
 				}
-			}
+
 
 		break;
-
+//************************************************************************************
 	    }
 
 
@@ -319,16 +310,16 @@ public:
 class MultAlu: public ALU {
 public:
     ac_int<32, false> quotient, remainder;
-    //ac_int<33, false> 
-    ac_int<6, false> state = 0; 
+    //ac_int<33, false>
+    ac_int<6, false> state = 0;
     bool resIsNeg;
     ac_int<32, false> dataAUnsigned, dataBUnsigned;
 
 	void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall){
         //no need to fill in the output register fields, the first ALU has that taken care of
         if (dctoEx.opCode == RISCV_OP && dctoEx.funct7 == RISCV_OP_M) {
-	        
-			    
+
+
 	        if (state == 0) {
 			    dataAUnsigned.set_slc(0, dctoEx.lhs);
     			dataBUnsigned.set_slc(0, dctoEx.rhs);
@@ -385,7 +376,7 @@ public:
 			            state = 32;
 			            quotient = 0;
 			            remainder = 0;
-			        }        
+			        }
 			    break;
 			    }
 			}

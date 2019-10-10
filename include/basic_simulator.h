@@ -5,26 +5,26 @@
 #include <vector>
 #include "simulator.h"
 
-class BasicSimulator : public Simulator 
+class BasicSimulator : public Simulator
 {
     unsigned heapAddress;
-    std::map<ac_int<32, false>, ac_int<8, false> > imemMap;  
-    std::map<ac_int<32, false>, ac_int<8, false> > dmemMap;  
-    
+    std::map<ac_int<32, false>, ac_int<8, false> > imemMap;
+    std::map<ac_int<32, false>, ac_int<8, false> > dmemMap;
+
     ac_int<32, false> *im, *dm;
 
     FILE* inputFile;
     FILE* outputFile;
     FILE* traceFile;
 public:
-    BasicSimulator(const char* binaryFile, std::vector<std::string>, const char* inFile, const char* outFile, const char *tFile ); 
+    BasicSimulator(const char* binaryFile, std::vector<std::string>, const char* inFile, const char* outFile, const char *tFile );
     ~BasicSimulator();
 
 protected:
     void fillMemory();
 
-    void printCycle(); 
-    void printStat(){};
+    void everyCycle();
+    void printStat();
     void extend(){};
     void solveSyscall();
 
@@ -42,7 +42,7 @@ protected:
     ac_int<32, true> doGettimeofday(ac_int<32, false> timeValPtr);
     ac_int<32, true> doUnlink(ac_int<32, false> path);
     ac_int<32, true> doFstat(ac_int<32, false> file, ac_int<32, false> stataddr);
-    
+
     void stb(ac_int<32, false> addr, ac_int<8, true> value);
     void sth(ac_int<32, false> addr, ac_int<16, true> value);
     void stw(ac_int<32, false> addr, ac_int<32, true> value);

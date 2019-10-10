@@ -17,12 +17,12 @@ public:
             doCycle(core, 0);
             solveSyscall();
             extend();
-            printCycle();
+            everyCycle();
         }
         printStat();
     }
 
-    virtual void printCycle() = 0;
+    virtual void everyCycle() = 0;
     virtual void printStat() = 0;
     virtual void extend() = 0;
     virtual void solveSyscall() = 0;

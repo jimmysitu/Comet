@@ -177,6 +177,8 @@ void decode(struct FtoDC ftoDC,
         dctoEx.useRd = 1;
 
         break;
+
+        //*********************************************************************************************
     case RISCV_EXTRAOP:
         dctoEx.lhs = valueReg1;
         dctoEx.rhs = valueReg2;
@@ -186,8 +188,9 @@ void decode(struct FtoDC ftoDC,
         dctoEx.useRd = 1;
 
     break;
+
+        //*********************************************************************************************
     case RISCV_SYSTEM:
-        //TODO
 
         break;
     default:
@@ -362,7 +365,7 @@ void forwardUnit(
 }
 
 /****************************************************************
- *  Copy functions 
+ *  Copy functions
  ****************************************************************
 
 void copyFtoDC(struct FtoDC &dest, struct FtoDC src){
