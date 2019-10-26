@@ -1,5 +1,7 @@
 #include <core.h>
 #include <ac_int.h>
+#include <UARTInterface.h>
+#include <MemoryMap.h>
 #include <cacheMemory.h>
 
 #ifndef __HLS__
@@ -565,11 +567,12 @@ void doCore(bool globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32,
     Core core;
     IncompleteMemory imInterface = IncompleteMemory(imData);
     IncompleteMemory dmInterface = IncompleteMemory(dmData);
-
+    UARTInterface uart = UARTInterface();
+    MemoryMap map = MemoryMap(&uart, &dmInterface, 0x10013000, 0x13014000);
 //    CacheMemory dmCache = CacheMemory(&dmInterface, false);
 
     core.im = &imInterface;
-    core.dm = &dmInterface;
+    core.dm = &map; 
     core.pc = 0;
 
     while(1) {

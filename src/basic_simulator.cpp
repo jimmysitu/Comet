@@ -8,6 +8,9 @@
 
 #include <riscvISA.h>
 
+#include <UARTInterface.h>
+#include <MemoryMap.h>
+
 #include "basic_simulator.h"
 #include "elfFile.h"
 #include "core.h"
@@ -101,7 +104,7 @@ BasicSimulator::BasicSimulator (
 	ac_int<4, false> *dml = new ac_int<4, false>[DRAM_SIZE >> 2];
 
 	cores[0].im = new SimpleMemory(im, iml);
-	cores[0].dm = new SimpleMemory(dm, dml);
+	cores[0].dm = new MemoryMap(new UARTInterface(), new SimpleMemory(dm, dml), 0x10013000, 0x10014000);
 
 	cores[1].im = new SimpleMemory(im, iml);
 	cores[1].dm = new SimpleMemory(dm, dml);
@@ -258,7 +261,7 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 void BasicSimulator::printCycle(){
     // Use the trace file to separate program output from simulator output
 
-  if(!cores[0].stallSignals[0] ) {
+  if(!cores[0].stallSignals[0] & 0 ) {
 
 	if (!cores[0].stallSignals[0] && ! cores[0].stallIm && !cores[0].stallDm){
 	printf("[0-%d] %x ", (int) cores[0].csrUnit.mstatus & 0x8, (unsigned int) cores[0].ftoDC.pc);
