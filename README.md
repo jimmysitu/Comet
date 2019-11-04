@@ -1,6 +1,6 @@
 # Comet
 
-[![pipeline status](https://gitlab.inria.fr/srokicki/Comet/badges/master/pipeline.svg)](https://gitlab.inria.fr/srokicki/Comet/commits/master)
+[![pipeline status](https://gitlab.inria.fr/srokicki/Comet/badges/rv32im/pipeline.svg)](https://gitlab.inria.fr/srokicki/Comet/commits/rv32im)
 
 
 RISC-V 32-bit processor written in C++ for High Level Synthesis (HLS).
@@ -134,6 +134,6 @@ The following persons contributed to the Comet project:
 - Davide Pala
 - Joseph Paturel
 - Valentin Egloff
-- Edwin Mascarenhas 
+- Edwin Mascarenhas
 - Gurav Datta
 - Olivier Sentieys
