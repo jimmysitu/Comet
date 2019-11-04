@@ -1,6 +1,6 @@
 # Comet
 
-[![pipeline status](https://gitlab.inria.fr/srokicki/Comet/badges/master/pipeline.svg)](https://gitlab.inria.fr/srokicki/Comet/commits/master)
+[![pipeline status](https://gitlab.inria.fr/srokicki/Comet/badges/rv32im/pipeline.svg)](https://gitlab.inria.fr/srokicki/Comet/commits/rv32im)
 
 
 RISC-V 32-bit processor written in C++ for High Level Synthesis (HLS).
@@ -121,6 +121,11 @@ For further information about the arguments of the simulator, run `comet.sim -h`
 - Add CSR support
 - Add a linter to the project
 
+## Publication
+
+- "<a href="https://hal.archives-ouvertes.fr/hal-02303453v1">What You Simulate Is What You Synthesize: Designing a Processor Core from C++ Specifications</a>", in 38th IEEE/ACM International Conference on Computer-Aided Design
+
+
 ## Contributors
 
 The following persons contributed to the Comet project:
@@ -129,7 +134,7 @@ The following persons contributed to the Comet project:
 - Davide Pala
 - Joseph Paturel
 - Valentin Egloff
-- Edwin Mascarenhas 
+- Edwin Mascarenhas
 - Gurav Datta
 - Olivier Sentieys
 - Lauric Desauw

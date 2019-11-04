@@ -30,4 +30,3 @@ directive set /doCore/imData:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB
 directive set /doCore/dmData:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
 go architect
 go extract
-

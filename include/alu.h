@@ -237,8 +237,8 @@ public:
 class MultAlu: public ALU {
 public:
     ac_int<32, false> quotient=0, remainder=0;
-    //ac_int<33, false> 
-    ac_int<6, false> state = 0; 
+    //ac_int<33, false>
+    ac_int<6, false> state = 0;
     bool resIsNeg=false;
     ac_int<32, false> dataAUnsigned=0, dataBUnsigned=0;
 
@@ -247,8 +247,8 @@ public:
         bool valRet = false;
 
 	if (dctoEx.opCode == RISCV_OP && dctoEx.funct7 == RISCV_OP_M) {
-	        
-			    
+
+
 	        if (state == 0) {
 			    dataAUnsigned.set_slc(0, dctoEx.lhs);
     			dataBUnsigned.set_slc(0, dctoEx.rhs);
@@ -310,18 +310,21 @@ public:
 			            state = 32;
 			            quotient = 0;
 			            remainder = 0;
-			        }        
+			        }
 			    break;
 			    }
 			}
 			else {
 			    //Loop for the division
-			    state--;
-			    remainder = remainder  << 1;
-			    remainder[0] = dataAUnsigned[state];
-			    if(remainder >= dataBUnsigned) {
-			        remainder = remainder - dataBUnsigned;
-			        quotient[state] = 1;
+			    for(int i = 0; i < 4; i++)
+			    {
+			    	state--;
+			    	remainder = remainder  << 1;
+			    	remainder[0] = dataAUnsigned[state];
+			    	if(remainder >= dataBUnsigned) {
+			    	    remainder = remainder - dataBUnsigned;
+			    	    quotient[state] = 1;
+			    	}
 			    }
 			    //printf("Quotient : %d, Remainder : %d\n", quotient, remainder);
 			    if(state == 0) {

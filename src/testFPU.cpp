@@ -1,9 +1,9 @@
 /*
  * This file exists to test the floating point instructions
  *
- * Date : 15/07/2019 
+ * Date : 15/07/2019
  *
- * Author : Lauric 
+ * Author : Lauric
  *
  */
 
@@ -17,9 +17,9 @@
 #include <random>
 #include <cmath>
 #include <cfenv>
- 
+
 #include <core.h>
- 
+
 
 
 #define MAX(a,b) (a<b)?b:a
@@ -38,7 +38,7 @@ struct processorState{
 
 std::default_random_engine generator;
 
-// Float random init 
+// Float random init
 std::uniform_real_distribution<float> distribution(-5000,5000);
 
 // Int random init
@@ -53,12 +53,12 @@ std::uniform_int_distribution<int> exposant(0,255);
 std::uniform_int_distribution<int> signe(0,1);
 
 std::uniform_int_distribution<int> floatType(0,3);
- 
+
 int sgn(float x)
 {
 	if (x > 0)
 		return 1;
-	else 
+	else
 		return -1;
 }
 
@@ -66,35 +66,35 @@ int setFloat()
 {
 	int fType = floatType(generator), result = 0, fSign = 0, fExp = 0,fMantissa = 0;
 	switch(fType)
-	{	
+	{
 		case 0 : // normal float
 			 fExp = exposant(generator);
-		case 1 : // subnormal  float 
+		case 1 : // subnormal  float
 			fSign = signe(generator);
 			fMantissa = mantisse(generator);
-			
+
 			return (fSign << 31) + (fExp << 23) + fMantissa;
 			break;
-			
-		case 2 : // infinite 
+
+		case 2 : // infinite
 			fSign = signe(generator);
-			
+
 			if(fSign)
 				return INFN;
 			else
 				return INFP;
-				
-			break; 
-		
+
+			break;
+
 		case 3 : // Nan
 			fSign = signe(generator);
-			
+
 			if(fSign)
 				return CNAN;
-			else 
+			else
 				return 0x7fa0000;
 		 	break;
-		 	
+
 	}
 	return CNAN;
 }
@@ -107,13 +107,13 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 	int d;
 
 	d = idistribution(generator);
-	
+
 	initialState.regs[1] = d;
 	initialState.regs[32] = *a;
 	initialState.regs[33] = *b;
 	initialState.regs[35] = *z;
 
-	
+
 	finalState.regs[1] = d;
 	finalState.regs[32] = *a;
 	finalState.regs[33] = *b;
@@ -122,47 +122,47 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 	fa = *( (float*) a);
 	fb = *( (float*) b);
 	fz = *( (float*) z);
-	
+
 	//printf("fa = %x , fb = %x , fz = %x\n", *a, *b, *z);
-	
+
 	switch(opCode)
 	{
-		case 0 : // load 
+		case 0 : // load
 			instruction = 0x2007;
 			break;
 
 		case 1 : // store
 			instruction = 0x2017;
-			break;	
+			break;
 
 		case 2 : // op
 			switch(funct7)
 			{
-				case 0 : //Add   
+				case 0 : //Add
 					fc = fa + fb;
 					c = &fc;
 					finalState.regs[34] = *( (int*) c); // correct value is stored
 					instruction = 0x100153;
 					break;
-					
-				case 1 : //Sub  
+
+				case 1 : //Sub
 					fc = fa - fb;
 					c = &fc;
-					finalState.regs[34] = *( (int*) c); 
+					finalState.regs[34] = *( (int*) c);
 					instruction = 0x8100153;
 					break;
 
 				case 2 : //Mul  // Rounding problems
 					fc = fa * fb;
 					c = &fc;
-					finalState.regs[34] = *( (int*) c); 
+					finalState.regs[34] = *( (int*) c);
 					instruction = 0x10100153;
 					break;
 
 				case 3 : //Div
 					fc = fa / fb;
 					c = &fc;
-					finalState.regs[34] = *( (int*) c); 
+					finalState.regs[34] = *( (int*) c);
 					instruction = 0x18100153;
 					break;
 
@@ -178,14 +178,14 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 							fc = fa  * sgn(fa) * (- sgn(fb));
 							instruction += 0x1000;
 							break;
-						
+
 						case 2 : //FSGNJX
 							fc = fa * sgn(fb);
 							instruction += 2 * 0x1000;
 							break;
 
 						c = &fc;
-						finalState.regs[34] = *( (int*) c); 
+						finalState.regs[34] = *( (int*) c);
 
 					}
 					break;
@@ -197,12 +197,12 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 						fc = MAX(fa,fb);
 						instruction += 0x1000;
 						}
-					else 
+					else
 						{
 						fc = MIN(fa,fb);
 						}
 					c = &fc;
-					finalState.regs[34] = *( (int*) c) ; 
+					finalState.regs[34] = *( (int*) c) ;
 					break;
 
 				case 6 : //Cvt.w.s
@@ -212,11 +212,11 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 
 				case 7 : //MvClass
 					finalState.regs[2] = *a;
-					 
+
 					instruction = 0xe0000153;
 					break;
 
-				case 8 : //Cmp 
+				case 8 : //Cmp
 					instruction = 0xA0100153;
 					funct3 = funct3 %2;
 					switch(funct3)
@@ -227,10 +227,10 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 
 						case 1 : // FLT
 							finalState.regs[2] = (fa < fb);
-							instruction +=  0x1000; 
+							instruction +=  0x1000;
 							break;
 
-						case 2 : //FEQ 
+						case 2 : //FEQ
 							finalState.regs[2] = (fa == fb);
 							instruction += 2 * 0x1000;
 							break;
@@ -248,7 +248,7 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 					finalState.regs[34] = d;
 					instruction = 0xf0008153;
 					break;
-					
+
 				case 11 : //Sqrt
 					fc = sqrt(fa);
 					c = &fc;
@@ -257,28 +257,28 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 
 			}
 			break;
-			
+
 		case 3 : // FMADD
 			fc = fa * fb + fz;
 			c = &fc;
 			finalState.regs[34] = *((int*) c);
 			instruction = 0x18100143;
-			break ; 
-			
+			break ;
+
 		case 4 : //FMSUB
 			fc = fa * fb - fz;
 			c = &fc;
 			finalState.regs[34] = *((int*) c);
 			instruction = 0x18100147;
 			break;
-			
+
 		case 5 : //FNMADD
 			fc =  - fa * fb + fz;
 			c = &fc;
 			finalState.regs[34] = *((int*) c);
 			instruction = 0x1810014F ;
-			break; 
-		
+			break;
+
 		case 6 : //FNMSUB
 			fc = - fa * fb - fz;
 			c = &fc;
@@ -286,9 +286,9 @@ void setTest(struct processorState &initialState, struct processorState &finalSt
 			instruction = 0x1810014B;
 			break;
 	}
-	
 
-	
+
+
 }
 
 int Test(int opCode, int funct7, int funct3, int *a, int *b, int *z)
@@ -306,15 +306,15 @@ int Test(int opCode, int funct7, int funct3, int *a, int *b, int *z)
 		core.im = new SimpleMemory(im);
 		core.dm = new SimpleMemory(dm);
 
-	
+
 		for(int i =0; i <64; i++)
 		{
 			initialState.regs[i] = 0;
 			finalState.regs[i] = 0;
-			core.regFile[i] = 0;	
+			core.regFile[i] = 0;
 		}
 
-		
+
 		setTest(initialState, finalState, instruction, opCode, funct7, funct3, a, b , z);
 		int c = 0;
 
@@ -327,11 +327,11 @@ int Test(int opCode, int funct7, int funct3, int *a, int *b, int *z)
 			core.regFile[oneReg] = initialState.regs[oneReg];
 
 
-	
+
 
 		im[0] = instruction;
 		dm[initialState.address>>2] = initialState.value;
-		
+
 		core.ftoDC.we = false;
 
 		core.dctoEx.pc = 0;
@@ -396,8 +396,8 @@ int Test(int opCode, int funct7, int funct3, int *a, int *b, int *z)
 
 		// Execute the instruction
 	//	printf("Doing instruction %x\n", instruction);
-	
-		
+
+
 		for (int oneCycle = 0; oneCycle < numberOfCycles; oneCycle++){
 			doCycle(core, 0);
 			//printf("oneCycle = %d\n", oneCycle);
@@ -407,26 +407,26 @@ int Test(int opCode, int funct7, int funct3, int *a, int *b, int *z)
 		bool worked = true;
 
 		if ((int)core.regFile[2] != (int)finalState.regs[2] )
-			{c++; printf("Issue with instruction : %x at register 2, awnser is %x and should be %x\n", instruction,core.regFile[2], finalState.regs[2]);}
+			{c++; printf("Issue with instruction : %x at register 2, awnser is %x and should be %x\n", instruction, (unsigned int) core.regFile[2], finalState.regs[2]);}
 
 
-		float diff; 
-		
+		float diff;
+
 		int val1,val2;
 		int *val1_p, *val2_p;
-			
+
 		val1 = core.regFile[34];
 		val2 = finalState.regs[34];
-		
+
 		val1_p = &val1;
 		val2_p = &val2;
-		
+
 		diff =(float) *( (float*) val1_p) - *( (float*) val2_p);
 		diff *= sgn(diff);
 
-		
+
 		if (!( (diff == 0) | (val1 ^ val2 < 2) ))
-			{c++;printf("Issue with instruction : %x at register 34, awnser is %x and should be %x\n", instruction,core.regFile[34], finalState.regs[34]);}
+			{c++;printf("Issue with instruction : %x at register 34, awnser is %x and should be %x\n", instruction, (unsigned int) core.regFile[34], finalState.regs[34]);}
 	return c;
 
 
@@ -444,9 +444,9 @@ int main(int argc, char** argv)
 	while(d<10000)
 	{
 		d++;
-	
+
 		*a = setFloat();
-		*b = setFloat(); 
+		*b = setFloat();
 		*z = setFloat();
 
 
@@ -457,17 +457,17 @@ int main(int argc, char** argv)
 		for(opCode = 0; opCode < 7; opCode++)
 			for(funct7 = 0; funct7 < 12; funct7++)
 				for(funct3 = 0; funct3 < 3 ; funct3++)
-					{					
+					{
 						a_c++;
 						c += Test(opCode, funct7, funct3, a, b, z);
 					}
 	}
-	
+
 	printf("error rate = %d / %d\n",c,a_c);
-	
+
 	delete a;
 	delete b;
 	delete z;
-	
+
 	return c;
 }

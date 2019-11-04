@@ -23,7 +23,7 @@ BasicSimulator::BasicSimulator (
 	core.ftoDC.instruction = 0;
 	core.ftoDC.we = false;
 	core.ftoDC.nextPCFetch = 0;
-	
+
 
 	core.dctoEx.pc = 0;
 	core.dctoEx.instruction = 0;
@@ -85,7 +85,7 @@ BasicSimulator::BasicSimulator (
 
 	//Register for all stages
 	core.memtoWB.we = false;
-	
+
 
 	im = new ac_int<32, false>[DRAM_SIZE >> 2];
 	for (int oneval=0; oneval < (DRAM_SIZE>>2); oneval++)
@@ -257,11 +257,10 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 void BasicSimulator::printCycle(){
     // Use the trace file to separate program output from simulator output
 
-  if(0) {
-   
-	if (1){
-	printf("Debug trace : %x ",(unsigned int) core.ftoDC.instruction);
-	printf("(PC=%x) ", core.pc);
+  if(!core.stallSignals[0] && 0) {
+
+	if (!core.stallSignals[0] && ! core.stallIm && !core.stallDm){
+	printf("Debug trace : %x ",(unsigned int) core.ftoDC.pc);
 	std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
 
 	for (int oneReg = 0; oneReg < 64; oneReg++){
@@ -384,7 +383,7 @@ ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
 void BasicSimulator::solveSyscall()
 {
 
-	if((core.extoMem.opCode == RISCV_SYSTEM) && core.extoMem.instruction.slc<25>(7) == 0 && !core.stallSignals[2] && !core.stallIm && !core.stallDm && !core.stallAlu){
+	if((core.extoMem.opCode == RISCV_SYSTEM) && core.extoMem.instruction.slc<12>(20) == 0 && !core.stallSignals[2] && !core.stallIm && !core.stallDm && !core.stallAlu){
 
 		ac_int<32, true> syscallId = core.regFile[17];
 		ac_int<32, true> arg1 = core.regFile[10];
