@@ -65,6 +65,7 @@ solution new -state initial
 solution options set /Input/CompilerFlags {{-D __CATAPULT__=1 {nocache} -DSize={cachesize} -DAssociativity={associativity} -DBlocksize={blocksize} -DPolicy={policy}}}
 solution options set /Input/SearchPath ../include
 solution options set ComponentLibs/SearchPath ../memories -append
+solution options set ComponentLibs/SearchPath /opt/DesignKit/catapult_lib/ -append
 flow package require /SCVerify
 solution file add ../src/core.cpp -type C++
 solution file add ../src/reformeddm_sim.cpp -type C++ -exclude True
@@ -114,10 +115,8 @@ directive set -DESIGN_HIERARCHY {top}
 
 libraries = """go analyze
 solution library remove *
-solution library add C28SOI_SC_12_CORE_LL_ccs -file {{$MGC_HOME/pkgs/siflibs/designcompiler/CORE65LPHVT_ccs.lib}} -- -rtlsyntool DesignCompiler -vendor STMicroelectronics -technology {{28nm FDSOI}}
-solution library add ST_singleport_4096x128
-solution library add ST_singleport_16384x32
-solution library add ST_singleport_8192x32
+solution library add ccs_sample_mem -- -rtlsyntool DesignCompiler -vendor STMicroelectronics
+solution library add C28SOI_SC_12_CORE_LL_ccs -file /opt/DesignKit/catapult_lib/C28SOI_SC_12_CORE_LL_ccs.lib -- -rtlsyntool DesignCompiler -vendor STMicroelectronics
 go libraries
 directive set -CLOCKS {{clk {{-CLOCK_PERIOD {period:.2f} -CLOCK_EDGE rising -CLOCK_HIGH_TIME {halfperiod:.2f} -CLOCK_OFFSET 0.000000 -CLOCK_UNCERTAINTY 0.0 -RESET_KIND sync -RESET_SYNC_NAME rst -RESET_SYNC_ACTIVE high -RESET_ASYNC_NAME arst_n -RESET_ASYNC_ACTIVE low -ENABLE_NAME {{}} -ENABLE_ACTIVE high}}}}
 go assembly

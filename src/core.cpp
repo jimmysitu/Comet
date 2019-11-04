@@ -755,12 +755,12 @@ void Ex(Core& core
         core.extoMem.datac = core.dctoEx.datac;
 
     
-    core.mcop.op = core.dctoEx.op;
+//    core.mcop.op = core.dctoEx.op;
     core.extoMem.external = core.dctoEx.external;
-    core.mcop.lhs = lhs;
-    core.mcop.rhs = rhs;
+//    core.mcop.lhs = lhs;
+//    core.mcop.rhs = rhs;
     //core.mcop.rd = core.dctoEx.rd;
-    core.mcop.pc = core.dctoEx.pc;
+//    core.mcop.pc = core.dctoEx.pc;
     if(core.dctoEx.external)
     {
         gdebug("Starting external op @%06x (%lld %lld)\n", core.dctoEx.pc.to_int(),
@@ -1487,7 +1487,7 @@ void coreinit(Core& core, ac_int<32, false> startpc)
 
 template<unsigned int hartid>
 void doCore(ac_int<32, false> startpc, bool &exit,
-            MultiCycleOperator& mcop, MultiCycleRes mcres,
+   //         MultiCycleOperator& mcop, MultiCycleRes mcres,
         #ifdef nocache
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE]
         #else
@@ -1509,7 +1509,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
     }
 
     /// Unconditionnal read
-    core.mcres = mcres;
+   // core.mcres = mcres;
 #ifdef nocache
     simul(uint64_t oldcycles = core.csrs.mcycle;)
 #else
@@ -1604,7 +1604,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
     }
 
     /// Unconditionnal write
-    mcop = core.mcop;
+ //   mcop = core.mcop;
 #ifndef nocache
     ireq = core.irequest;
     dreq = core.drequest;
@@ -1613,7 +1613,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
 }
 
 void doStep(ac_int<32, false> startpc, bool &exit,
-            MultiCycleOperator& mcop, MultiCycleRes mcres,
+ //           MultiCycleOperator& mcop, MultiCycleRes mcres,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
             unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
             ac_int<IWidth, false> memictrl[Sets], ac_int<DWidth, false> memdctrl[Sets]
@@ -1626,7 +1626,7 @@ void doStep(ac_int<32, false> startpc, bool &exit,
     static DCacheRequest dreq; static DCacheReply drep;
 
     doCore<0>(startpc, exit,
-              mcop, mcres,
+//              mcop, mcres,
           #ifdef nocache
               im, dm
           #else

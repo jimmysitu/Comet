@@ -16,7 +16,7 @@
 #include "cache.h"
 #include "core.h"
 #include "simulator.h"
-#include "multicycleoperator.h"
+//#include "multicycleoperator.h"
 
 //#define __FAULT_INJECTION__ //XXX: remove that before commiting
 #ifdef __FAULT_INJECTION__
@@ -118,9 +118,9 @@ CCS_MAIN(int argc, char** argv)
 
     if(binaryFile == 0)
 #ifdef __HLS__
-        binaryFile = "matmul.riscv32";
+        binaryFile = "/tmp/matmul.riscv32";
 #else
-        binaryFile = "benchmarks/build/matmul_int_4.riscv32";
+        binaryFile = "benchmarks/matmul/matmul.riscv32";
 #endif
 
     //fprintf(stderr, "%d bench arguments\n", benchargc);
@@ -156,8 +156,8 @@ CCS_MAIN(int argc, char** argv)
     ac_int<IWidth, false>* memictrl = new ac_int<IWidth, false>[Sets];
     ac_int<DWidth, false>* memdctrl = new ac_int<DWidth, false>[Sets];
 
-    MultiCycleOperator* mcop = new MultiCycleOperator;
-    MultiCycleRes* mcres = new MultiCycleRes;
+  //  MultiCycleOperator* mcop = new MultiCycleOperator;
+  //  MultiCycleRes* mcres = new MultiCycleRes;
 
     // zero the control (although only the valid bit should be zeroed, rest is don't care)
     for(int i(0); i < Sets; ++i)
@@ -210,7 +210,7 @@ CCS_MAIN(int argc, char** argv)
     while(!exit)
     {
         CCS_DESIGN(doStep(sim.getPC(), exit,
-                          *mcop, *mcres,
+      //                    *mcop, *mcres,
 /* main memories */       im, dm,
 /* cache memories */    ptrtocache(cim), ptrtocache(cdm),
 /* control memories */    memictrl, memdctrl
@@ -218,11 +218,11 @@ CCS_MAIN(int argc, char** argv)
                       , &sim
                   #endif
                   ));
-        multicyclecontroller(*mcop, *mcres
-                        #ifndef __HLS__
-                             , &sim
-                        #endif
-                             );
+  //      multicyclecontroller(*mcop, *mcres
+  //                      #ifndef __HLS__
+  //                           , &sim
+  //                      #endif
+  //                           );
 
         #ifdef __FAULT_INJECTION__
         //Check if we need to inject at this cycle
@@ -404,7 +404,7 @@ CCS_MAIN(int argc, char** argv)
     delete[] cdm;
     delete[] memictrl;
     delete[] memdctrl;
-    delete mcop;
-    delete mcres;
+  //  delete mcop;
+  //  delete mcres;
     CCS_RETURN(0);
 }

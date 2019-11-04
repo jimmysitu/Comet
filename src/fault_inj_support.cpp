@@ -1,6 +1,7 @@
 #include "fault_inj_support.h"
 #include <cstdio>
 #include <fstream>
+#include <cstdlib>
 
 
 //for the signal handlers to be able to output the core status and memory contents

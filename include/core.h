@@ -342,7 +342,7 @@ struct Core
 class Simulator;
 
 void doStep(ac_int<32, false> startpc, bool &exit,
-            MultiCycleOperator& mcop, MultiCycleRes mcres,
+       //     MultiCycleOperator& mcop, MultiCycleRes mcres,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
             unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
             ac_int<IWidth, false> memictrl[Sets], ac_int<DWidth, false> memdctrl[Sets]
