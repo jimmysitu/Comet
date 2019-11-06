@@ -109,7 +109,7 @@ void Ft(Core& core
 #else
     if(!core.ctrl.freeze_fetch)
     {
-        core.ftoDC.instruction = im[core.pc/4];
+        core.ftoDC.instruction = im[(core.pc/4)&0xfff];
         simul(cycles += MEMORY_READ_LATENCY);
         core.ftoDC.pc = core.pc;
         core.ftoDC.realInstruction = true;
@@ -170,7 +170,7 @@ void Ft(Core& core
     {
         coredebug("Ft   \n");
     })
-    gdebug("i @%06x   %08x\n", core.pc.to_int(), im[core.pc/4]);
+    gdebug("i @%06x   %08x\n", core.pc.to_int(), im[(core.pc/4)&0xfff]);
 #endif
 }
 
@@ -1201,7 +1201,7 @@ void do_Mem(Core& core
             core.memtoWB.csr = false;
         }
 #else
-        data_memory[core.drequest.address >> 2] = core.drequest.writevalue;
+        data_memory[(core.drequest.address >> 2)&0xfff] = core.drequest.writevalue;
         core.ctrl.cachelock = false;
 
         core.memtoWB.realInstruction = core.extoMem.realInstruction;
@@ -1248,14 +1248,14 @@ void do_Mem(Core& core
             core.memtoWB.instruction = core.extoMem.instruction;)
             core.memtoWB.rd = core.extoMem.rd;
 
-            ac_int<32, false> mem_read = data_memory[core.extoMem.result >> 2];
+            ac_int<32, false> mem_read = data_memory[(core.extoMem.result >> 2)&0xfff];
             simul(cycles += MEMORY_READ_LATENCY;)
             formatread(core.extoMem.result, core.drequest.datasize, core.drequest.signenable, mem_read);
             core.memtoWB.result = mem_read;
 
             // data                                             size                @address
             coredebug("dR%d  @%06x   %08x   %08x   %s\n", core.drequest.datasize.to_int(), core.extoMem.result.to_int(),
-                      data_memory[core.extoMem.result >> 2], mem_read.to_int(), core.drequest.signenable?"true":"false");
+                      data_memory[(core.extoMem.result >> 2)&0xfff], mem_read.to_int(), core.drequest.signenable?"true":"false");
                    // what is in memory                  what is actually read    sign extension
 #endif
             simul(if(core.extoMem.result >= 0x11040 && core.extoMem.result < 0x11048)
@@ -1293,7 +1293,7 @@ void do_Mem(Core& core
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
 
-            ac_int<32, false> memory_val = data_memory[core.extoMem.result >> 2];
+            ac_int<32, false> memory_val = data_memory[(core.extoMem.result >> 2)&0xfff];
             simul(cycles += MEMORY_READ_LATENCY;)
             formatwrite(core.extoMem.result, core.drequest.datasize, memory_val, core.extoMem.datac);
 
@@ -1302,7 +1302,7 @@ void do_Mem(Core& core
 
             // data                                         size                    @address
             coredebug("dW%d  @%06x   %08x   %08x   %08x\n", core.drequest.datasize.to_int(), core.extoMem.result.to_int(),
-                      data_memory[core.extoMem.result >> 2], core.extoMem.datac.to_int(), memory_val.to_int());
+                      data_memory[(core.extoMem.result >> 2)&0xfff], core.extoMem.datac.to_int(), memory_val.to_int());
                    // what was there before                 what we want to write       what is actually written
 
             core.ctrl.cachelock = true;     // we need one more cycle to write the formatted data

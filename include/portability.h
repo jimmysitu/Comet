@@ -81,7 +81,7 @@
 #ifndef __HLS__
 #define DRAM_SIZE   ((size_t)1 << 24)
 #else
-#define DRAM_SIZE   1048576
+#define DRAM_SIZE   4096
 #endif
 
 #define STACK_INIT  (4*DRAM_SIZE-0x1000)

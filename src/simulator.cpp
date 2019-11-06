@@ -46,7 +46,7 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
             for(unsigned int byteNumber = 0; byteNumber<oneSection->size; byteNumber++)
             {
                 counter++;
-                setDataMemory(oneSection->address + byteNumber, sectionContent[byteNumber]);
+                setDataMemory((oneSection->address + byteNumber)&0xfff, sectionContent[byteNumber]);
             }
             free(sectionContent);
             coredebug("filling data from %06x to %06x\n", oneSection->address, oneSection->address + oneSection->size -1);
@@ -57,7 +57,7 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
             unsigned char* sectionContent = oneSection->getSectionCode();
             for(unsigned int byteNumber = 0; byteNumber < oneSection->size; byteNumber++)
             {
-                setInstructionMemory((oneSection->address + byteNumber), sectionContent[byteNumber]);
+                setInstructionMemory((oneSection->address + byteNumber)&0xfff, sectionContent[byteNumber]);
             }
             free(sectionContent);
             coredebug("filling instruction from %06x to %06x\n", oneSection->address, oneSection->address + oneSection->size -1);
