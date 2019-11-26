@@ -10,6 +10,7 @@
 #include <cacheMemory.h>
 #include <alu.h>
 #include <pipelineRegisters.h>
+#include <expectALU.h>
 
 #ifndef MEMORY_INTERFACE
 #define MEMORY_INTERFACE SimpleMemory
@@ -42,7 +43,8 @@ struct Core
 
     BasicAlu basicALU;
 	MultAlu multALU;
-
+	ExpectALU expectALU;
+	
 	//memories, yay
 	MemoryInterface *dm, *im;
 
