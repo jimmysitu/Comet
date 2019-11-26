@@ -51,7 +51,7 @@ public:
 
                 exactProdToCustomFloat(kulishRegFile[dctoEx.funct7 & 0x7], &floatVal);
 
-                
+
                 result = floatVal.unravel();
                 valRet = true;
             }
