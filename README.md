@@ -55,7 +55,7 @@ on Fedora/CentOS/RHEL OS systems
 The build process needs to be configured function of which extension is supported by the core. In our case, we enable support for the base ISA only:
 
 ```
-./configure --prefix=$RISCV --with-arch=rv32i --with-abi=ilp32
+./configure --prefix=$RISCV --with-arch=rv32im --with-abi=ilp32
 make
 ```
 
