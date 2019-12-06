@@ -3,6 +3,12 @@
 
 #include <ac_int.h>
 
+
+extern ac_int<1, false> interruptTimer, interruptSoftware;
+extern ac_int<64, false> mtime;
+extern ac_int<64, false> mtimecmp;
+extern ac_int<15, false> divider;
+
 typedef enum {
   BYTE = 0,
   HALF,

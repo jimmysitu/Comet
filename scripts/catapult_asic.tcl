@@ -13,6 +13,7 @@ solution options set /Input/CompilerFlags {-D __CATAPULT__ -D __HLS__ -D MEMORY_
 solution options set /Input/SearchPath $WORKING_DIR/../include
 solution options set /Output/GenerateCycleNetlist false
 solution file add $WORKING_DIR/../src/core.cpp -type C++
+solution file add $WORKING_DIR/../src/incompleteMemory.cpp -type C++
 directive set -DESIGN_GOAL area
 
 go new
@@ -28,5 +29,6 @@ directive set /doCore/core/core.regFile:rsc -MAP_TO_MODULE {[Register]}
 directive set /doCore/core/while -PIPELINE_INIT_INTERVAL 1
 directive set /doCore/imData:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
 directive set /doCore/dmData:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /doCore/core/core.multALU.process:if:else:for -UNROLL yes
 go architect
 go extract

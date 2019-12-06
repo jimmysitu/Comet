@@ -14,17 +14,7 @@ public:
 	  data = arg;
   }
 
-  void process(ac_int<32, false> addr, memMask mask, memOpType opType, bool lockRelease, ac_int<4, false> hartid, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut) {
-    //no latency, wait is always set to false
-    waitOut = false;
-    if (opType == STORE){
-        data[addr>>2] = dataIn;
-    }
-    else if (opType == LOAD){
-        dataOut = data[addr>>2];
-    }
-
-  }
+  void process(ac_int<32, false> addr, memMask mask, memOpType opType, bool lockRelease, ac_int<4, false> hartid, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut);
 };
 
 #endif //__INCOMPLETE_MEMORY_H__

@@ -109,7 +109,7 @@ public:
 			dataOut = 0;
 		}
 		else if (addr == 0x501800 && opType == STORE){
-			fprintf(stderr, "%c", (char) dataIn.slc<8>(0));
+//			fprintf(stderr, "%c", (char) dataIn.slc<8>(0));
 		}
 
 		else if (!nextLevelWaitOut){

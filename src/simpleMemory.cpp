@@ -1,5 +1,5 @@
 #include "simpleMemory.h"
-
+#include <core.h>
 
   /*****************************************************************
    * TODO: This should be moved somewhere else
@@ -10,12 +10,6 @@
 
 #define UART_BASE 0x10013000
 #define CLINT_BASE 0x02000000
-
-ac_int<64, false> mtime;
-ac_int<64, false> mtimecmp;
-ac_int<15, false> divider;
-ac_int<1, false> interruptTimer, interruptSoftware = 0;
-
 
 /*
 void SimpleMemory::setByte(ac_int<32, false> addr, ac_int<8, false> data) {
