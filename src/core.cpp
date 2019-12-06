@@ -9,16 +9,11 @@
 
 ac_int<32, false> valueRead;
 
-struct FtoDC fetch(ac_int<32, false> pc, static IncompleteMemory imInterface)
+struct FtoDC fetch(ac_int<32, false> pc, ac_int<32, false> instruction)
 {
   struct FtoDC ftoDC = FtoDC();
 
-  //get next instruction from memory
-  ac_int<32, false> nextInst;
-
-  imInterface.process(pc_in, WORD, LOAD, 0, nextInst, stallIm);
-
-  ftoDC.instruction = nextInst;
+  ftoDC.instruction = instruction;
   ftoDC.pc = pc;
   ftoDC.nextPCFetch = pc + 4;
   ftoDC.we = 1;
@@ -363,41 +358,14 @@ void forwardUnit(
 	}
 }
 
-
-
-void doCycle(struct Core &core, bool globalStall)
-{
-	//declare temporary structs
-  struct FtoDC ftoDC_temp; ftoDC_temp.pc = 0; ftoDC_temp.instruction = 0; ftoDC_temp.nextPCFetch = 0; ftoDC_temp.we = 0;
-  struct DCtoEx dctoEx_temp; dctoEx_temp.isBranch = 0; dctoEx_temp.useRs1 = 0; dctoEx_temp.useRs2 = 0; dctoEx_temp.useRs3 = 0; dctoEx_temp.useRd = 0; dctoEx_temp.we = 0;
-  struct ExtoMem extoMem_temp; extoMem_temp.useRd = 0; extoMem_temp.isBranch = 0; extoMem_temp.we = 0;
-  struct MemtoWB memtoWB_temp; memtoWB_temp.useRd = 0; memtoWB_temp.isStore = 0; memtoWB_temp.we = 0; memtoWB_temp.isLoad = 0;
-  struct WBOut wbOut_temp; wbOut_temp.useRd = 0; wbOut_temp.we = 0; wbOut_temp.rd = 0;
-  struct ForwardReg forwardRegisters; forwardRegisters.forwardExtoVal1 = 0; forwardRegisters.forwardExtoVal2 = 0; forwardRegisters.forwardExtoVal3 = 0; forwardRegisters.forwardMemtoVal1 = 0; forwardRegisters.forwardMemtoVal2 = 0; forwardRegisters.forwardMemtoVal3 = 0; forwardRegisters.forwardWBtoVal1 = 0; forwardRegisters.forwardWBtoVal2 = 0; forwardRegisters.forwardWBtoVal3 = 0;
-
-  //run all pipeline stages
-  ftoDC_temp = fetch(core.pc)
-  // fetch(ac_int<32, false> pc, static IncompleteMemory imInterface)
-  //run control unit
-}
-
-
-void doControl(bool globalStall,
-     struct FtoDC ftoDC_temp, struct FtoDC &ftoDC,
+void doControl(bool globalStall, struct FtoDC ftoDC_temp, struct FtoDC &ftoDC,
      struct DCtoEx dctoEx_temp, struct DCtoEx &dctoEx,
      struct ExtoMem extoMem_temp, struct ExtoMem &extoMem,
-     struct MemtoWB memtoWB_temp, struct MemtoWB &memtoWB, bool
-&wasLoad_out,
+     struct MemtoWB memtoWB_temp, struct MemtoWB &memtoWB,
      bool wasLoad, struct WBOut &wbOut,
-     ac_int<32, false> pc_in, ac_int<32, false> &pc_out,
-     ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32, false>
-dmData[DRAM_SIZE>>2],
+     ac_int<32, false> pc_in, ac_int<32, false> &pc_out, IncompleteMemory &dm,
      ac_int<32, true> regFile[32])
 {
-
-
-     static IncompleteMemory imInterface = IncompleteMemory(imData);
-     static IncompleteMemory dmInterface = IncompleteMemory(dmData);
 
      struct ForwardReg forwardRegisters;
      struct WBOut wbOut_temp;
@@ -457,8 +425,7 @@ extoMem_temp.isLongInstruction,
            mask = WORD;
            break;
         }
-        wasLoad_out = memtoWB_temp.isLoad;
-        dmInterface.process(memtoWB_temp.address, mask,
+        dm.process(memtoWB_temp.address, mask,
 memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE),
 memtoWB_temp.valueToWrite, valueRead, stallDm);
      }
@@ -520,6 +487,43 @@ dctoEx_temp.isBranch, extoMem_temp.nextPC, extoMem_temp.isBranch,
 pc_out, ftoDC.we, dctoEx.we, stallSignals[STALL_FETCH] || stallIm ||
 stallDm || localStall);
 
+}
+
+void doCycle(struct Core &core, bool globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32, false> dmData[DRAM_SIZE>>2])
+{
+  static IncompleteMemory imInterface = IncompleteMemory(imData);
+  static IncompleteMemory dmInterface = IncompleteMemory(dmData);
+
+	//declare temporary structs
+  struct FtoDC ftoDC_temp; ftoDC_temp.pc = 0; ftoDC_temp.instruction = 0; ftoDC_temp.nextPCFetch = 0; ftoDC_temp.we = 0;
+  struct DCtoEx dctoEx_temp; dctoEx_temp.isBranch = 0; dctoEx_temp.useRs1 = 0; dctoEx_temp.useRs2 = 0; dctoEx_temp.useRs3 = 0; dctoEx_temp.useRd = 0; dctoEx_temp.we = 0;
+  struct ExtoMem extoMem_temp; extoMem_temp.useRd = 0; extoMem_temp.isBranch = 0; extoMem_temp.we = 0;
+  struct MemtoWB memtoWB_temp; memtoWB_temp.useRd = 0; memtoWB_temp.isStore = 0; memtoWB_temp.we = 0; memtoWB_temp.isLoad = 0;
+  struct WBOut wbOut_temp; wbOut_temp.useRd = 0; wbOut_temp.we = 0; wbOut_temp.rd = 0;
+  struct ForwardReg forwardRegisters; forwardRegisters.forwardExtoVal1 = 0; forwardRegisters.forwardExtoVal2 = 0; forwardRegisters.forwardExtoVal3 = 0; forwardRegisters.forwardMemtoVal1 = 0; forwardRegisters.forwardMemtoVal2 = 0; forwardRegisters.forwardMemtoVal3 = 0; forwardRegisters.forwardWBtoVal1 = 0; forwardRegisters.forwardWBtoVal2 = 0; forwardRegisters.forwardWBtoVal3 = 0;
+
+  ac_int<32, false> nextInst;
+
+
+  if(!globalStall) {
+    //get the next instruction
+    bool stallIm = false;
+
+
+    imInterface.process(core.pc, WORD, LOAD, 0, nextInst, stallIm); //never stalled
+
+    //run all pipeline stages
+    ftoDC_temp = fetch(core.pc, nextInst);
+    dctoEx_temp = decode(core.ftoDC, core.regFile);
+    extoMem_temp = core.basicALU.process(core.dctoEx);
+    memtoWB_temp = memory(core.extoMem);
+    wbOut_temp = writeback(core.memtoWB);
+
+    //run control unit
+    doControl(false, ftoDC_temp, core.ftoDC, dctoEx_temp, core.dctoEx, extoMem_temp, core.extoMem,
+              memtoWB_temp, core.memtoWB, core.memtoWB.isLoad, wbOut_temp,
+              core.pc, core.pc, dmInterface, core.regFile);
+  }
 }
 
 

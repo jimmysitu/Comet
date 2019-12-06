@@ -11,21 +11,10 @@
 #include <riscvISA.h>
 #include <pipelineRegisters.h>
 
-//#include <cstdio>
-
-class ALU {
-protected:
-  bool wait;
-
-public:
-  virtual bool process(struct DCtoEx dctoEx, ac_int<32, false> &result, bool &stall) =0;
-};
-
-
 class BasicAlu {
 public:
-	void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall){
-		stall = false;
+	struct ExtoMem process(struct DCtoEx dctoEx){
+    struct ExtoMem extoMem;
 	    extoMem.pc = dctoEx.pc;
 	    extoMem.opCode = dctoEx.opCode;
 	    extoMem.rd = dctoEx.rd;
@@ -223,7 +212,7 @@ public:
 	    	extoMem.isBranch = 0;
 	    	extoMem.useRd = 0;
 	    }
-
+      return extoMem;
 	}
 };
 
