@@ -68,7 +68,6 @@ struct Core
 
 };
 
-extern ac_int<1, false> interruptTimer, interruptSoftware;
 
 //Functions for copying values
 void copyFtoDC(struct FtoDC &dest, struct FtoDC src);

@@ -32,6 +32,7 @@
  * 		- ASSOCIATIVITY
  ************************************************************************/
 //template<int OFFSET_SIZE, int TAG_SIZE, int SET_SIZE, int ASSOCIATIVITY>
+
 class CacheMemory: public MemoryInterface {
 public:
 
@@ -58,7 +59,7 @@ public:
 	ac_int<40, false> cycle;
 	ac_int<LOG_ASSOCIATIVITY, false> setMiss;
 	bool isValid;
-	
+
     	bool wasStore = false;
 	ac_int<LOG_ASSOCIATIVITY, false> setStore;
 	ac_int<LOG_SET_SIZE, false> placeStore;
@@ -97,9 +98,14 @@ public:
 		numberMiss = 0;
 	}
 
+
 	void process(ac_int<32, false> addr, memMask mask, memOpType opType, bool lockRelease, ac_int<4, false> hartid, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut)
 	{
 
+
+		if (cacheState != 0){
+
+		}
 
 		ac_int<LOG_SET_SIZE, false> place = addr.slc<LOG_SET_SIZE>(LOG_LINE_SIZE); //bit size is the log(setSize)
 		ac_int<TAG_SIZE, false> tag = addr.slc<TAG_SIZE>(LOG_LINE_SIZE + LOG_SET_SIZE); // startAddress is log(lineSize) + log(setSize) + 2
@@ -109,7 +115,7 @@ public:
 			dataOut = 0;
 		}
 		else if (addr == 0x501800 && opType == STORE){
-			fprintf(stderr, "%c", (char) dataIn.slc<8>(0));
+//			fprintf(stderr, "%c", (char) dataIn.slc<8>(0));
 		}
 
 		else if (!nextLevelWaitOut){
@@ -300,7 +306,7 @@ public:
 						placeStore = place;
 						setStore = setMiss;
 						valStore = newVal;
-				
+
 						//cacheMemory[place][setMiss] = newVal;
 						//dataValid[place][setMiss] = 1;
 						//age[place][setMiss] = cycle;
