@@ -1,5 +1,7 @@
 #include <core.h>
 #include <ac_int.h>
+#include <UARTInterface.h>
+#include <MemoryMap.h>
 #include <cacheMemory.h>
 
 #ifndef __HLS__
@@ -562,6 +564,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
 //void doCore(IncompleteMemory im, IncompleteMemory dm, bool globalStall)
 void doCore(bool globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32, false> dmData[DRAM_SIZE>>2])
 {
+
     Core core;
     IncompleteMemory imi = IncompleteMemory(imData);
     IncompleteMemory imd = IncompleteMemory(dmData);
@@ -569,8 +572,6 @@ void doCore(bool globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32,
     
     CacheMemory imInterface = CacheMemory(&imi, false);
     CacheMemory dmInterface = CacheMemory(&imd, false);
-
-//    CacheMemory dmCache = CacheMemory(&dmInterface, false);
 
     core.im = &imInterface;
     core.dm = &dmInterface;
