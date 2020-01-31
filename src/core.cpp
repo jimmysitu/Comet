@@ -564,7 +564,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
 //void doCore(IncompleteMemory im, IncompleteMemory dm, bool globalStall)
 void doCore(bool globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32, false> dmData[DRAM_SIZE>>2])
 {
-    Core core0, core1;
+    Core core;
     IncompleteMemory imInterface = IncompleteMemory(imData);
     IncompleteMemory dmInterface = IncompleteMemory(dmData);
     UARTInterface uart = UARTInterface();
