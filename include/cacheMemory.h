@@ -42,16 +42,16 @@ public:
 	MemoryInterface *nextLevel;
 #endif
 
-	ac_int<TAG_SIZE+LINE_SIZE*8, false> cacheMemory[SET_SIZE][ASSOCIATIVITY];
-	ac_int<40, false> age[SET_SIZE][ASSOCIATIVITY];
-	ac_int<1, false> dataValid[SET_SIZE][ASSOCIATIVITY];
+	ac_int<1+7+TAG_SIZE+LINE_SIZE*8, false> cacheMemory[SET_SIZE][ASSOCIATIVITY];
+	//ac_int<40, false> age[SET_SIZE][ASSOCIATIVITY];
+	//ac_int<1, false> dataValid[SET_SIZE][ASSOCIATIVITY];
 
 
 	ac_int<4, false> cacheState; //Used for the internal state machine
 	ac_int<LOG_ASSOCIATIVITY, false> older = 0; //Set where the miss occurs
 
 	//Variables for next level access
-	ac_int<LINE_SIZE*8+TAG_SIZE, false> newVal, oldVal;
+	ac_int<1+7+LINE_SIZE*8+TAG_SIZE, false> newVal, oldVal;
 	ac_int<32, false> nextLevelAddr;
 	memOpType nextLevelOpType;
 	ac_int<32, false> nextLevelDataIn;
@@ -63,7 +63,7 @@ public:
     	bool wasStore = false;
 	ac_int<LOG_ASSOCIATIVITY, false> setStore;
 	ac_int<LOG_SET_SIZE, false> placeStore;
-	ac_int<LINE_SIZE*8+TAG_SIZE, false> valStore;
+	ac_int<1+7+LINE_SIZE*8+TAG_SIZE, false> valStore;
 	ac_int<32, false> dataOutStore;
 
 	bool nextLevelWaitOut;
@@ -89,8 +89,8 @@ public:
 		for (int oneSetElement = 0; oneSetElement<SET_SIZE; oneSetElement++){
 			for (int oneSet = 0; oneSet < ASSOCIATIVITY; oneSet++){
 				cacheMemory[oneSetElement][oneSet] = 0;
-				age[oneSetElement][oneSet] = 0;
-				dataValid[oneSetElement][oneSet] = 0;
+				//age[oneSetElement][oneSet] = 0;
+				//dataValid[oneSetElement][oneSet] = 0;
 			}
 		}
 		VERBOSE = v;
@@ -124,28 +124,28 @@ public:
 			if (wasStore || cacheState == 1){
 
 				cacheMemory[placeStore][setStore] = valStore;
-				age[placeStore][setStore] = cycle;
-				dataValid[placeStore][setStore] = 1;
+				//age[placeStore][setStore] = cycle;
+				//dataValid[placeStore][setStore] = 1;
 				dataOut = dataOutStore;
 				wasStore = false;
 				cacheState = 0;
 			}
 			else if (opType != NONE){
 
-				ac_int<LINE_SIZE*8+TAG_SIZE, false> val1 = cacheMemory[place][0];
-				ac_int<LINE_SIZE*8+TAG_SIZE, false> val2 = cacheMemory[place][1];
-				ac_int<LINE_SIZE*8+TAG_SIZE, false> val3 = cacheMemory[place][2];
-				ac_int<LINE_SIZE*8+TAG_SIZE, false> val4 = cacheMemory[place][3];
+				ac_int<1+7+LINE_SIZE*8+TAG_SIZE, false> val1 = cacheMemory[place][0];
+				ac_int<1+7+LINE_SIZE*8+TAG_SIZE, false> val2 = cacheMemory[place][1];
+				ac_int<1+7+LINE_SIZE*8+TAG_SIZE, false> val3 = cacheMemory[place][2];
+				ac_int<1+7+LINE_SIZE*8+TAG_SIZE, false> val4 = cacheMemory[place][3];
 
-				ac_int<1, false> valid1 = dataValid[place][0];
-				ac_int<1, false> valid2 = dataValid[place][1];
-				ac_int<1, false> valid3 = dataValid[place][2];
-				ac_int<1, false> valid4 = dataValid[place][3];
+				ac_int<1, false> valid1 = val1[LINE_SIZE*8+TAG_SIZE];
+				ac_int<1, false> valid2 = val2[LINE_SIZE*8+TAG_SIZE];
+				ac_int<1, false> valid3 = val3[LINE_SIZE*8+TAG_SIZE];
+				ac_int<1, false> valid4 = val4[LINE_SIZE*8+TAG_SIZE];
 
-				ac_int<16, false> age1 = age[place][0];
-				ac_int<16, false> age2 = age[place][1];
-				ac_int<16, false> age3 = age[place][2];
-				ac_int<16, false> age4 = age[place][3];
+				ac_int<7, false> age1 = val1.slc<7>(LINE_SIZE*8+TAG_SIZE+1);
+				ac_int<7, false> age2 = val2.slc<7>(LINE_SIZE*8+TAG_SIZE+1);
+				ac_int<7, false> age3 = val3.slc<7>(LINE_SIZE*8+TAG_SIZE+1);
+				ac_int<7, false> age4 = val4.slc<7>(LINE_SIZE*8+TAG_SIZE+1);
 
 				if (cacheState == 0){
 					numberAccess++;
@@ -200,9 +200,10 @@ public:
 					if (hit){
 
 
-						ac_int<LINE_SIZE*8+TAG_SIZE, false> localValStore = 0;
+						ac_int<1+7+LINE_SIZE*8+TAG_SIZE, false> localValStore = 0;
 						localValStore.set_slc(TAG_SIZE, selectedValue);
-						localValStore.set_slc(0, tag);
+						localValStore[LINE_SIZE*8+TAG_SIZE] = 1;
+						localValStore.set_slc(LINE_SIZE*8+TAG_SIZE+1, cycle.slc<7>(4));
 
 						//First we handle the store
 						if (opType == STORE){
