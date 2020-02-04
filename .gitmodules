@@ -1,0 +1,6 @@
+[submodule "hint"]
+	path = hint
+	url = https://github.com/yuguen/hint.git
+[submodule "expect"]
+	path = expect
+	url = https://gitlab.inria.fr/yuguen/expect.git

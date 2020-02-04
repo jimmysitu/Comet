@@ -16,56 +16,65 @@ ac_int<32, false> SimpleMemory::getWord(ac_int<32, false> addr) {
   return  data[addr>>2];
 }
 */
-void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut) {
-  //no latency, wait is always set to false
+template <unsigned int INTERFACE_SIZE>
+void SimpleMemory<INTERFACE_SIZE>::process(ac_int<32, false> addr, memMask mask, memOpType opType,
+                                           ac_int<INTERFACE_SIZE * 8, false> dataIn,
+                                           ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut)
+{
+  // no latency, wait is always set to false
 
-  ac_int<32, true> temp;
   ac_int<8, false> t8;
   ac_int<1, true> bit;
   ac_int<16, false> t16;
 
-  switch(opType) {
+  switch (opType) {
     case STORE:
-      switch(mask) {
+      switch (mask) {
         case BYTE:
-          temp = data[addr>>2];
-          data[addr>>2].set_slc(((int) addr.slc<2>(0)) << 3, dataIn.slc<8>(0));
+          data[addr >> 2].set_slc(((int)addr.slc<2>(0)) << 3, dataIn.slc<8>(0));
           break;
         case HALF:
-          temp = data[addr>>2];
-          data[addr>>2].set_slc(addr[1] ? 16 : 0, dataIn.slc<16>(0));
+          data[addr >> 2].set_slc(addr[1] ? 16 : 0, dataIn.slc<16>(0));
 
           break;
         case WORD:
-          temp = data[addr>>2];
-          data[addr>>2] = dataIn;
+          data[addr >> 2] = dataIn.slc<32>(0);
+          break;
+        case VECT:
+          for (int oneWord = 0; oneWord < INTERFACE_SIZE / 4; oneWord++)
+            data[(addr >> 2) + oneWord] = dataIn.slc<32>(32 * oneWord);
           break;
       }
       break;
     case LOAD:
-      switch(mask) {
+      switch (mask) {
         case BYTE:
-          t8 = data[addr>>2].slc<8>(((int)addr.slc<2>(0)) << 3);
+          t8  = data[addr >> 2].slc<8>(((int)addr.slc<2>(0)) << 3);
           bit = t8.slc<1>(7);
           dataOut.set_slc(0, t8);
           dataOut.set_slc(8, (ac_int<24, true>)bit);
           break;
         case HALF:
-          t16 = data[addr>>2].slc<16>(addr[1] ? 16 : 0);
+          t16 = data[addr >> 2].slc<16>(addr[1] ? 16 : 0);
           bit = t16.slc<1>(15);
           dataOut.set_slc(0, t16);
           dataOut.set_slc(16, (ac_int<16, true>)bit);
           break;
         case WORD:
-          dataOut = data[addr>>2];
+          dataOut = data[addr >> 2];
+          break;
+        case VECT:
+          for (int oneWord = 0; oneWord < INTERFACE_SIZE / 4; oneWord++)
+            dataOut.set_slc(32 * oneWord, data[(addr >> 2) + oneWord]);
           break;
         case BYTE_U:
-          dataOut = data[addr>>2].slc<8>(((int) addr.slc<2>(0))<<3) & 0xff;
+          dataOut = data[addr >> 2].slc<8>(((int)addr.slc<2>(0)) << 3) & 0xff;
           break;
         case HALF_U:
-          dataOut = data[addr>>2].slc<16>(addr[1] ? 16 : 0)& 0xffff;
+          dataOut = data[addr >> 2].slc<16>(addr[1] ? 16 : 0) & 0xffff;
           break;
       }
+      //  printf("Simple: Read %x at %x\n", (unsigned int)dataOut, (unsigned int)addr);
 
       break;
   }
