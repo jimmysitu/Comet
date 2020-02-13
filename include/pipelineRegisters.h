@@ -23,25 +23,25 @@ struct ForwardReg {
 
 struct FtoDC {
   FtoDC() : pc(0), instruction(0x13), we(1) {}
-  ac_int<32, false> pc;          // PC where to fetch
-  ac_int<32, false> instruction; // Instruction to execute
-  ac_int<32, false> nextPCFetch; // Next pc according to fetch
+  ac_int<COMET_WORD_LENGTH, false> pc;          // PC where to fetch
+  ac_int<32, false> instruction;                // Instruction to execute
+  ac_int<COMET_WORD_LENGTH, false> nextPCFetch; // Next pc according to fetch
 
   // Register for all stages
   bool we;
 };
 
 struct DCtoEx {
-  ac_int<32, false> pc; // used for branch
+  ac_int<COMET_WORD_LENGTH, false> pc; // used for branch
   ac_int<32, false> instruction;
 
   ac_int<7, false> opCode; // opCode = instruction[6:0]
   ac_int<7, false> funct7; // funct7 = instruction[31:25]
   ac_int<3, false> funct3; // funct3 = instruction[14:12]
 
-  ac_int<32, true> lhs;   //  left hand side : operand 1
-  ac_int<32, true> rhs;   // right hand side : operand 2
-  ac_int<32, true> datac; // ST, BR, JAL/R,
+  ac_int<COMET_WORD_LENGTH, true> lhs;   //  left hand side : operand 1
+  ac_int<COMET_WORD_LENGTH, true> rhs;   // right hand side : operand 2
+  ac_int<COMET_WORD_LENGTH, true> datac; // ST, BR, JAL/R,
 
   // For branch unit
   ac_int<32, false> nextPCDC;
@@ -62,20 +62,20 @@ struct DCtoEx {
 };
 
 struct ExtoMem {
-  ac_int<32, false> pc;
+  ac_int<COMET_WORD_LENGTH, false> pc;
   ac_int<32, false> instruction;
 
-  ac_int<32, true> result; // result of the EX stage
-  ac_int<5, false> rd;     // destination register
+  ac_int<COMET_WORD_LENGTH, true> result; // result of the EX stage
+  ac_int<5, false> rd;                    // destination register
   bool useRd;
   bool isLongInstruction;
   ac_int<7, false> opCode; // LD or ST (can be reduced to 2 bits)
   ac_int<3, false> funct3; // datasize and sign extension bit
 
-  ac_int<32, true> datac; // data to be stored in memory or csr result
+  ac_int<COMET_WORD_LENGTH, true> datac; // data to be stored in memory or csr result
 
   // For branch unit
-  ac_int<32, false> nextPC;
+  ac_int<COMET_WORD_LENGTH, false> nextPC;
   bool isBranch;
 
   // Register for all stages
@@ -83,12 +83,12 @@ struct ExtoMem {
 };
 
 struct MemtoWB {
-  ac_int<32, false> result; // Result to be written back
-  ac_int<5, false> rd;      // destination register
+  ac_int<COMET_WORD_LENGTH, false> result; // Result to be written back
+  ac_int<5, false> rd;                     // destination register
   bool useRd;
 
-  ac_int<32, true> address;
-  ac_int<32, false> valueToWrite;
+  ac_int<COMET_WORD_LENGTH, true> address;
+  ac_int<COMET_WORD_LENGTH, false> valueToWrite;
   ac_int<4, false> byteEnable;
   bool isStore;
   bool isLoad;
@@ -98,7 +98,7 @@ struct MemtoWB {
 };
 
 struct WBOut {
-  ac_int<32, false> value;
+  ac_int<COMET_WORD_LENGTH, false> value;
   ac_int<5, false> rd;
   bool useRd;
   bool we;
