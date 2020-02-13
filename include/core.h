@@ -48,8 +48,8 @@ struct Core
 
     //CoreCtrl ctrl;
 
-    ac_int<32, true> regFile[32];
-    ac_int<32, false> pc;
+    ac_int<COMET_WORD_LENGTH, true> regFile[32];
+    ac_int<COMET_WORD_LENGTH, false> pc;
 
 	//stall
 	bool stallSignals[5] = {0, 0, 0, 0, 0};

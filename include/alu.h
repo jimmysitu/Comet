@@ -18,7 +18,7 @@ protected:
   bool wait;
 
 public:
-  virtual bool process(struct DCtoEx dctoEx, ac_int<32, false> &result, bool &stall) =0;
+  virtual bool process(struct DCtoEx dctoEx, ac_int<COMET_WORD_LENGTH, false> &result, bool &stall) =0;
 };
 
 
@@ -89,10 +89,10 @@ public:
 	            extoMem.isBranch = (dctoEx.lhs >= dctoEx.rhs);
 	            break;
 	        case RISCV_BR_BLTU:
-	            extoMem.isBranch = ((ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs);
+	            extoMem.isBranch = ((ac_int<COMET_WORD_LENGTH, false>)dctoEx.lhs < (ac_int<COMET_WORD_LENGTH, false>)dctoEx.rhs);
 	            break;
 	        case RISCV_BR_BGEU:
-	            extoMem.isBranch = ((ac_int<32, false>)dctoEx.lhs >= (ac_int<32, false>)dctoEx.rhs);
+	            extoMem.isBranch = ((ac_int<COMET_WORD_LENGTH, false>)dctoEx.lhs >= (ac_int<COMET_WORD_LENGTH, false>)dctoEx.rhs);
 	            break;
 	        }
 	        break;
@@ -114,7 +114,7 @@ public:
 	            extoMem.result = dctoEx.lhs < dctoEx.rhs;
 	            break;
 	        case RISCV_OPI_SLTIU:
-	            extoMem.result = (ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs;
+	            extoMem.result = (ac_int<COMET_WORD_LENGTH, false>)dctoEx.lhs < (ac_int<COMET_WORD_LENGTH, false>)dctoEx.rhs;
 	            break;
 	        case RISCV_OPI_XORI:
 	            extoMem.result = dctoEx.lhs ^ dctoEx.rhs;
@@ -133,7 +133,7 @@ public:
 	            if (dctoEx.funct7.slc<1>(5)) //SRAI
 	                extoMem.result = dctoEx.lhs >> (ac_int<5, false>)shamt;
 	            else //SRLI
-	                extoMem.result = (ac_int<32, false>)dctoEx.lhs >> (ac_int<5, false>)shamt;
+	                extoMem.result = (ac_int<COMET_WORD_LENGTH, false>)dctoEx.lhs >> (ac_int<5, false>)shamt;
 	            break;
 	        }
 	        break;
@@ -157,7 +157,7 @@ public:
 	                extoMem.result = dctoEx.lhs < dctoEx.rhs;
 	                break;
 	            case RISCV_OP_SLTU:
-	                extoMem.result = (ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs;
+	                extoMem.result = (ac_int<COMET_WORD_LENGTH, false>)dctoEx.lhs < (ac_int<COMET_WORD_LENGTH, false>)dctoEx.rhs;
 	                break;
 	            case RISCV_OP_XOR:
 	                extoMem.result = dctoEx.lhs ^ dctoEx.rhs;
@@ -166,7 +166,7 @@ public:
 	                if(dctoEx.funct7.slc<1>(5))   // SRA
 	                    extoMem.result = dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
 	                else  // SRL
-	                    extoMem.result = (ac_int<32, false>)dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
+	                    extoMem.result = (ac_int<COMET_WORD_LENGTH, false>)dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
 	                break;
 	            case RISCV_OP_OR:
 	                extoMem.result = dctoEx.lhs | dctoEx.rhs;
@@ -198,7 +198,7 @@ public:
 	            extoMem.result = dctoEx.lhs;
 	            break;
 	        case RISCV_SYSTEM_CSRRC:
-	            extoMem.datac = dctoEx.lhs & ((ac_int<32, false>)~dctoEx.rhs);
+	            extoMem.datac = dctoEx.lhs & ((ac_int<COMET_WORD_LENGTH, false>)~dctoEx.rhs);
 	            extoMem.result = dctoEx.lhs;
 	            break;
 	        case RISCV_SYSTEM_CSRRWI:
@@ -210,7 +210,7 @@ public:
 	            extoMem.result = dctoEx.lhs;
 	            break;
 	        case RISCV_SYSTEM_CSRRCI:
-	            extoMem.datac = dctoEx.lhs & ((ac_int<32, false>)~dctoEx.rhs);
+	            extoMem.datac = dctoEx.lhs & ((ac_int<COMET_WORD_LENGTH, false>)~dctoEx.rhs);
 	            extoMem.result = dctoEx.lhs;
 	            break;
 	        }
@@ -227,16 +227,17 @@ public:
 	}
 };
 
+//FIXME: Let Simon handle the multiplication transition to 64 bits
 class MultAlu: public ALU {
 public:
-    ac_int<32, false> quotient, remainder;
+    ac_int<COMET_WORD_LENGTH, false> quotient, remainder;
     //ac_int<33, false>
     ac_int<6, false> state = 0;
     bool resIsNeg;
     int i;
-    ac_int<32, false> dataAUnsigned, dataBUnsigned;
+    ac_int<COMET_WORD_LENGTH, false> dataAUnsigned, dataBUnsigned;
 
-	bool process(struct DCtoEx dctoEx, ac_int<32, false> &result, bool &stall){
+	bool process(struct DCtoEx dctoEx, ac_int<COMET_WORD_LENGTH, false> &result, bool &stall){
         //no need to fill in the output register fields, the first ALU has that taken care of
         bool valRet = false;
 

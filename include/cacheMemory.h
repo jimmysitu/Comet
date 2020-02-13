@@ -58,7 +58,7 @@ public:
 	ac_int<40, false> cycle;
 	ac_int<LOG_ASSOCIATIVITY, false> setMiss;
 	bool isValid;
-	
+
     	bool wasStore = false;
 	ac_int<LOG_ASSOCIATIVITY, false> setStore;
 	ac_int<LOG_SET_SIZE, false> placeStore;
@@ -292,7 +292,7 @@ public:
 						placeStore = place;
 						setStore = setMiss;
 						valStore = newVal;
-				
+
 						//cacheMemory[place][setMiss] = newVal;
 						//dataValid[place][setMiss] = 1;
 						//age[place][setMiss] = cycle;
