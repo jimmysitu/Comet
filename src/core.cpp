@@ -756,7 +756,7 @@ void doCycle(struct Core& core, // Core containing all values
   core.stallSignals[2] = 0;
   core.stallSignals[3] = 0;
   core.stallSignals[4] = 0;
-  core.stallMultAlu    = false;
+  core.stallAlu        = false;
   core.stallIm         = false;
   core.stallDm         = false;
 
@@ -807,18 +807,18 @@ void doCycle(struct Core& core, // Core containing all values
   decode(core.ftoDC, dctoEx_temp, core.regFile);
   execute(core.dctoEx, extoMem_temp);
 
-  bool multUsed = core.multiplicationUnit.process(core.dctoEx, multResult, core.stallMultAlu);
+  bool multUsed = core.multiplicationUnit.process(core.dctoEx, multResult, core.stallAlu);
   if (multUsed)
     extoMem_temp.result = multResult;
 
-  bool floatUsed = core.floatALU.process(core.dctoEx, floatResult, core.stallAlu);
+  bool floatUsed = core.fpu.process(core.dctoEx, floatResult, core.stallAlu);
   if (floatUsed)
     extoMem_temp.result = floatResult;
 
   memory(core.extoMem, memtoWB_temp);
   writeback(core.memtoWB, wbOut_temp);
 
-  localStall |= core.stallMultAlu;
+  localStall |= core.stallAlu;
 
   // resolve stalls, forwards
   if (!localStall)

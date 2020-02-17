@@ -31,5 +31,7 @@ add_executable(testFPU
 							./src/testFPU.cpp
 							./src/elfFile.cpp
 							./src/simpleMemory.cpp
-							./src/riscvISA.cpp)
+							./src/riscvISA.cpp
+							./src/multiplicationUnit.cpp)
+
 #target_link_libraries( comet.sim	LINK_PUBLIC ${Boost_LIBRARIES} )

@@ -9,7 +9,6 @@
 #define FLOAT_ALU_H
 
 #include <ac_int.h>
-#include <alu.h>
 #include <pipelineRegisters.h>
 #include <riscvISA.h>
 
@@ -42,7 +41,7 @@
 
 // BIAS and SUB_BIAS are the value of the bias in the IEE-754 norm
 
-class FloatAlu : public ALU {
+class FloatingPointUnit {
 private:
   int state                                = 0;
   int subState                             = 0;

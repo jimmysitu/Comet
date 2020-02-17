@@ -6,7 +6,7 @@
 
 // all the possible memories
 #include <cacheMemory.h>
-#include <floatAlu.h>
+#include <floatingPointUnit.h>
 #include <incompleteMemory.h>
 #include <pipelineRegisters.h>
 #include <simpleMemory.h>
@@ -43,7 +43,7 @@ struct Core {
   MemtoWB memtoWB;
 
   MultiplicationUnit multiplicationUnit;
-  FloatAlu floatALU;
+  FloatingPointUnit fpu;
 
   MemoryInterface *dm, *im;
 
@@ -52,7 +52,7 @@ struct Core {
 
   // stall
   bool stallSignals[5] = {0, 0, 0, 0, 0};
-  bool stallIm, stallDm, stallMultAlu;
+  bool stallIm, stallDm, stallAlu;
   unsigned long cycle;
   /// Multicycle operation
 
