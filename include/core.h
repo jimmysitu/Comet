@@ -5,7 +5,6 @@
 #include <riscvISA.h>
 
 // all the possible memories
-#include <alu.h>
 #include <cacheMemory.h>
 #include <floatAlu.h>
 #include <incompleteMemory.h>
@@ -25,26 +24,35 @@ typedef enum { STALL_FETCH = 0, STALL_DECODE = 1, STALL_EXECUTE = 2, STALL_MEMOR
 // This is ugly but otherwise with have a dependency : alu.h includes core.h (for pipeline regs) and core.h includes
 // alu.h...
 
+class MultiplicationUnit {
+public:
+  ac_int<32, false> quotient, remainder;
+  // ac_int<33, false>
+  ac_int<6, false> state = 0;
+  bool resIsNeg;
+  int i;
+  ac_int<32, false> dataAUnsigned, dataBUnsigned;
+
+  bool process(struct DCtoEx dctoEx, ac_int<32, false>& result, bool& stall);
+};
+
 struct Core {
   FtoDC ftoDC;
   DCtoEx dctoEx;
   ExtoMem extoMem;
   MemtoWB memtoWB;
 
-  BasicAlu basicALU;
-  MultAlu multALU;
+  MultiplicationUnit multiplicationUnit;
   FloatAlu floatALU;
-  // memories, yay
+
   MemoryInterface *dm, *im;
 
-  // CoreCtrl ctrl;
-
-  ac_int<32, true> regFile[64];
+  ac_int<32, true> regFile[32];
   ac_int<32, false> pc;
 
   // stall
   bool stallSignals[5] = {0, 0, 0, 0, 0};
-  bool stallIm, stallDm, stallAlu;
+  bool stallIm, stallDm, stallMultAlu;
   unsigned long cycle;
   /// Multicycle operation
 
