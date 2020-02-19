@@ -95,8 +95,8 @@ public:
   ac_int<LOG_SET_SIZE, false> place = addr.slc<LOG_SET_SIZE>(LOG_LINE_SIZE); // bit size is the log(setSize)
   ac_int<TAG_SIZE, false> tag =
       addr.slc<TAG_SIZE>(LOG_LINE_SIZE + LOG_SET_SIZE); // startAddress is log(lineSize) + log(setSize) + 2
-  ac_int<LOG_LINE_SIZE, false> offset = addr.slc<LOG_LINE_SIZE - 2>(2); // bitSize is log(lineSize), start address
-                                                                        // is 2(because of #bytes in a word)
+  ac_int<LOG_LINE_SIZE, false> offset =
+      addr.slc<LOG_LINE_SIZE - 2>(2); // bitSize is log(lineSize), start address is 2(because of #bytes in a word)
 
   if (!nextLevelWaitOut) {
     cycle++;
@@ -129,8 +129,7 @@ public:
       if (cacheState == 0) {
         numberAccess++;
 
-        //				fprintf(stdout, "Reading at addr %x\n",
-        // addr);
+        //				fprintf(stdout, "Reading at addr %x\n", addr);
 
         ac_int<TAG_SIZE, false> tag1 = val1.slc<TAG_SIZE>(0);
         ac_int<TAG_SIZE, false> tag2 = val2.slc<TAG_SIZE>(0);
@@ -260,8 +259,7 @@ public:
           nextLevelOpType = (isValid) ? STORE : NONE;
         } else if (cacheState >= 2) { // Then we read four values from upper level
           if (cacheState != 6) {
-            newVal.set_slc((cacheState - 2) * 4 * 8 + TAG_SIZE,
-                           nextLevelDataOut); // at addr +1
+            newVal.set_slc((cacheState - 2) * 4 * 8 + TAG_SIZE, nextLevelDataOut); // at addr +1
           }
 
           if (cacheState != 2) {
