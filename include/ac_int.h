@@ -57,7 +57,8 @@
 //          ac_int<W+1,false> b = (ac_int<W+1,false>)a << 1;
 //
 //      - only static length read/write slices are supported:
-//         - read:  x.slc<4>(k) => returns ac_int for 4-bit slice x(4+k-1 DOWNTO k)
+//         - read:  x.slc<4>(k) => returns ac_int for 4-bit slice x(4+k-1 DOWNTO
+k)
 //         - write: x.set_slc(k,y) = writes bits of y to x starting at index k
 */
 
@@ -188,7 +189,8 @@ inline void ac_assert(bool condition, const char* file = 0, int line = 0, const 
 #endif
 }
 
-// helper structs for statically computing log2 like functions (nbits, log2_floor, log2_ceil)
+// helper structs for statically computing log2 like functions (nbits,
+// log2_floor, log2_ceil)
 //   using recursive templates
 template <unsigned char N> struct s_N {
   template <unsigned X> struct s_X {
@@ -1636,7 +1638,8 @@ template <> struct c_prom<double> {
 };
 
 template <typename T, typename T2> struct c_arith {
-  // will error out for pairs of T and T2 that are not defined through specialization
+  // will error out for pairs of T and T2 that are not defined through
+  // specialization
 };
 template <typename T> struct c_arith<T, T> {
   typedef T arith_conv;
@@ -1830,7 +1833,8 @@ C_TYPE_MAP_FLOAT(double, 2, 54, 1, 11)
 #undef C_TYPE_FLOAT
 #undef C_TYPE_MAP
 
-// specializations for following struct declared/defined after definition of ac_int
+// specializations for following struct declared/defined after definition of
+// ac_int
 template <typename T> struct rt_ac_int_T {
   template <int W, bool S> struct op1 {
     typedef typename T::template rt_T<ac_int<W, S> >::mult mult;
@@ -2089,7 +2093,8 @@ public:
 
   inline std::string to_string(ac_base_mode base_rep, bool sign_mag = false) const
   {
-    // base_rep == AC_DEC => sign_mag == don't care (always print decimal in sign magnitude)
+    // base_rep == AC_DEC => sign_mag == don't care (always print decimal in
+    // sign magnitude)
     char r[N * 32 + 4] = {0};
     int i              = 0;
     if (sign_mag)
@@ -2413,7 +2418,7 @@ public:
   // Bit and Slice Select -----------------------------------------------------
   template <int WS, int WX, bool SX> inline ac_int<WS, S> slc(const ac_int<WX, SX>& index) const
   {
-    ac_int<WS, S> r = 0;
+    ac_int<WS, S> r;
     AC_ASSERT(index.to_int() >= 0, "Attempting to read slc with negative indeces");
     unsigned uindex = ac_int<WX - SX, false>(index).to_uint();
     Base::shift_r(uindex, r);
@@ -2423,7 +2428,7 @@ public:
 
   template <int WS> inline ac_int<WS, S> slc(signed index) const
   {
-    ac_int<WS, S> r = 0;
+    ac_int<WS, S> r;
     AC_ASSERT(index >= 0, "Attempting to read slc with negative indeces");
     unsigned uindex = index & ((unsigned)~0 >> 1);
     Base::shift_r(uindex, r);
@@ -2432,7 +2437,7 @@ public:
   }
   template <int WS> inline ac_int<WS, S> slc(unsigned uindex) const
   {
-    ac_int<WS, S> r = 0;
+    ac_int<WS, S> r;
     Base::shift_r(uindex, r);
     r.bit_adjust();
     return r;
@@ -2544,7 +2549,8 @@ public:
   }
   // returns false if number is denormal
   template <int WE, bool SE> bool normalize(ac_int<WE, SE>& exp) { return normalize_private(exp); }
-  // returns false if number is denormal, minimum exponent is reserved (usually for encoding special values/errors)
+  // returns false if number is denormal, minimum exponent is reserved (usually
+  // for encoding special values/errors)
   template <int WE, bool SE> bool normalize_RME(ac_int<WE, SE>& exp) { return normalize_private(exp, true); }
   bool and_reduce() const { return ac_private::iv_equal_ones_to<W, N>(Base::v); }
   bool or_reduce() const { return !Base::equal_zero(); }
@@ -2605,8 +2611,8 @@ public:
     //   if W > N*32, missing most significant bits are zeroed
     //   if W < N*32, additional bits in ivec are ignored (no overflow checking)
     // Example:
-    //   ac_int<80,false> x;    int vec[] = { 0xffffa987, 0x6543210f, 0xedcba987 };
-    //   x.bit_fill(vec);   // vec[0] fill bits 79-64
+    //   ac_int<80,false> x;    int vec[] = { 0xffffa987, 0x6543210f, 0xedcba987
+    //   }; x.bit_fill(vec);   // vec[0] fill bits 79-64
     enum { N0 = (W + 31) / 32, M = AC_MIN(N0, Na) };
     ac_int<M * 32, false> res = 0;
     for (int i = 0; i < M; i++)
@@ -2873,7 +2879,8 @@ template <int W, bool S> inline std::ostream& operator<<(std::ostream& os, const
   return os;
 }
 
-// Macros for Binary Operators with Integers --------------------------------------------
+// Macros for Binary Operators with Integers
+// --------------------------------------------
 
 #define BIN_OP_WITH_INT(BIN_OP, C_TYPE, WI, SI, RTYPE)                                                                 \
   template <int W, bool S>                                                                                             \
@@ -2933,11 +2940,13 @@ template <int W, bool S> inline std::ostream& operator<<(std::ostream& os, const
   ASSIGN_OP_WITH_INT(|=, C_TYPE, WI, SI)                                                                               \
   ASSIGN_OP_WITH_INT(^=, C_TYPE, WI, SI)
 
-// ------------------------------------- End of Macros for Binary Operators with Integers
+// ------------------------------------- End of Macros for Binary Operators with
+// Integers
 
 namespace ac {
 namespace ops_with_other_types {
-//  Mixed Operators with Integers  -----------------------------------------------
+//  Mixed Operators with Integers
+//  -----------------------------------------------
 OPS_WITH_INT(bool, 1, false)
 OPS_WITH_INT(char, 8, true)
 OPS_WITH_INT(signed char, 8, true)
@@ -2950,7 +2959,8 @@ OPS_WITH_INT(long, ac_private::long_w, true)
 OPS_WITH_INT(unsigned long, ac_private::long_w, false)
 OPS_WITH_INT(Slong, 64, true)
 OPS_WITH_INT(Ulong, 64, false)
-// -----------------------------------------  End of Mixed Operators with Integers
+// -----------------------------------------  End of Mixed Operators with
+// Integers
 } // namespace ops_with_other_types
 
 // Functions to fill bits
@@ -2964,7 +2974,8 @@ template <typename T> inline T bit_fill_hex(const char* str)
 
 // returns bit_fill for type
 //   example:
-//   ac_int<80,false> x = ac::bit_fill< ac_int<80,false> > ((int [3]) {0xffffa987, 0x6543210f, 0xedcba987 });
+//   ac_int<80,false> x = ac::bit_fill< ac_int<80,false> > ((int [3])
+//   {0xffffa987, 0x6543210f, 0xedcba987 });
 template <typename T, int N> inline T bit_fill(const int (&ivec)[N], bool bigendian = true)
 {
   T res;
@@ -2974,7 +2985,8 @@ template <typename T, int N> inline T bit_fill(const int (&ivec)[N], bool bigend
 
 } // namespace ac
 
-//  Mixed Operators with Pointers  -----------------------------------------------
+//  Mixed Operators with Pointers
+//  -----------------------------------------------
 
 // Addition of ac_int and  pointer
 template <typename T, int W, bool S> T* operator+(T* ptr, const ac_int<W, S>& op2)
@@ -2990,7 +3002,8 @@ template <typename T, int W, bool S> T* operator-(T* ptr, const ac_int<W, S>& op
 {
   return ptr - op2.to_int64();
 }
-// -----------------------------------------  End of Mixed Operators with Pointers
+// -----------------------------------------  End of Mixed Operators with
+// Pointers
 
 using namespace ac::ops_with_other_types;
 
@@ -3161,7 +3174,8 @@ inline ac_fixed<W, I, S, Q, O> value(ac_fixed<W, I, S, Q, O>);
     return x;                                                                                                          \
   }
 
-// -- C int types -----------------------------------------------------------------
+// -- C int types
+// -----------------------------------------------------------------
 #define SPECIAL_VAL_FOR_INTS(C_TYPE, WI, SI)                                                                           \
   template <ac_special_val val> inline C_TYPE value(C_TYPE);                                                           \
   template <> inline C_TYPE value<AC_VAL_0>(C_TYPE) { return (C_TYPE)0; }                                              \

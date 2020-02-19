@@ -15,10 +15,8 @@
 BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> args, const char* inFile,
                                const char* outFile, const char* tFile)
 {
-  core.ftoDC.pc          = 0;
-  core.ftoDC.instruction = 0;
-  core.ftoDC.we          = false;
-  core.ftoDC.nextPCFetch = 0;
+
+  core.ftoDC.we = false;
 
   core.dctoEx.pc          = 0;
   core.dctoEx.instruction = 0;
@@ -29,7 +27,6 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
 
   core.dctoEx.lhs   = 0;
   core.dctoEx.rhs   = 0;
-  core.dctoEx.mhs   = 0;
   core.dctoEx.datac = 0;
 
   // For branch unit
@@ -82,8 +79,6 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   core.memtoWB.we = false;
 
   im = new ac_int<32, false>[DRAM_SIZE >> 2];
-  for (int oneval = 0; oneval < (DRAM_SIZE >> 2); oneval++)
-    im[oneval] = 0;
   dm = new ac_int<32, false>[DRAM_SIZE >> 2];
 
   core.cycle = 0;
@@ -95,10 +90,6 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   core.dm = new CacheMemory(new SimpleMemory(dm), false);
 
   for (int i = 0; i < 32; i++) {
-    core.regFile[i] = 0;
-  }
-  //	Initialize float memory
-  for (int i = 31; i < 64; i++) {
     core.regFile[i] = 0;
   }
   /*
@@ -156,7 +147,8 @@ for(int i(0); i < DRAM_SIZE; i++)
     free(sectionContent);
   }
 
-  unsigned int heap = heapAddress; // keep heap where it is because it will be set over stackpointer
+  unsigned int heap = heapAddress; // keep heap where it is because it will be
+                                   // set over stackpointer
 
   unsigned int argc = args.size();
 
@@ -244,17 +236,18 @@ void BasicSimulator::printCycle()
       printf("Debug trace : %x ", (unsigned int)core.ftoDC.pc);
       std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
 
-      for (int oneReg = 0; oneReg < 64; oneReg++) {
-        printf("%x  ",
-               (unsigned int)core.regFile[oneReg]); // TODO use cout everywhere (had trouble printing them as hexa
+      for (int oneReg = 0; oneReg < 32; oneReg++) {
+        printf("%x  ", (unsigned int)core.regFile[oneReg]); // TODO use cout everywhere (had
+                                                            // trouble printing them as hexa
       }
       std::cout << std::endl;
     }
     /*
     if (core.memtoWB.isStore)
-            fprintf(stdout, "Doing a store at %x with value %x\n", (unsigned int) core.memtoWB.address, (unsigned int)
-    core.memtoWB.valueToWrite); if (core.memtoWB.isLoad) fprintf(stdout, "Doing a load at %x. Value is %x\n", (unsigned
-    int) core.memtoWB.address, (unsigned int) core.memtoWB.result);
+            fprintf(stdout, "Doing a store at %x with value %x\n", (unsigned
+    int) core.memtoWB.address, (unsigned int) core.memtoWB.valueToWrite); if
+    (core.memtoWB.isLoad) fprintf(stdout, "Doing a load at %x. Value is %x\n",
+    (unsigned int) core.memtoWB.address, (unsigned int) core.memtoWB.result);
 */
   }
 }
@@ -306,9 +299,9 @@ ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
   //    {
   //        if(dctrl[i].slc<32-tagshift>(j*(32-tagshift)) == getTag(addr))
   //        {
-  //            ac_int<32, false> mem = ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
-  //            formatread(addr, 0, 0, mem);
-  //            return mem;
+  //            ac_int<32, false> mem = ddata[i*Blocksize*Associativity +
+  //            (int)getOffset(addr)*Associativity + j]; formatread(addr, 0, 0,
+  //            mem); return mem;
   //        }
   //    }
   //#endif
@@ -615,7 +608,8 @@ ac_int<32, true> BasicSimulator::doWrite(ac_int<32, false> file, ac_int<32, fals
 ac_int<32, true> BasicSimulator::doFstat(ac_int<32, false> file, ac_int<32, false> stataddr)
 {
   ac_int<32, true> result = 0;
-  struct stat filestat    = {0}; // for stdout, its easier to compare debug trace when syscalls gives same results
+  struct stat filestat    = {0}; // for stdout, its easier to compare debug trace
+                                 // when syscalls gives same results
 
   if (file != 1)
     result = fstat(file, &filestat);

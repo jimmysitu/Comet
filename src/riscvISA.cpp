@@ -46,7 +46,8 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction)
   if (opcode == RISCV_OPIW) // If we are on opiw, shamt only have 5bits
     shamt = rs2;
 
-  // In case of immediate shift instr, as shamt needs one more bit the lower bit of funct7 has to be set to 0
+  // In case of immediate shift instr, as shamt needs one more bit the lower bit
+  // of funct7 has to be set to 0
   if (opcode == RISCV_OPI && (funct3 == RISCV_OPI_SLLI || funct3 == RISCV_OPI_SRI))
     funct7 = funct7 & 0x3f;
 

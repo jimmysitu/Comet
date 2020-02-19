@@ -83,9 +83,9 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction);
 #define RISCV_OPW_SRW_SRAW 0x20
 
 /******************************************************************************************************
- * Specification of the privileged architecture                                                       *
+ * Specification of the privileged architecture *
  ******************************************************************************************************
- * This offers system capability                                                                      *
+ * This offers system capability *
  ******************************************************************************************************/
 #define RISCV_SYSTEM 0x73 // 0x1C
 #define RISCV_SYSTEM_ENV 0x0
@@ -159,9 +159,9 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction);
  * Specification of the standard M extension
  ********************************************
  * This extension brings the support for multiplication operation.
- * It is composed of the RISCV_OP opcode then a dedicated value for funct7 which identify it.
- * Then funct3 is used to determine which of the eight operation to use.
- * Added operations are MUL, MULH, MULHSU, MLHU, DIV, DIVU, REM, REMU
+ * It is composed of the RISCV_OP opcode then a dedicated value for funct7 which
+ *identify it. Then funct3 is used to determine which of the eight operation to
+ *use. Added operations are MUL, MULH, MULHSU, MLHU, DIV, DIVU, REM, REMU
  *****************************************************************************************************/
 #define RISCV_OP_M 0x1
 #define RISCV_OP_M_MUL 0x0
@@ -184,7 +184,8 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction);
  * This extension brings the support for atomic operation.
  * It is always of R-type instruction, and funct3 is always 0b010
  * Then funct7[6:2] is used to determine which of the eleven operation to use.
- * Added operations are LR, SC, AMOSWAP, AMOADD, AMOXOR, AMOAND, AMOOR, AMOMIN, AMOMAX, AMOMINU, AMOMAXU
+ * Added operations are LR, SC, AMOSWAP, AMOADD, AMOXOR, AMOAND, AMOOR, AMOMIN,
+ *AMOMAX, AMOMINU, AMOMAXU
  *****************************************************************************************************/
 #define RISCV_ATOMIC 0x2F // 0x0B
 #define RISCV_ATOMIC_LR 0x2
