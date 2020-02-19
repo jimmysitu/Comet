@@ -9,7 +9,6 @@
 #include <floatingPointUnit.h>
 #include <memoryInterface.h>
 #include <pipelineRegisters.h>
-#include <simpleMemory.h>
 
 #define DRAM_SIZE ((size_t)1 << 26)
 #define STACK_INIT (DRAM_SIZE - 0x1000)
