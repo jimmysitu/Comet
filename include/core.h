@@ -6,9 +6,11 @@
 
 // all the possible memories
 #include <cacheMemory.h>
-#include <incompleteMemory.h>
+#include <memoryInterface.h>
 #include <pipelineRegisters.h>
-#include <simpleMemory.h>
+
+#define DRAM_SIZE ((size_t)1 << 26)
+#define STACK_INIT (DRAM_SIZE - 0x1000)
 
 #ifndef MEMORY_INTERFACE
 #define MEMORY_INTERFACE SimpleMemory
@@ -55,10 +57,12 @@ struct Core {
   /// Multicycle operation
 
   /// Instruction cache
-  // unsigned int idata[Sets][Blocksize][Associativity];   // made external for modelsim
+  // unsigned int idata[Sets][Blocksize][Associativity];   // made external for
+  // modelsim
 
   /// Data cache
-  // unsigned int ddata[Sets][Blocksize][Associativity];   // made external for modelsim
+  // unsigned int ddata[Sets][Blocksize][Associativity];   // made external for
+  // modelsim
 };
 
 // Functions for copying values
