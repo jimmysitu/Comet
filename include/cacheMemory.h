@@ -86,7 +86,6 @@ public:
 
   CacheMemory(MemoryInterface<INTERFACE_SIZE>* nextLevel, bool v)
   {
-
     this->nextLevel = nextLevel;
     for (int oneSetElement = 0; oneSetElement < SET_SIZE; oneSetElement++) {
       for (int oneSet = 0; oneSet < ASSOCIATIVITY; oneSet++) {
@@ -95,9 +94,13 @@ public:
         dataValid[oneSetElement][oneSet]   = 0;
       }
     }
-    VERBOSE      = v;
-    numberAccess = 0;
-    numberMiss   = 0;
+    VERBOSE          = v;
+    numberAccess     = 0;
+    numberMiss       = 0;
+    nextLevelWaitOut = false;
+    wasStore         = false;
+    cacheState       = 0;
+    nextLevelOpType  = NONE;
   }
 
   void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
@@ -143,10 +146,10 @@ public:
         if (cacheState == 0) {
           numberAccess++;
 
-          ac_int<TAG_SIZE, false> tag1 = val1.slc<TAG_SIZE>(0);
-          ac_int<TAG_SIZE, false> tag2 = val2.slc<TAG_SIZE>(0);
-          ac_int<TAG_SIZE, false> tag3 = val3.slc<TAG_SIZE>(0);
-          ac_int<TAG_SIZE, false> tag4 = val4.slc<TAG_SIZE>(0);
+          ac_int<TAG_SIZE, false> tag1 = val1.template slc<TAG_SIZE>(0);
+          ac_int<TAG_SIZE, false> tag2 = val2.template slc<TAG_SIZE>(0);
+          ac_int<TAG_SIZE, false> tag3 = val3.template slc<TAG_SIZE>(0);
+          ac_int<TAG_SIZE, false> tag4 = val4.template slc<TAG_SIZE>(0);
 
           bool hit1 = (tag1 == tag) && valid1;
           bool hit2 = (tag2 == tag) && valid2;
@@ -159,25 +162,25 @@ public:
           ac_int<TAG_SIZE, false> tag;
 
           if (hit1) {
-            selectedValue = val1.slc<LINE_SIZE * 8>(TAG_SIZE);
+            selectedValue = val1.template slc<LINE_SIZE * 8>(TAG_SIZE);
             tag           = tag1;
             set           = 0;
           }
 
           if (hit2) {
-            selectedValue = val2.slc<LINE_SIZE * 8>(TAG_SIZE);
+            selectedValue = val2.template slc<LINE_SIZE * 8>(TAG_SIZE);
             tag           = tag2;
             set           = 1;
           }
 
           if (hit3) {
-            selectedValue = val3.slc<LINE_SIZE * 8>(TAG_SIZE);
+            selectedValue = val3.template slc<LINE_SIZE * 8>(TAG_SIZE);
             tag           = tag3;
             set           = 2;
           }
 
           if (hit4) {
-            selectedValue = val4.slc<LINE_SIZE * 8>(TAG_SIZE);
+            selectedValue = val4.template slc<LINE_SIZE * 8>(TAG_SIZE);
             tag           = tag4;
             set           = 3;
           }
@@ -195,13 +198,16 @@ public:
             if (opType == STORE) {
               switch (mask) {
                 case BYTE:
-                  localValStore.set_slc((((int)addr.slc<2>(0)) << 3) + TAG_SIZE + 4 * 8 * offset, dataIn.slc<8>(0));
+                case BYTE_U:
+                  localValStore.set_slc((((int)addr.slc<2>(0)) << 3) + TAG_SIZE + 4 * 8 * offset,
+                                        dataIn.template slc<8>(0));
                   break;
                 case HALF:
-                  localValStore.set_slc((addr[1] ? 16 : 0) + TAG_SIZE + 4 * 8 * offset, dataIn.slc<16>(0));
+                case HALF_U:
+                  localValStore.set_slc((addr[1] ? 16 : 0) + TAG_SIZE + 4 * 8 * offset, dataIn.template slc<16>(0));
                   break;
                 case WORD:
-                  localValStore.set_slc(TAG_SIZE + 4 * 8 * offset, dataIn.slc<32>(0));
+                  localValStore.set_slc(TAG_SIZE + 4 * 8 * offset, dataIn.template slc<32>(0));
                   break;
                 case VECT:
                   localValStore.set_slc(TAG_SIZE + 4 * 8 * offset, dataIn);
@@ -216,26 +222,26 @@ public:
             } else {
               switch (mask) {
                 case BYTE:
-                  signedByte = selectedValue.slc<8>((((int)addr.slc<2>(0)) << 3) + 4 * 8 * offset);
+                  signedByte = selectedValue.template slc<8>((((int)addr.slc<2>(0)) << 3) + 4 * 8 * offset);
                   signedWord = signedByte;
                   dataOut.set_slc(0, signedWord);
                   break;
                 case HALF:
-                  signedHalf = selectedValue.slc<16>((addr[1] ? 16 : 0) + 4 * 8 * offset);
+                  signedHalf = selectedValue.template slc<16>((addr[1] ? 16 : 0) + 4 * 8 * offset);
                   signedWord = signedHalf;
                   dataOut.set_slc(0, signedWord);
                   break;
                 case WORD:
-                  dataOut = selectedValue.slc<32>(4 * 8 * offset);
+                  dataOut = selectedValue.template slc<32>(4 * 8 * offset);
                   break;
                 case BYTE_U:
-                  dataOut = selectedValue.slc<8>((((int)addr.slc<2>(0)) << 3) + 4 * 8 * offset) & 0xff;
+                  dataOut = selectedValue.template slc<8>((((int)addr.slc<2>(0)) << 3) + 4 * 8 * offset) & 0xff;
                   break;
                 case HALF_U:
-                  dataOut = selectedValue.slc<16>((addr[1] ? 16 : 0) + 4 * 8 * offset) & 0xffff;
+                  dataOut = selectedValue.template slc<16>((addr[1] ? 16 : 0) + 4 * 8 * offset) & 0xffff;
                   break;
                 case VECT:
-                  dataOut = selectedValue.slc<INTERFACE_SIZE * 8>(4 * 8 * offset);
+                  dataOut = selectedValue.template slc<INTERFACE_SIZE * 8>(4 * 8 * offset);
                   break;
               }
 
@@ -270,15 +276,15 @@ public:
             // printf("TAG is %x\n", oldVal.slc<TAG_SIZE>(0));
           }
 
-          ac_int<32, false> oldAddress =
-              (((int)oldVal.slc<TAG_SIZE>(0)) << (LOG_LINE_SIZE + LOG_SET_SIZE)) | (((int)place) << LOG_LINE_SIZE);
+          ac_int<32, false> oldAddress = (((int)oldVal.template slc<TAG_SIZE>(0)) << (LOG_LINE_SIZE + LOG_SET_SIZE)) |
+                                         (((int)place) << LOG_LINE_SIZE);
           // First we write back the four memory values in upper level
 
           if (cacheState >= STATE_CACHE_LAST_STORE) {
             // We store all values into next memory interface
-            nextLevelAddr = oldAddress + (((int)(cacheState - STATE_CACHE_LAST_STORE)) << LOG_INTERFACE_SIZE);
-            nextLevelDataIn =
-                oldVal.slc<INTERFACE_SIZE * 8>((cacheState - STATE_CACHE_LAST_STORE) * INTERFACE_SIZE * 8 + TAG_SIZE);
+            nextLevelAddr   = oldAddress + (((int)(cacheState - STATE_CACHE_LAST_STORE)) << LOG_INTERFACE_SIZE);
+            nextLevelDataIn = oldVal.template slc<INTERFACE_SIZE * 8>(
+                (cacheState - STATE_CACHE_LAST_STORE) * INTERFACE_SIZE * 8 + TAG_SIZE);
             nextLevelOpType = (isValid) ? STORE : NONE;
 
             // printf("Writing back %x %x at %x\n", (unsigned int)nextLevelDataIn.slc<32>(0),
@@ -305,13 +311,15 @@ public:
             if (opType == STORE) {
               switch (mask) {
                 case BYTE:
-                  newVal.set_slc((((int)addr.slc<2>(0)) << 3) + TAG_SIZE + 4 * 8 * offset, dataIn.slc<8>(0));
+                case BYTE_U:
+                  newVal.set_slc((((int)addr.slc<2>(0)) << 3) + TAG_SIZE + 4 * 8 * offset, dataIn.template slc<8>(0));
                   break;
                 case HALF:
-                  newVal.set_slc((addr[1] ? 16 : 0) + TAG_SIZE + 4 * 8 * offset, dataIn.slc<16>(0));
+                case HALF_U:
+                  newVal.set_slc((addr[1] ? 16 : 0) + TAG_SIZE + 4 * 8 * offset, dataIn.template slc<16>(0));
                   break;
                 case WORD:
-                  newVal.set_slc(TAG_SIZE + 4 * 8 * offset, dataIn.slc<32>(0));
+                  newVal.set_slc(TAG_SIZE + 4 * 8 * offset, dataIn.template slc<32>(0));
                   break;
                 case VECT:
                   newVal.set_slc(TAG_SIZE + 4 * 8 * offset, dataIn);
@@ -334,26 +342,26 @@ public:
 
             switch (mask) {
               case BYTE:
-                signedByte = newVal.slc<8>((((int)addr.slc<2>(0)) << 3) + 4 * 8 * offset + TAG_SIZE);
+                signedByte = newVal.template slc<8>((((int)addr.slc<2>(0)) << 3) + 4 * 8 * offset + TAG_SIZE);
                 signedWord = signedByte;
                 dataOut.set_slc(0, signedWord);
                 break;
               case HALF:
-                signedHalf = newVal.slc<16>((addr[1] ? 16 : 0) + 4 * 8 * offset + TAG_SIZE);
+                signedHalf = newVal.template slc<16>((addr[1] ? 16 : 0) + 4 * 8 * offset + TAG_SIZE);
                 signedWord = signedHalf;
                 dataOut.set_slc(0, signedWord);
                 break;
               case WORD:
-                dataOut = newVal.slc<32>(4 * 8 * offset + TAG_SIZE);
+                dataOut = newVal.template slc<32>(4 * 8 * offset + TAG_SIZE);
                 break;
               case BYTE_U:
-                dataOut = newVal.slc<8>((((int)addr.slc<2>(0)) << 3) + 4 * 8 * offset + TAG_SIZE) & 0xff;
+                dataOut = newVal.template slc<8>((((int)addr.slc<2>(0)) << 3) + 4 * 8 * offset + TAG_SIZE) & 0xff;
                 break;
               case HALF_U:
-                dataOut = newVal.slc<16>((addr[1] ? 16 : 0) + 4 * 8 * offset + TAG_SIZE) & 0xffff;
+                dataOut = newVal.template slc<16>((addr[1] ? 16 : 0) + 4 * 8 * offset + TAG_SIZE) & 0xffff;
                 break;
               case VECT:
-                dataOut = newVal.slc<INTERFACE_SIZE * 8>(4 * 8 * offset);
+                dataOut = newVal.template slc<INTERFACE_SIZE * 8>(4 * 8 * offset);
                 break;
             }
             // printf("After Miss read %x at %x\n", (unsigned int)dataOut.slc<32>(0), (unsigned int)addr);

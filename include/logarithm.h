@@ -3,5 +3,5 @@ template <int x> struct log2const {
 };
 
 template <> struct log2const<1> {
-  enum { value = 1 };
+  enum { value = 0 };
 };

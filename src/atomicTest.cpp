@@ -2,7 +2,8 @@
 /*
  * Idea of the file : open and run a test file
  * The test file is organized as a set of line, each line is :
- * name; instr; numberCycles; [initialRegs[32],]; initialPC; (address, data); finalRegs[32]; finalPC; (address, data);
+ * name; instr; numberCycles; [initialRegs[32],]; initialPC; (address, data); finalRegs[32]; finalPC; (address,
+ data);
  *                            |                 initial state              |             final state              |
  */
 
@@ -77,8 +78,8 @@ int main(int argc, char** argv)
     Core core;
     ac_int<32, false> im[8192], dm[8192];
 
-    core.im = new CacheMemory(new IncompleteMemory(im), false);
-    core.dm = new CacheMemory(new IncompleteMemory(dm), true);
+    core.im = new CacheMemory<MEMORY_INTERFACE_SIZE, 16, 64>(new SimpleMemory<MEMORY_INTERFACE_SIZE>(im), false);
+    core.dm = new CacheMemory<MEMORY_INTERFACE_SIZE, 32, 64>(new SimpleMemory<MEMORY_INTERFACE_SIZE>(dm), false);
 
     core.pc = initialState.pc;
     for (int oneReg = 0; oneReg < 32; oneReg++)
