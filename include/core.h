@@ -45,7 +45,7 @@ struct Core {
 
   MultiplicationUnit multiplicationUnit;
 
-  MemoryInterface *dm, *im;
+  MemoryInterface<4>*dm, *im;
 
   ac_int<32, true> regFile[32];
   ac_int<32, false> pc;
