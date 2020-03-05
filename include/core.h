@@ -25,6 +25,18 @@ typedef enum { STALL_FETCH = 0, STALL_DECODE = 1, STALL_EXECUTE = 2, STALL_MEMOR
 // This is ugly but otherwise with have a dependency : alu.h includes core.h (for pipeline regs) and core.h includes
 // alu.h...
 
+#define NB_CORES 8
+
+class ReqAckUnit {
+public:
+  ac_int<NB_CORES, false> status, maskOut;
+  ac_int<NB_CORES, false> notifyIn, notifyOut, statusIn;
+
+  ac_int<3, false> state = 0;
+
+  bool process(struct DCtoEx dctoEx, ac_int<32, false>& result, bool& stall);
+};
+
 class MultiplicationUnit {
 public:
   ac_int<32, false> quotient, remainder;

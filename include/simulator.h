@@ -5,7 +5,7 @@
 
 class Simulator {
 protected:
-  Core core;
+  Core cores[NB_CORES];
   bool exitFlag;
 
 public:
@@ -13,7 +13,8 @@ public:
   {
     exitFlag = false;
     while (!exitFlag) {
-      doCycle(core, 0);
+      for (int oneCore = 0; oneCore < NB_CORES; oneCore++)
+        doCycle(cores[oneCore], 0);
       solveSyscall();
       extend();
       printCycle();
