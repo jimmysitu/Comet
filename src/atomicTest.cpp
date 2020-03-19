@@ -151,10 +151,13 @@ int main(int argc, char** argv)
     // Register for all stages
     core.memtoWB.we = false;
 
+    // Init the crash detection flag
+    bool crashFlag;
+
     std::cout << printDecodedInstrRISCV(instruction) << std::endl;
     for (int oneCycle = 0; oneCycle < numberOfCycles; oneCycle++) {
       fprintf(stderr, "cycle\n");
-      doCycle(core, 0);
+      doCycle(core, 0, crashFlag);
     }
 
     bool worked = true;

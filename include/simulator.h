@@ -7,13 +7,15 @@ class Simulator {
 protected:
   Core core;
   bool exitFlag;
+  bool crashFlag;
 
 public:
   virtual void run()
   {
+    crashFlag = false;
     exitFlag = false;
     while (!exitFlag) {
-      doCycle(core, 0);
+      doCycle(core, 0, crashFlag);
       solveSyscall();
       extend();
       printCycle();

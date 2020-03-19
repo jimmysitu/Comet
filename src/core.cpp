@@ -14,7 +14,7 @@ void fetch(ac_int<32, false> pc, struct FtoDC& ftoDC, ac_int<32, false> instruct
   ftoDC.we          = 1;
 }
 
-void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, ac_int<32, true> registerFile[32])
+void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, ac_int<32, true> registerFile[32], bool& crashFlag)
 {
   ac_int<32, false> pc          = ftoDC.pc;
   ac_int<32, false> instruction = ftoDC.instruction;
@@ -172,7 +172,7 @@ void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, ac_int<32, true> register
 
       break;
     default:
-
+      crashFlag = true;
       break;
   }
 
@@ -586,7 +586,8 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
 */
 
 void doCycle(struct Core& core, // Core containing all values
-             bool globalStall)
+             bool globalStall,
+            bool& crashFlag)
 {
   bool localStall = globalStall;
 
@@ -642,7 +643,7 @@ void doCycle(struct Core& core, // Core containing all values
     core.im->process(core.pc, WORD, LOAD, 0, nextInst, core.stallIm);
 
   fetch(core.pc, ftoDC_temp, nextInst);
-  decode(core.ftoDC, dctoEx_temp, core.regFile);
+  decode(core.ftoDC, dctoEx_temp, core.regFile, crashFlag);
   execute(core.dctoEx, extoMem_temp);
   memory(core.extoMem, memtoWB_temp);
   writeback(core.memtoWB, wbOut_temp);
@@ -740,7 +741,7 @@ void doCycle(struct Core& core, // Core containing all values
 }
 
 // void doCore(IncompleteMemory im, IncompleteMemory dm, bool globalStall)
-void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, false> dmData[1 << 24])
+void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, false> dmData[1 << 24], bool& crashFlag)
 {
   Core core;
   IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
@@ -751,8 +752,9 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
   core.im = &imInterface;
   core.dm = &dmInterface;
   core.pc = 0;
-
+  crashFlag = false;
+  
   while (1) {
-    doCycle(core, globalStall);
+    doCycle(core, globalStall, crashFlag);
   }
 }

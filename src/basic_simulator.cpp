@@ -126,18 +126,7 @@ BasicSimulator::~BasicSimulator()
 
 void BasicSimulator::printCycle()
 {
-  if (!core.stallSignals[0] && 0) {
-
-    if (!core.stallSignals[0] && !core.stallIm && !core.stallDm) {
-      printf("Debug trace : %x ", (unsigned int)core.ftoDC.pc);
-      std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
-
-      for (int oneReg = 0; oneReg < 32; oneReg++) {
-        printf("%x  ", (unsigned int)core.regFile[oneReg]);
-      }
-      std::cout << std::endl;
-    }
-  }
+  //print something every cycle
 }
 
 // Function for handling memory accesses

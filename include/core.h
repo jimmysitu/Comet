@@ -58,6 +58,6 @@ void copyDCtoEx(struct DCtoEx& dest, struct DCtoEx src);
 void copyExtoMem(struct ExtoMem& dest, struct ExtoMem src);
 void copyMemtoWB(struct MemtoWB& dest, struct MemtoWB src);
 
-void doCycle(struct Core& core, bool globalStall);
+void doCycle(struct Core& core, bool globalStall, bool& crashFlag);
 
 #endif // __CORE_H__
