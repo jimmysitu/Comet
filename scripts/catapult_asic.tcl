@@ -28,6 +28,7 @@ go assembly
 directive set /doCore/globalStall:rsc -MAP_TO_MODULE {[DirectInput]}
 directive set /doCore/core/core.regFile:rsc -MAP_TO_MODULE {[Register]}
 directive set /doCore/core/while -PIPELINE_INIT_INTERVAL 1
+directive set /doCore/core/core.multiplicationUnit.process:if:else:for -UNROLL yes
 directive set /doCore/imData:rsc -MAP_TO_MODULE ccs_sample_mem.ccs_ram_sync_singleport
 directive set /doCore/dmData:rsc -MAP_TO_MODULE ccs_sample_mem.ccs_ram_sync_singleport
 go architect
