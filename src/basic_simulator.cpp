@@ -16,67 +16,8 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
                                const char* outFile, const char* tFile)
 {
 
-  core.ftoDC.we = false;
-
-  core.dctoEx.pc          = 0;
-  core.dctoEx.instruction = 0;
-
-  core.dctoEx.opCode = 0;
-  core.dctoEx.funct7 = 0;
-  core.dctoEx.funct3 = 0;
-
-  core.dctoEx.lhs   = 0;
-  core.dctoEx.rhs   = 0;
-  core.dctoEx.datac = 0;
-
-  // For branch unit
-  core.dctoEx.nextPCDC = 0;
-  core.dctoEx.isBranch = false;
-
-  // Information for forward/stall unit
-  core.dctoEx.useRs1 = false;
-  core.dctoEx.useRs2 = false;
-  core.dctoEx.useRs3 = false;
-  core.dctoEx.useRd  = false;
-  core.dctoEx.rs1    = 0;
-  core.dctoEx.rs2    = 0;
-  core.dctoEx.rs3    = 0;
-  core.dctoEx.rd     = 0;
-
-  // Register for all stages
-  core.dctoEx.we = false;
-
-  core.extoMem.pc          = 0;
-  core.extoMem.instruction = 0;
-
-  core.extoMem.result            = 0;
-  core.extoMem.rd                = 0;
-  core.extoMem.useRd             = false;
-  core.extoMem.isLongInstruction = false;
-  core.extoMem.opCode            = 0;
-  core.extoMem.funct3            = 0;
-
-  core.extoMem.datac = 0;
-
-  // For branch unit
-  core.extoMem.nextPC   = 0;
-  core.extoMem.isBranch = false;
-
-  // Register for all stages
-  core.extoMem.we = false;
-
-  core.memtoWB.result = 0;
-  core.memtoWB.rd     = 0;
-  core.memtoWB.useRd  = false;
-
-  core.memtoWB.address      = 0;
-  core.memtoWB.valueToWrite = 0;
-  core.memtoWB.byteEnable   = 0;
-  core.memtoWB.isStore      = false;
-  core.memtoWB.isLoad       = false;
-
-  // Register for all stages
-  core.memtoWB.we = false;
+  char* coreAsChar = (char*)&core;
+  memset(coreAsChar, 0, sizeof(Core));
 
   im = new ac_int<32, false>[DRAM_SIZE >> 2];
   dm = new ac_int<32, false>[DRAM_SIZE >> 2];
