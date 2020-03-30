@@ -133,8 +133,13 @@ void BasicSimulator::printCycle()
     auto opcode = core.extoMem.opCode;
     auto datasize = core.extoMem.funct3.slc<2>(0);
     int op_size[] = {8, 16, 32, 32};
+    bool stall = false;
 
-    if ((opcode == RISCV_LD || opcode == RISCV_ST) && !core.stallSignals[STALL_MEMORY]) {
+
+    for(auto s : core.stallSignals)
+        stall = stall || s;
+
+    if ((opcode == RISCV_LD || opcode == RISCV_ST) && !stall && !core.stallIm && !core.stallDm) {
       fprintf(traceFile, "%lu,%s,%d,%d\n",
               core.cycle,
               core.memtoWB.isStore ? "ST" : "LD",
@@ -142,6 +147,10 @@ void BasicSimulator::printCycle()
               core.extoMem.result
       );
     }
+    if ((core.dctoEx.instruction == 0xff010113) && !core.stallSignals[STALL_EXECUTE]) // addi sp, sp, -16
+        fprintf(traceFile, "%lu: Stack allocation\n", core.cycle); 
+    if ((core.dctoEx.instruction == 0x01010113) && !core.stallSignals[STALL_EXECUTE]) // addi sp, sp, 16 
+        fprintf(traceFile, "%lu: Stack free\n", core.cycle); 
   }
 
   if (!core.stallSignals[0] && 0) {
