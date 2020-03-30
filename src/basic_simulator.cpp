@@ -130,7 +130,6 @@ BasicSimulator::~BasicSimulator()
 void BasicSimulator::printCycle()
 {
   if (traceFile){
-    auto address = core.extoMem.result;
     auto opcode = core.extoMem.opCode;
     auto datasize = core.extoMem.funct3.slc<2>(0);
     int op_size[] = {8, 16, 32, 32};
@@ -140,7 +139,7 @@ void BasicSimulator::printCycle()
               core.cycle,
               core.memtoWB.isStore ? "ST" : "LD",
               op_size[datasize],
-              address
+              core.extoMem.result
       );
     }
   }
