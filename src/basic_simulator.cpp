@@ -130,42 +130,23 @@ BasicSimulator::~BasicSimulator()
 void BasicSimulator::printCycle()
 {
   if (traceFile){
-    //auto opcode = core.extoMem.opCode;
-    //auto datasize = core.extoMem.funct3.slc<2>(0);
-    //int op_size[] = {8, 16, 32, 32};
+    auto opcode = core.extoMem.opCode;
+    auto datasize = core.extoMem.funct3.slc<2>(0);
+    int op_size[] = {8, 16, 32, 32};
 
-    bool stall = false;
-
-    for(auto s : core.stallSignals)
-        stall = stall || s;
-    stall = stall || core.stallDm || core.stallIm;
-//&& !core.stallSignals[STALL_WRITEBACK] && !core.stallDm
-//
-
-    if(((core.extoMem.opCode == RISCV_LD) or (core.extoMem.opCode == RISCV_LD)) && (!core.stallSignals[STALL_MEMORY] && !core.stallIm && !core.stallDm)) {
-      fprintf(traceFile, "%lu,[%lu],%s,%d,%d\n",
+    if(((opcode == RISCV_ST) or (opcode == RISCV_LD)) && (!core.stallSignals[STALL_MEMORY] && !core.stallIm && !core.stallDm)) {
+      fprintf(traceFile, "%lu,%s,%d,%d\n",
               core.cycle,
-              core.pc,
-              core.memtoWB.isStore ? "ST" : "LD",
-              32, ///op_size[datasize],
-              core.memtoWB.address
+              opcode == RISCV_ST ? "ST" : "LD",
+              op_size[datasize],
+              core.extoMem.result
       );
-      std::cout << core.cycle << ", " << core.extoMem.opCode << ", " << core.pc << ", " << core.extoMem.result << std::endl;
     }
 
-    //if ((core.memtoWB.isStore || core.memtoWB.isLoad) && !stall) {
-    //  fprintf(traceFile, "%lu,[%lu],%s,%d,%d\n",
-    //          core.cycle,
-    //          core.pc,
-    //          core.memtoWB.isStore ? "ST" : "LD",
-    //          32, ///op_size[datasize],
-    //          core.memtoWB.address
-    //  );
-    //}
-    if ((core.dctoEx.instruction == 0xff010113) && !core.stallSignals[STALL_EXECUTE]) // addi sp, sp, -16
-        fprintf(traceFile, "%lu: Stack allocation\n", core.cycle); 
-    if ((core.dctoEx.instruction == 0x01010113) && !core.stallSignals[STALL_EXECUTE]) // addi sp, sp, 16 
-        fprintf(traceFile, "%lu: Stack free\n", core.cycle); 
+    if ((core.extoMem.instruction == 0xff010113) && !core.stallSignals[STALL_MEMORY]) // addi sp, sp, -16
+        fprintf(traceFile, "%lu: Stack allocation -16\n", core.cycle); 
+    if ((core.extoMem.instruction == 0x01010113) && !core.stallSignals[STALL_MEMORY]) // addi sp, sp, 16 
+        fprintf(traceFile, "%lu: Stack free +16\n", core.cycle); 
   }
 
   if (!core.stallSignals[0] && 0) {
