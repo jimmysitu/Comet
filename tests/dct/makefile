@@ -4,13 +4,16 @@ CCHOST=gcc
 CFLAGS=-Wno-overflow
 EXEC=dct
 
-all: $(EXEC).riscv$(XLEN)
+all: $(EXEC).riscv$(XLEN) $(EXEC).riscv$(XLEN)_hw
 
 $(EXEC).riscv$(XLEN): $(EXEC).c
 	$(CCRV) $(EXEC).c $(CFLAGS) -o $(EXEC).riscv$(XLEN)
 	$(CCHOST) $(EXEC).c -o $(EXEC)
 	./$(EXEC) > expectedOutput
 	rm -f $(EXEC)
+
+$(EXEC).riscv$(XLEN)_hw: $(EXEC).c ../drivers/hwSyscalls.c
+	$(CCRV) $(EXEC).c ../drivers/hwSyscalls.c $(CFLAGS) -o $(EXEC).riscv$(XLEN)_hw
 
 clean:
 	rm -f *.riscv* expectedOutput
