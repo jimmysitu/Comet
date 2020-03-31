@@ -130,21 +130,23 @@ BasicSimulator::~BasicSimulator()
 void BasicSimulator::printCycle()
 {
   if (traceFile){
-    auto opcode = core.extoMem.opCode;
-    auto datasize = core.extoMem.funct3.slc<2>(0);
-    int op_size[] = {8, 16, 32, 32};
-    bool stall = false;
+    //auto opcode = core.extoMem.opCode;
+    //auto datasize = core.extoMem.funct3.slc<2>(0);
+    //int op_size[] = {8, 16, 32, 32};
 
+    bool stall = false;
 
     for(auto s : core.stallSignals)
         stall = stall || s;
-
-    if ((opcode == RISCV_LD || opcode == RISCV_ST) && !stall && !core.stallIm && !core.stallDm) {
-      fprintf(traceFile, "%lu,%s,%d,%d\n",
+    stall = stall || core.stallDm || core.stallIm;
+//&& !core.stallSignals[STALL_WRITEBACK] && !core.stallDm
+    if ((core.memtoWB.isStore || core.memtoWB.isLoad) && !stall) {
+      fprintf(traceFile, "%lu,[%lu],%s,%d,%d\n",
               core.cycle,
+              core.pc,
               core.memtoWB.isStore ? "ST" : "LD",
-              op_size[datasize],
-              core.extoMem.result
+              32, ///op_size[datasize],
+              core.memtoWB.address
       );
     }
     if ((core.dctoEx.instruction == 0xff010113) && !core.stallSignals[STALL_EXECUTE]) // addi sp, sp, -16
