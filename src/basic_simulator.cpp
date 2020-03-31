@@ -142,11 +142,15 @@ void BasicSimulator::printCycle()
               core.extoMem.result
       );
     }
-
-    if ((core.extoMem.instruction == 0xff010113) && !core.stallSignals[STALL_MEMORY]) // addi sp, sp, -16
-        fprintf(traceFile, "%lu: Stack allocation -16\n", core.cycle); 
-    if ((core.extoMem.instruction == 0x01010113) && !core.stallSignals[STALL_MEMORY]) // addi sp, sp, 16 
-        fprintf(traceFile, "%lu: Stack free +16\n", core.cycle); 
+    if ((core.memtoWB.rd == 2) && core.memtoWB.useRd && !core.stallSignals[STALL_WRITEBACK] && !core.stallIm && !core.stallDm){
+        fprintf(traceFile, "%lu: Stack operation, oldsp = %d, sp = %d\n", core.cycle, core.regFile[2], core.memtoWB.result); 
+    }
+    /*
+    if ((core.extoMem.instruction == 0xff010113) && !core.stallSignals[STALL_EXECUTE] && !core.stallSignals[STALL_MEMORY]) // addi sp, sp, -16
+        fprintf(traceFile, "%lu: Stack allocation -16, oldsp = %d, sp = %d\n", core.cycle, core.regFile[2], core.extoMem.result); 
+    if ((core.extoMem.instruction == 0x01010113) && !core.stallSignals[STALL_EXECUTE] && !core.stallSignals[STALL_MEMORY]) // addi sp, sp, 16 
+        fprintf(traceFile, "%lu: Stack free +16, oldsp = %d, sp = %d\n", core.cycle, core.regFile[2], core.extoMem.result); 
+    */
   }
 
   if (!core.stallSignals[0] && 0) {
