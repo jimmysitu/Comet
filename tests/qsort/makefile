@@ -4,6 +4,8 @@ CCHOST=gcc
 CFLAGS=-Wno-overflow
 EXEC=qsort
 
+DRIVERSDIR=../../drivers
+
 all: $(EXEC).riscv$(XLEN) $(EXEC).riscv$(XLEN)_hw
 
 $(EXEC).riscv$(XLEN): $(EXEC).c
@@ -12,7 +14,7 @@ $(EXEC).riscv$(XLEN): $(EXEC).c
 	./$(EXEC) > expectedOutput
 	rm -f $(EXEC)
 
-$(EXEC).riscv$(XLEN)_hw: $(EXEC).c ../drivers/hwSyscalls.c
-	$(CCRV) $(EXEC).c ../drivers/hwSyscalls.c $(CFLAGS) -o $(EXEC).riscv$(XLEN)_hw
+$(EXEC).riscv$(XLEN)_hw: $(EXEC).c $(DRIVERSDIR)/hwSyscalls.c
+	$(CCRV) $(EXEC).c $(DRIVERSDIR)/hwSyscalls.c $(CFLAGS) -o $(EXEC).riscv$(XLEN)_hw
 clean:
 	rm -f *.riscv* expectedOutput
