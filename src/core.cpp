@@ -757,8 +757,6 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], bool& crashFlag
   Core core;
   IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
 
-  //  CacheMemory<4, 16, 64> dmCache;
-
   core.im   = &imInterface;
   core.pc   = 0;
   crashFlag = false;
@@ -770,6 +768,7 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], bool& crashFlag
 void system(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, false> dmData[1 << 24], bool& crashFlag)
 {
   IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
+  CacheMemory<4, 16, 64> dmCache;
 
   static ac_channel<ac_int<32, false> > cacheAddr;
   static ac_channel<memMask> cacheMask;
@@ -779,5 +778,5 @@ void system(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
   static ac_channel<bool> cacheWait;
 
   doCore(globalStall, imData, crashFlag, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
-  process(&dmInterface, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
+  dmCache.process(&dmInterface, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
 }
