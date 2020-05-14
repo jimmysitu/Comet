@@ -768,8 +768,6 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
   core.pc   = 0;
   crashFlag = false;
 
-  while (1) {
-    doCycle(core, globalStall, crashFlag, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
-    dmCache.process(cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
-  }
+  doCycle(core, globalStall, crashFlag, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
+  dmCache.process(cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
 }
