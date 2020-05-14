@@ -85,9 +85,9 @@ public:
     nextLevelOpType  = NONE;
   }
 
-  void process(ac_channel<ac_int<32, false> > cacheAddr, ac_channel<memMask> cacheMask,
-               ac_channel<memOpType> cacheOpType, ac_channel<ac_int<32, false> > cacheDataIn,
-               ac_channel<ac_int<32, false> > cacheDataOut, ac_channel<ac_int<32, false> > cacheWait)
+  void process(ac_channel<ac_int<32, false> >& cacheAddr, ac_channel<memMask>& cacheMask,
+               ac_channel<memOpType>& cacheOpType, ac_channel<ac_int<32, false> >& cacheDataIn,
+               ac_channel<ac_int<32, false> >& cacheDataOut, ac_channel<ac_int<32, false> >& cacheWait)
   {
 
     ac_int<32, false> addr                    = cacheAddr.read();
