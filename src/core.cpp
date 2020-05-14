@@ -769,5 +769,5 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
   crashFlag = false;
 
   doCycle(core, globalStall, crashFlag, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
-  dmCache.process(dmInterface, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
+  dmCache.process(&dmInterface, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
 }
