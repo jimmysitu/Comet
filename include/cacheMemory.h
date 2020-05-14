@@ -87,7 +87,7 @@ public:
 
   void process(ac_channel<ac_int<32, false> >& cacheAddr, ac_channel<memMask>& cacheMask,
                ac_channel<memOpType>& cacheOpType, ac_channel<ac_int<32, false> >& cacheDataIn,
-               ac_channel<ac_int<32, false> >& cacheDataOut, ac_channel<ac_int<32, false> >& cacheWait)
+               ac_channel<ac_int<32, false> >& cacheDataOut, ac_channel<bool>& cacheWait)
   {
 
     ac_int<32, false> addr                    = cacheAddr.read();
@@ -366,7 +366,7 @@ public:
     waitOut = nextLevelWaitOut || cacheState || (wasStore && opType != NONE);
 
     cacheDataOut.write(dataOut);
-    cacheWait.write(wait);
+    cacheWait.write(waitOut);
   }
 };
 
