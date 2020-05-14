@@ -34,7 +34,7 @@ template <unsigned int INTERFACE_SIZE, int LINE_SIZE, int SET_SIZE> class CacheM
   static const int LOG_INTERFACE_SIZE     = log2const<INTERFACE_SIZE>::value;
 
 public:
-  MemoryInterface<INTERFACE_SIZE>* nextLevel;
+  //  MemoryInterface<INTERFACE_SIZE>* nextLevel;
 
   ac_int<TAG_SIZE + LINE_SIZE * 8, false> cacheMemory[SET_SIZE][ASSOCIATIVITY];
   ac_int<40, false> age[SET_SIZE][ASSOCIATIVITY];
@@ -66,9 +66,9 @@ public:
   // Stats
   unsigned long numberAccess, numberMiss;
 
-  CacheMemory(MemoryInterface<INTERFACE_SIZE>* nextLevel, bool v)
+  CacheMemory()
   {
-    this->nextLevel = nextLevel;
+    // this->nextLevel = nextLevel;
     for (int oneSetElement = 0; oneSetElement < SET_SIZE; oneSetElement++) {
       for (int oneSet = 0; oneSet < ASSOCIATIVITY; oneSet++) {
         cacheMemory[oneSetElement][oneSet] = 0;
@@ -76,7 +76,7 @@ public:
         dataValid[oneSetElement][oneSet]   = 0;
       }
     }
-    VERBOSE          = v;
+    VERBOSE          = 0;
     numberAccess     = 0;
     numberMiss       = 0;
     nextLevelWaitOut = false;
@@ -86,9 +86,10 @@ public:
   }
 
 #pragma hls_design interface
-  void process(ac_channel<ac_int<32, false> >& cacheAddr, ac_channel<memMask>& cacheMask,
-               ac_channel<memOpType>& cacheOpType, ac_channel<ac_int<32, false> >& cacheDataIn,
-               ac_channel<ac_int<32, false> >& cacheDataOut, ac_channel<bool>& cacheWait)
+  void process(IncompleteMemory<4>* nextLevel, ac_channel<ac_int<32, false> >& cacheAddr,
+               ac_channel<memMask>& cacheMask, ac_channel<memOpType>& cacheOpType,
+               ac_channel<ac_int<32, false> >& cacheDataIn, ac_channel<ac_int<32, false> >& cacheDataOut,
+               ac_channel<bool>& cacheWait)
   {
 
     ac_int<32, false> addr                    = cacheAddr.read();
@@ -363,7 +364,7 @@ public:
       }
     }
 
-    this->nextLevel->process(nextLevelAddr, LONG, nextLevelOpType, nextLevelDataIn, nextLevelDataOut, nextLevelWaitOut);
+    nextLevel->process(nextLevelAddr, LONG, nextLevelOpType, nextLevelDataIn, nextLevelDataOut, nextLevelWaitOut);
     waitOut = nextLevelWaitOut || cacheState || (wasStore && opType != NONE);
 
     cacheDataOut.write(dataOut);
