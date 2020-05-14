@@ -787,5 +787,5 @@ void system(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
   static ac_channel<bool> cacheWait;
 
   doCore(globalStall, imData, crashFlag, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
-  dataCache(cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
+  dataCache(dmData, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
 }
