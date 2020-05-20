@@ -29,12 +29,12 @@ benchBuild:
   stage: build
   artifacts:
     paths:
-      - tests/build_hw
+      - build_bench
   script:
     - cd tests
     - make all
-    - mkdir build_hw
-    - mv ./*/*.riscv32_hw ./build_hw/
+    - mkdir ../build_bench
+    - mv ./*/*.riscv32_hw ../build_bench/
 
 catapult_ASIC:
   stage: HLS
