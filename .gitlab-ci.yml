@@ -29,9 +29,9 @@ benchBuild:
   stage: build
   artifacts:
     paths:
-      - test/build_hw
+      - tests/build_hw
   script:
-    - cd test
+    - cd tests
     - make all
     - mkdir build_hw
     - cp ./*/*.riscv32_hw ./build_hw/
