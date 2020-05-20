@@ -751,7 +751,7 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
 
   core.im = &imInterface;
   core.dm = &dmInterface;
-  core.pc = 0;
+  core.pc = 0x00010000;
   crashFlag = false;
   
   while (1) {
