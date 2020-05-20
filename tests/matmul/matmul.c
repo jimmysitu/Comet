@@ -26,9 +26,13 @@ int main(void)
 
   for (i = 0; i < 4; ++i) {
     for (j = 0; j < 4; ++j) {
-      printf("%d ", result[(i << 2) + j]);
+	  int val = result[(i << 2) + j];
+      putchar(val&0xff);
+	  putchar((val>>8)&0xff);
+  	  putchar((val>>16)&0xff);
+  	  putchar((val>>24)&0xff);
+  	  
     }
-    printf("\n");
   }
 
   return 0;

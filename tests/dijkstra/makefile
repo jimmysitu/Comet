@@ -4,7 +4,7 @@ CCHOST=gcc
 CFLAGS=-Wno-overflow
 EXEC=dijkstra
 
-DRIVERSDIR=../../drivers
+DRIVERSDIR=$(PWD)/../drivers
 
 all: $(EXEC).riscv$(XLEN) $(EXEC).riscv$(XLEN)_hw
 
@@ -15,7 +15,7 @@ $(EXEC).riscv$(XLEN): $(EXEC).c
 	rm -f $(EXEC)
 
 $(EXEC).riscv$(XLEN)_hw: $(EXEC).c $(DRIVERSDIR)/hwSyscalls.c
-	$(CCRV) $(EXEC).c $(DRIVERSDIR)/hwSyscalls.c $(CFLAGS) -o $(EXEC).riscv$(XLEN)_hw
+	$(CCRV) $(EXEC).c $(DRIVERSDIR)/hwSyscalls.c $(CFLAGS) -o $(EXEC).riscv$(XLEN)_hw  -Os -T $(DRIVERSDIR)/linkerScript.ld
 
 clean:
 	rm -f *.riscv* expectedOutput

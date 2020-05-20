@@ -99,9 +99,10 @@ void print_block(short in[8][8])
   int i, j;
   for (i = 0; i < 8; i++) {
     for (j = 0; j < 8; j++) {
-      printf("%d    ", in[i][j]);
+      short val = in[i][j];
+      putchar(val&&0xff);
+      putchar((val>>8) && 0xff);
     }
-    printf("\n");
   }
 }
 
