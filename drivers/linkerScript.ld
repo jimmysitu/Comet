@@ -7,11 +7,11 @@ OUTPUT_FORMAT("elf32-littleriscv", "elf32-littleriscv",
 	      "elf32-littleriscv")
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
-SEARCH_DIR("/opt/riscv/rv32i/riscv32-unknown-elf/lib");
 SECTIONS
 {
   /* Read-only sections, merged into text segment: */
   PROVIDE (__executable_start = SEGMENT_START("text-segment", 0x10000)); . = SEGMENT_START("text-segment", 0x10000);
+  
   .interp         : { *(.interp) }
   .note.gnu.build-id  : { *(.note.gnu.build-id) }
   .hash           : { *(.hash) }
@@ -54,12 +54,14 @@ SECTIONS
   .iplt           : { *(.iplt) }
   .text           :
   {
+  
     *(.text.unlikely .text.*_unlikely .text.unlikely.*)
     *(.text.exit .text.exit.*)
-    *(.text.startup .text.startup.*)
+
     *(.text.hot .text.hot.*)
     *(SORT(.text.sorted.*))
     *(.text .stub .text.* .gnu.linkonce.t.*)
+    *(.text.startup .text.startup.*)
     /* .gnu.warning sections are handled specially by elf.em.  */
     *(.gnu.warning)
   }
