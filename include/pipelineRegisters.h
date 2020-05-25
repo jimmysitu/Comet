@@ -46,6 +46,7 @@ struct DCtoEx {
   // For branch unit
   ac_int<32, false> nextPCDC;
   bool isBranch;
+  bool crashFlag;
 
   // Information for forward/stall unit
   bool useRs1;

@@ -14,7 +14,7 @@ void fetch(ac_int<32, false> pc, struct FtoDC& ftoDC, ac_int<32, false> instruct
   ftoDC.we          = 1;
 }
 
-void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, ac_int<32, true> registerFile[32], bool& crashFlag)
+void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, ac_int<32, true> registerFile[32])
 {
   ac_int<32, false> pc          = ftoDC.pc;
   ac_int<32, false> instruction = ftoDC.instruction;
@@ -172,7 +172,7 @@ void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, ac_int<32, true> register
 
       break;
     default:
-      crashFlag = true;
+      dctoEx.crashFlag = true;
       break;
   }
 
@@ -586,8 +586,7 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
 */
 
 void doCycle(struct Core& core, // Core containing all values
-             bool globalStall,
-            bool& crashFlag)
+             bool globalStall)
 {
   bool localStall = globalStall;
 
@@ -606,12 +605,13 @@ void doCycle(struct Core& core, // Core containing all values
   ftoDC_temp.nextPCFetch = 0;
   ftoDC_temp.we          = 0;
   struct DCtoEx dctoEx_temp;
-  dctoEx_temp.isBranch = 0;
-  dctoEx_temp.useRs1   = 0;
-  dctoEx_temp.useRs2   = 0;
-  dctoEx_temp.useRs3   = 0;
-  dctoEx_temp.useRd    = 0;
-  dctoEx_temp.we       = 0;
+  dctoEx_temp.isBranch  = 0;
+  dctoEx_temp.useRs1    = 0;
+  dctoEx_temp.useRs2    = 0;
+  dctoEx_temp.useRs3    = 0;
+  dctoEx_temp.useRd     = 0;
+  dctoEx_temp.we        = 0;
+  dctoEx_temp.crashFlag = 0;
   struct ExtoMem extoMem_temp;
   extoMem_temp.useRd    = 0;
   extoMem_temp.isBranch = 0;
@@ -643,7 +643,7 @@ void doCycle(struct Core& core, // Core containing all values
     core.im->process(core.pc, WORD, LOAD, 0, nextInst, core.stallIm);
 
   fetch(core.pc, ftoDC_temp, nextInst);
-  decode(core.ftoDC, dctoEx_temp, core.regFile, crashFlag);
+  decode(core.ftoDC, dctoEx_temp, core.regFile);
   execute(core.dctoEx, extoMem_temp);
   memory(core.extoMem, memtoWB_temp);
   writeback(core.memtoWB, wbOut_temp);
@@ -741,7 +741,8 @@ void doCycle(struct Core& core, // Core containing all values
 }
 
 // void doCore(IncompleteMemory im, IncompleteMemory dm, bool globalStall)
-void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, false> dmData[1 << 24], bool& crashFlag)
+void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, false> dmData[1 << 24],
+            ac_int<1, false>* crashFlag)
 {
   Core core;
   IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
@@ -749,13 +750,15 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
 
   //    CacheMemory dmCache = CacheMemory(&dmInterface, false);
 
-  core.im = &imInterface;
-  core.dm = &dmInterface;
-  core.pc = 0x00010000;
+  core.im         = &imInterface;
+  core.dm         = &dmInterface;
+  core.pc         = 0x00010000;
   core.regFile[2] = 0x27fff;
-  crashFlag = false;
-  
+  crashFlag       = false;
+
   while (1) {
-    doCycle(core, globalStall, crashFlag);
+    doCycle(core, globalStall);
+    if (core.dctoEx.crashFlag)
+      *crashFlag = 1;
   }
 }
