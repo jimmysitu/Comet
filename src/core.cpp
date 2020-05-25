@@ -749,26 +749,10 @@ void doCycle(struct Core& core, // Core containing all values
 }
 
 // void doCore(IncompleteMemory im, IncompleteMemory dm, bool globalStall)
-void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], bool& crashFlag,
-            ac_channel<ac_int<32, false> >& cacheAddr, ac_channel<memMask>& cacheMask,
-            ac_channel<memOpType>& cacheOpType, ac_channel<ac_int<32, false> >& cacheDataIn,
-            ac_channel<ac_int<32, false> >& cacheDataOut, ac_channel<bool>& cacheWait)
+void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, false> dmData[1 << 24], bool& crashFlag)
 {
   Core core;
   IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
-
-  //  CacheMemory<4, 16, 64> dmCache;
-
-  core.im   = &imInterface;
-  core.pc   = 0;
-  crashFlag = false;
-
-  while (1)
-    doCycle(core, globalStall, crashFlag, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
-}
-
-void system(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, false> dmData[1 << 24], bool& crashFlag)
-{
   IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
 
   static ac_channel<ac_int<32, false> > cacheAddr;
@@ -778,6 +762,12 @@ void system(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
   static ac_channel<ac_int<32, false> > cacheDataOut;
   static ac_channel<bool> cacheWait;
 
-  doCore(globalStall, imData, crashFlag, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
+  //  CacheMemory<4, 16, 64> dmCache;
+
+  core.im   = &imInterface;
+  core.pc   = 0;
+  crashFlag = false;
+
+  doCycle(core, globalStall, crashFlag, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
   process(&dmInterface, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
 }
