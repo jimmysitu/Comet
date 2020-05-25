@@ -1,4 +1,3 @@
-#include <ac_channel.h>
 #include <ac_int.h>
 #include <cacheMemory.h>
 #include <core.h>
@@ -587,9 +586,8 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
 */
 
 void doCycle(struct Core& core, // Core containing all values
-             bool globalStall, bool& crashFlag, ac_channel<ac_int<32, false> > cacheAddr, ac_channel<memMask> cacheMask,
-             ac_channel<memOpType> cacheOpType, ac_channel<ac_int<32, false> > cacheDataIn,
-             ac_channel<ac_int<32, false> > cacheDataOut, ac_channel<ac_int<32, false> > cacheWait)
+             bool globalStall,
+            bool& crashFlag)
 {
   bool localStall = globalStall;
 
@@ -682,13 +680,8 @@ void doCycle(struct Core& core, // Core containing all values
         mask = WORD;
         break;
     }
-    cacheAddr.write(memtoWB_temp.address);
-    cacheMask.write(mask);
-    cacheOpType.write(memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE));
-    cacheDataIn.write(memtoWB_temp.valueToWrite);
-    if (memtoWB_temp.isLoad)
-      memtoWB_temp.result = cacheDataOut.read();
-    core.stallDm = cacheWait.read();
+    core.dm->process(memtoWB_temp.address, mask, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE),
+                     memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm);
   }
   // commit the changes to the pipeline register
   if (!core.stallSignals[STALL_FETCH] && !localStall && !core.stallIm && !core.stallDm) {
@@ -752,22 +745,16 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
 {
   Core core;
   IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
-
-  static ac_channel<ac_int<32, false> > cacheAddr;
-  static ac_channel<memMask> cacheMask;
-  static ac_channel<memOpType> cacheOpType;
-  static ac_channel<ac_int<32, false> > cacheDataIn;
-  static ac_channel<ac_int<32, false> > cacheDataOut;
-  static ac_channel<ac_int<32, false> > cacheWait;
+  IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
 
   //    CacheMemory dmCache = CacheMemory(&dmInterface, false);
 
-  core.im   = &imInterface;
-  core.pc   = 0;
+  core.im = &imInterface;
+  core.dm = &dmInterface;
+  core.pc = 0;
   crashFlag = false;
-
+  
   while (1) {
-    doCycle(core, globalStall, crashFlag, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
-    core.dm->process(cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
+    doCycle(core, globalStall, crashFlag);
   }
 }

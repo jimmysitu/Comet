@@ -10,7 +10,6 @@
 
 #include "logarithm.h"
 #include "memoryInterface.h"
-#include <ac_channel.h>
 #include <ac_int.h>
 
 /************************************************************************
@@ -20,7 +19,8 @@
  * 		- SET_SIZE
  * 		- ASSOCIATIVITY
  ************************************************************************/
-template <unsigned int INTERFACE_SIZE, int LINE_SIZE, int SET_SIZE> class CacheMemory {
+template <unsigned int INTERFACE_SIZE, int LINE_SIZE, int SET_SIZE>
+class CacheMemory : public MemoryInterface<INTERFACE_SIZE> {
 
   static const int LOG_SET_SIZE           = log2const<SET_SIZE>::value;
   static const int LOG_LINE_SIZE          = log2const<LINE_SIZE>::value;
@@ -85,17 +85,9 @@ public:
     nextLevelOpType  = NONE;
   }
 
-  void process(ac_channel<ac_int<32, false> > cacheAddr, ac_channel<memMask> cacheMask,
-               ac_channel<memOpType> cacheOpType, ac_channel<ac_int<32, false> > cacheDataIn,
-               ac_channel<ac_int<32, false> > cacheDataOut, ac_channel<ac_int<32, false> > cacheWait)
+  void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
+               ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut)
   {
-
-    ac_int<32, false> addr                    = cacheAddr.read();
-    memMask mask                              = cacheMask.read();
-    memOpType opType                          = cacheOpType.read();
-    ac_int<INTERFACE_SIZE * 8, false> dataIn  = cacheDataIn.read();
-    ac_int<INTERFACE_SIZE * 8, false> dataOut = 0;
-    bool waitOut                              = 0;
 
     // bit size is the log(setSize)
     ac_int<LOG_SET_SIZE, false> place = addr.slc<LOG_SET_SIZE>(LOG_LINE_SIZE);
@@ -364,9 +356,6 @@ public:
 
     this->nextLevel->process(nextLevelAddr, LONG, nextLevelOpType, nextLevelDataIn, nextLevelDataOut, nextLevelWaitOut);
     waitOut = nextLevelWaitOut || cacheState || (wasStore && opType != NONE);
-
-    cacheDataOut.write(dataOut);
-    cacheWait.write(wait);
   }
 };
 
