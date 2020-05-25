@@ -765,19 +765,10 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], bool& crashFlag
     doCycle(core, globalStall, crashFlag, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
 }
 
-void dataCache(ac_int<32, false> dmData[1 << 24], ac_channel<ac_int<32, false> >& cacheAddr,
-               ac_channel<memMask>& cacheMask, ac_channel<memOpType>& cacheOpType,
-               ac_channel<ac_int<32, false> >& cacheDataIn, ac_channel<ac_int<32, false> >& cacheDataOut,
-               ac_channel<bool>& cacheWait)
+void system(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, false> dmData[1 << 24], bool& crashFlag)
 {
   IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
   CacheMemory<4, 16, 64> dmCache;
-  while (1)
-    dmCache.process(&dmInterface, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
-}
-
-void system(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, false> dmData[1 << 24], bool& crashFlag)
-{
 
   static ac_channel<ac_int<32, false> > cacheAddr;
   static ac_channel<memMask> cacheMask;
@@ -787,5 +778,5 @@ void system(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
   static ac_channel<bool> cacheWait;
 
   doCore(globalStall, imData, crashFlag, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
-  dataCache(cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
+  dmCache.process(&dmInterface, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
 }
