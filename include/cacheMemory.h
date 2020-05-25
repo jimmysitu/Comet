@@ -85,7 +85,6 @@ public:
     nextLevelOpType  = NONE;
   }
 
-#pragma hls_design interface
   void process(ac_channel<ac_int<32, false> >& cacheAddr, ac_channel<memMask>& cacheMask,
                ac_channel<memOpType>& cacheOpType, ac_channel<ac_int<32, false> >& cacheDataIn,
                ac_channel<ac_int<32, false> >& cacheDataOut, ac_channel<bool>& cacheWait)
