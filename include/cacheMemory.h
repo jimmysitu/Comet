@@ -22,7 +22,6 @@
  ************************************************************************/
 template <unsigned int INTERFACE_SIZE, int LINE_SIZE, int SET_SIZE> class CacheMemory {
 
-private:
   static const int LOG_SET_SIZE           = log2const<SET_SIZE>::value;
   static const int LOG_LINE_SIZE          = log2const<LINE_SIZE>::value;
   static const int TAG_SIZE               = (32 - LOG_LINE_SIZE - LOG_SET_SIZE);
@@ -34,14 +33,15 @@ private:
   static const int STATE_CACHE_LAST_LOAD  = 2;
   static const int LOG_INTERFACE_SIZE     = log2const<INTERFACE_SIZE>::value;
 
+public:
   //  MemoryInterface<INTERFACE_SIZE>* nextLevel;
 
   ac_int<TAG_SIZE + LINE_SIZE * 8, false> cacheMemory[SET_SIZE][ASSOCIATIVITY];
   ac_int<40, false> age[SET_SIZE][ASSOCIATIVITY];
   ac_int<1, false> dataValid[SET_SIZE][ASSOCIATIVITY];
 
-  ac_int<6, false> cacheState;            // Used for the internal state machine
-  ac_int<LOG_ASSOCIATIVITY, false> older; // Set where the miss occurs
+  ac_int<6, false> cacheState;                // Used for the internal state machine
+  ac_int<LOG_ASSOCIATIVITY, false> older = 0; // Set where the miss occurs
 
   // Variables for next level access
   ac_int<LINE_SIZE * 8 + TAG_SIZE, false> newVal, oldVal;
@@ -53,7 +53,7 @@ private:
   ac_int<LOG_ASSOCIATIVITY, false> setMiss;
   bool isValid;
 
-  bool wasStore;
+  bool wasStore = false;
   ac_int<LOG_ASSOCIATIVITY, false> setStore;
   ac_int<LOG_SET_SIZE, false> placeStore;
   ac_int<LINE_SIZE * 8 + TAG_SIZE, false> valStore;
@@ -61,12 +61,11 @@ private:
 
   bool nextLevelWaitOut;
 
-  bool VERBOSE;
+  bool VERBOSE = false;
 
   // Stats
   unsigned long numberAccess, numberMiss;
 
-public:
   CacheMemory()
   {
     // this->nextLevel = nextLevel;
@@ -77,7 +76,6 @@ public:
         dataValid[oneSetElement][oneSet]   = 0;
       }
     }
-    this->older      = 0;
     VERBOSE          = 0;
     numberAccess     = 0;
     numberMiss       = 0;
