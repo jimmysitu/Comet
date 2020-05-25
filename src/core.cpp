@@ -590,7 +590,7 @@ void doCycle(struct Core& core, // Core containing all values
              bool globalStall, bool& crashFlag, ac_channel<ac_int<32, false> >& cacheAddr,
              ac_channel<memMask>& cacheMask, ac_channel<memOpType>& cacheOpType,
              ac_channel<ac_int<32, false> >& cacheDataIn, ac_channel<ac_int<32, false> >& cacheDataOut,
-             ac_channel<bool>& cacheWait)
+             ac_channel<ac_int<32, false> >& cacheWait)
 {
   bool localStall = globalStall;
 
@@ -760,7 +760,7 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
   static ac_channel<memOpType> cacheOpType;
   static ac_channel<ac_int<32, false> > cacheDataIn;
   static ac_channel<ac_int<32, false> > cacheDataOut;
-  static ac_channel<bool> cacheWait;
+  static ac_channel<ac_int<32, false> > cacheWait;
 
   CacheMemory<4, 16, 64> dmCache = CacheMemory<4, 16, 64>(&dmInterface, false);
 
