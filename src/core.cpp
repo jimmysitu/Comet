@@ -754,11 +754,10 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
   core.dm         = &dmInterface;
   core.pc         = 0x00010000;
   core.regFile[2] = 0x27fff;
-  crashFlag       = false;
 
   while (1) {
     doCycle(core, globalStall);
-    if (core.dctoEx.crashFlag)
+    if (core.pc == 0x50)
       *crashFlag = 1;
   }
 }
