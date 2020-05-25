@@ -762,12 +762,12 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
   static ac_channel<ac_int<32, false> > cacheDataOut;
   static ac_channel<bool> cacheWait;
 
-  //  CacheMemory<4, 16, 64> dmCache;
+  CacheMemory<4, 16, 64> dmCache;
 
   core.im   = &imInterface;
   core.pc   = 0;
   crashFlag = false;
 
   doCycle(core, globalStall, crashFlag, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
-  process(&dmInterface, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
+  dmCache.process(&dmInterface, cacheAddr, cacheMask, cacheOpType, cacheDataIn, cacheDataOut, cacheWait);
 }
