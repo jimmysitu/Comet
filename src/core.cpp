@@ -586,8 +586,7 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
 */
 
 void doCycle(struct Core& core, // Core containing all values
-             bool globalStall,
-            bool& crashFlag)
+             bool globalStall, bool& crashFlag)
 {
   bool localStall = globalStall;
 
@@ -747,13 +746,13 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
   IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
   IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
 
-  //    CacheMemory dmCache = CacheMemory(&dmInterface, false);
+  //  CacheMemory imCache = CacheMemory(&imInterface, false);
 
-  core.im = &imInterface;
-  core.dm = &dmInterface;
-  core.pc = 0;
+  core.im   = &imInterface;
+  core.dm   = &dmInterface;
+  core.pc   = 0;
   crashFlag = false;
-  
+
   while (1) {
     doCycle(core, globalStall, crashFlag);
   }
