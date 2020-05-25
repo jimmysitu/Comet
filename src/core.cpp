@@ -587,10 +587,9 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
 */
 
 void doCycle(struct Core& core, // Core containing all values
-             bool globalStall, bool& crashFlag, ac_channel<ac_int<32, false> >& cacheAddr,
-             ac_channel<memMask>& cacheMask, ac_channel<memOpType>& cacheOpType,
-             ac_channel<ac_int<32, false> >& cacheDataIn, ac_channel<ac_int<32, false> >& cacheDataOut,
-             ac_channel<ac_int<32, false> >& cacheWait)
+             bool globalStall, bool& crashFlag, ac_channel<ac_int<32, false> > cacheAddr, ac_channel<memMask> cacheMask,
+             ac_channel<memOpType> cacheOpType, ac_channel<ac_int<32, false> > cacheDataIn,
+             ac_channel<ac_int<32, false> > cacheDataOut, ac_channel<ac_int<32, false> > cacheWait)
 {
   bool localStall = globalStall;
 
