@@ -741,8 +741,8 @@ void doCycle(struct Core& core, // Core containing all values
 }
 
 // void doCore(IncompleteMemory im, IncompleteMemory dm, bool globalStall)
-ac_int<1, false> doCore(bool globalStall, ac_int<1, false>* crashFlag, ac_int<32, false> imData[1 << 24],
-                        ac_int<32, false> dmData[1 << 24])
+void doCore(bool globalStall, ac_int<1, false>* crashFlag, ac_int<32, false> imData[1 << 24],
+            ac_int<32, false> dmData[1 << 24])
 {
   Core core;
   IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
@@ -757,10 +757,10 @@ ac_int<1, false> doCore(bool globalStall, ac_int<1, false>* crashFlag, ac_int<32
 
   while (1) {
     doCycle(core, globalStall);
-    if (core.pc == 0x50) {
+    if (core.dctoEx.crashFlag) {
       *crashFlag = 1;
-      return 1;
+      return;
     }
   }
-  return 0;
+  return;
 }
