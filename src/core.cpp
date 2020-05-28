@@ -645,7 +645,7 @@ void doCycle(struct Core& core, // Core containing all values
     core.im->process(core.pc, WORD, LOAD, 0, nextInst, core.stallIm);
 
   fetch(core.pc, ftoDC_temp, nextInst);
-  decode(core.ftoDC, dctoEx_temp, core.regFile);
+  decode(core.ftoDC2, dctoEx_temp, core.regFile);
   execute(core.dctoEx, extoMem_temp);
   memory(core.extoMem, memtoWB_temp);
   writeback(core.memtoWB, wbOut_temp);
