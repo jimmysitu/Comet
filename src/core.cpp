@@ -644,7 +644,8 @@ void doCycle(struct Core& core, // Core containing all values
   if (!localStall && !core.stallDm)
     core.im->process(core.pc, WORD, LOAD, 0, nextInst, core.stallIm);
 
-  fetch(core.pc, ftoDC_temp, nextInst);
+  ac_int<32, false> localPC = core.pc;
+  fetch(core.ftoDC.pc, ftoDC_temp, nextInst);
   decode(core.ftoDC2, dctoEx_temp, core.regFile);
   execute(core.dctoEx, extoMem_temp);
   memory(core.extoMem, memtoWB_temp);
@@ -687,11 +688,11 @@ void doCycle(struct Core& core, // Core containing all values
   }
   // commit the changes to the pipeline register
   if (!core.stallSignals[STALL_FETCH2] && !localStall && !core.stallIm && !core.stallDm) {
-    core.ftoDC2 = core.ftoDC;
+    core.ftoDC2 = ftoDC_temp;
   }
 
   if (!core.stallSignals[STALL_FETCH1] && !localStall && !core.stallIm && !core.stallDm) {
-    core.ftoDC = ftoDC_temp;
+    core.ftoDC.pc = localPC;
   }
 
   if (!core.stallSignals[STALL_DECODE] && !localStall && !core.stallIm && !core.stallDm) {

@@ -10,6 +10,7 @@
 
 #include "logarithm.h"
 #include "memoryInterface.h"
+#include "pipelineRegisters.h"
 #include <ac_int.h>
 
 /************************************************************************
@@ -66,6 +67,10 @@ public:
   // Stats
   unsigned long numberAccess, numberMiss;
 
+  ac_int<LINE_SIZE * 8 + TAG_SIZE, false> cacheVal1, cacheVal2, cacheVal3, cacheVal4;
+  ac_int<1, false> cacheValid1, cacheValid2, cacheValid3, cacheValid4;
+  ac_int<16, false> cacheAge1, cacheAge2, cacheAge3, cacheAge4;
+
   CacheMemory(IncompleteMemory<INTERFACE_SIZE>* nextLevel, bool v)
   {
     this->nextLevel = nextLevel;
@@ -83,6 +88,27 @@ public:
     wasStore         = false;
     cacheState       = 0;
     nextLevelOpType  = NONE;
+  }
+
+  void processInit(ac_int<32, false> addr, memOpType opType)
+  {
+
+    ac_int<LOG_SET_SIZE, false> place = addr.slc<LOG_SET_SIZE>(LOG_LINE_SIZE);
+
+    cacheVal1 = cacheMemory[place][0];
+    cacheVal2 = cacheMemory[place][1];
+    cacheVal3 = cacheMemory[place][2];
+    cacheVal4 = cacheMemory[place][3];
+
+    cacheValid1 = dataValid[place][0];
+    cacheValid2 = dataValid[place][1];
+    cacheValid3 = dataValid[place][2];
+    cacheValid4 = dataValid[place][3];
+
+    cacheAge1 = age[place][0];
+    cacheAge2 = age[place][1];
+    cacheAge3 = age[place][2];
+    cacheAge4 = age[place][3];
   }
 
   void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
@@ -110,20 +136,20 @@ public:
 
       } else if (opType != NONE) {
 
-        ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val1 = cacheMemory[place][0];
-        ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val2 = cacheMemory[place][1];
-        ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val3 = cacheMemory[place][2];
-        ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val4 = cacheMemory[place][3];
+        ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val1 = cacheVal1;
+        ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val2 = cacheVal2;
+        ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val3 = cacheVal3;
+        ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val4 = cacheVal4;
 
-        ac_int<1, false> valid1 = dataValid[place][0];
-        ac_int<1, false> valid2 = dataValid[place][1];
-        ac_int<1, false> valid3 = dataValid[place][2];
-        ac_int<1, false> valid4 = dataValid[place][3];
+        ac_int<1, false> valid1 = cacheValid1;
+        ac_int<1, false> valid2 = cacheValid2;
+        ac_int<1, false> valid3 = cacheValid3;
+        ac_int<1, false> valid4 = cacheValid4;
 
-        ac_int<16, false> age1 = age[place][0];
-        ac_int<16, false> age2 = age[place][1];
-        ac_int<16, false> age3 = age[place][2];
-        ac_int<16, false> age4 = age[place][3];
+        ac_int<16, false> age1 = cacheAge1;
+        ac_int<16, false> age2 = cacheAge2;
+        ac_int<16, false> age3 = cacheAge3;
+        ac_int<16, false> age4 = cacheAge4;
 
         if (cacheState == 0) {
           numberAccess++;
@@ -356,6 +382,7 @@ public:
 
     this->nextLevel->process(nextLevelAddr, LONG, nextLevelOpType, nextLevelDataIn, nextLevelDataOut, nextLevelWaitOut);
     waitOut = nextLevelWaitOut || cacheState || (wasStore && opType != NONE);
+    processInit(addr, opType);
   }
 };
 
