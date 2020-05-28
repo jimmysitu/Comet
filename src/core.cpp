@@ -434,17 +434,19 @@ void writeback(struct MemtoWB memtoWB, struct WBOut& wbOut)
 
 void branchUnit(ac_int<32, false> nextPC_fetch, ac_int<32, false> nextPC_decode, bool isBranch_decode,
                 ac_int<32, false> nextPC_execute, bool isBranch_execute, ac_int<32, false>& pc, bool& we_fetch,
-                bool& we_decode, bool stall_fetch)
+                bool& we_fetch2, bool& we_decode, bool stall_fetch)
 {
 
   if (!stall_fetch) {
     if (isBranch_execute) {
       we_fetch  = 0;
+      we_fetch2 = 0;
       we_decode = 0;
       pc        = nextPC_execute;
     } else if (isBranch_decode) {
-      we_fetch = 0;
-      pc       = nextPC_decode;
+      we_fetch  = 0;
+      we_fetch2 = 0;
+      pc        = nextPC_decode;
     } else {
       pc = nextPC_fetch;
     }
@@ -684,7 +686,11 @@ void doCycle(struct Core& core, // Core containing all values
                      memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm);
   }
   // commit the changes to the pipeline register
-  if (!core.stallSignals[STALL_FETCH] && !localStall && !core.stallIm && !core.stallDm) {
+  if (!core.stallSignals[STALL_FETCH2] && !localStall && !core.stallIm && !core.stallDm) {
+    core.ftoDC2 = core.ftoDC;
+  }
+
+  if (!core.stallSignals[STALL_FETCH1] && !localStall && !core.stallIm && !core.stallDm) {
     core.ftoDC = ftoDC_temp;
   }
 
@@ -736,8 +742,9 @@ void doCycle(struct Core& core, // Core containing all values
   }
 
   branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC,
-             extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we,
-             core.stallSignals[STALL_FETCH] || core.stallIm || core.stallDm || localStall);
+             extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.ftoDC2.we, core.dctoEx.we,
+             core.stallSignals[STALL_FETCH1] || core.stallSignals[STALL_FETCH2] || core.stallIm || core.stallDm ||
+                 localStall);
 }
 
 // void doCore(IncompleteMemory im, IncompleteMemory dm, bool globalStall)

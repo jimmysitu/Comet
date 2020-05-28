@@ -27,8 +27,8 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   // core.im = new SimpleMemory<4>(im);
   // core.dm = new SimpleMemory<4>(dm);
 
-  core.im = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(im), false);
-  core.dm = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(dm), false);
+  core.im = new CacheMemory<4, 16, 64>(new IncompleteMemory<4>(im), false);
+  core.dm = new CacheMemory<4, 16, 64>(new IncompleteMemory<4>(dm), false);
 
   for (int i = 0; i < 32; i++) {
     core.regFile[i] = 0;
@@ -129,7 +129,7 @@ BasicSimulator::~BasicSimulator()
 
 void BasicSimulator::printCycle()
 {
-  //print something every cycle
+  // print something every cycle
 }
 
 // Function for handling memory accesses

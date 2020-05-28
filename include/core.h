@@ -20,13 +20,20 @@
  * Stall signals enum
  * ****************************************************************************************
  */
-typedef enum { STALL_FETCH = 0, STALL_DECODE = 1, STALL_EXECUTE = 2, STALL_MEMORY = 3, STALL_WRITEBACK = 4 } StallNames;
+typedef enum {
+  STALL_FETCH1    = 0,
+  STALL_FETCH2    = 1,
+  STALL_DECODE    = 2,
+  STALL_EXECUTE   = 3,
+  STALL_MEMORY    = 4,
+  STALL_WRITEBACK = 5
+} StallNames;
 
 // This is ugly but otherwise with have a dependency : alu.h includes core.h
 // (for pipeline regs) and core.h includes alu.h...
 
 struct Core {
-  FtoDC ftoDC;
+  FtoDC ftoDC, ftoDC2;
   DCtoEx dctoEx;
   ExtoMem extoMem;
   MemtoWB memtoWB;
@@ -38,7 +45,7 @@ struct Core {
   ac_int<32, false> pc;
 
   // stall
-  bool stallSignals[5] = {0, 0, 0, 0, 0};
+  bool stallSignals[6] = {0, 0, 0, 0, 0};
   bool stallIm, stallDm;
   unsigned long cycle;
   /// Multicycle operation
