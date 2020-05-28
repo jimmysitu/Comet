@@ -66,7 +66,7 @@ public:
   // Stats
   unsigned long numberAccess, numberMiss;
 
-  CacheMemory(MemoryInterface<INTERFACE_SIZE>* nextLevel, bool v)
+  CacheMemory(SimpleMemory<INTERFACE_SIZE>* nextLevel, bool v)
   {
     this->nextLevel = nextLevel;
     for (int oneSetElement = 0; oneSetElement < SET_SIZE; oneSetElement++) {
