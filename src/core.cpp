@@ -642,7 +642,7 @@ void doCycle(struct Core& core, // Core containing all values
   ac_int<32, false> nextInst;
 
   if (!localStall && !core.stallDm)
-    core.im->process(core.pc, WORD, LOAD, 0, nextInst, core.stallIm);
+    core.im->process(core.ftoDC.pc, WORD, LOAD, 0, nextInst, core.stallIm, core.pc);
 
   ac_int<32, false> localPC = core.pc;
   fetch(core.ftoDC.pc, ftoDC_temp, nextInst);
@@ -684,7 +684,7 @@ void doCycle(struct Core& core, // Core containing all values
         break;
     }
     core.dm->process(memtoWB_temp.address, mask, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE),
-                     memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm);
+                     memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm, extoMem_temp.result);
   }
   // commit the changes to the pipeline register
   if (!core.stallSignals[STALL_FETCH2] && !localStall && !core.stallIm && !core.stallDm) {
@@ -757,6 +757,7 @@ void doCore(bool globalStall, ac_int<1, false>* crashFlag, ac_int<32, false> imD
   IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
 
   CacheMemory<4, 16, 64> imCache = CacheMemory<4, 16, 64>(&imInterface, false);
+  CacheMemory<4, 16, 64> dmCache = CacheMemory<4, 16, 64>(&dmInterface, false);
 
   core.im         = &imCache;
   core.dm         = &dmInterface;

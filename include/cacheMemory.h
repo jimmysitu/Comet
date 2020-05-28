@@ -20,8 +20,7 @@
  * 		- SET_SIZE
  * 		- ASSOCIATIVITY
  ************************************************************************/
-template <unsigned int INTERFACE_SIZE, int LINE_SIZE, int SET_SIZE>
-class CacheMemory : public MemoryInterface<INTERFACE_SIZE> {
+template <unsigned int INTERFACE_SIZE, int LINE_SIZE, int SET_SIZE> class CacheMemory {
 
   static const int LOG_SET_SIZE           = log2const<SET_SIZE>::value;
   static const int LOG_LINE_SIZE          = log2const<LINE_SIZE>::value;
@@ -90,14 +89,8 @@ public:
     nextLevelOpType  = NONE;
   }
 
-  void processInit(ac_int<32, false> addr, memOpType opType)
-  {
-
-    ac_int<LOG_SET_SIZE, false> place = addr.slc<LOG_SET_SIZE>(LOG_LINE_SIZE);
-  }
-
   void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
-               ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut)
+               ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut, ac_int<32, false> nextAddr)
   {
 
     // bit size is the log(setSize)
@@ -125,21 +118,22 @@ public:
         cacheState                        = 0;
 
       } else if (opType != NONE) {
+        ac_int<LOG_SET_SIZE, false> nextPlace = nextAddr.slc<LOG_SET_SIZE>(LOG_LINE_SIZE);
 
-        cacheVal1_local = cacheMemory[place][0];
-        cacheVal2_local = cacheMemory[place][1];
-        cacheVal3_local = cacheMemory[place][2];
-        cacheVal4_local = cacheMemory[place][3];
+        cacheVal1_local = cacheMemory[nextPlace][0];
+        cacheVal2_local = cacheMemory[nextPlace][1];
+        cacheVal3_local = cacheMemory[nextPlace][2];
+        cacheVal4_local = cacheMemory[nextPlace][3];
 
-        cacheValid1_local = dataValid[place][0];
-        cacheValid2_local = dataValid[place][1];
-        cacheValid3_local = dataValid[place][2];
-        cacheValid4_local = dataValid[place][3];
+        cacheValid1_local = dataValid[nextPlace][0];
+        cacheValid2_local = dataValid[nextPlace][1];
+        cacheValid3_local = dataValid[nextPlace][2];
+        cacheValid4_local = dataValid[nextPlace][3];
 
-        cacheAge1_local = age[place][0];
-        cacheAge2_local = age[place][1];
-        cacheAge3_local = age[place][2];
-        cacheAge4_local = age[place][3];
+        cacheAge1_local = age[nextPlace][0];
+        cacheAge2_local = age[nextPlace][1];
+        cacheAge3_local = age[nextPlace][2];
+        cacheAge4_local = age[nextPlace][3];
 
         ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val1 = cacheVal1;
         ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val2 = cacheVal2;
