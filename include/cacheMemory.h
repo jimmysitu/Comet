@@ -34,7 +34,7 @@ class CacheMemory : public MemoryInterface<INTERFACE_SIZE> {
   static const int LOG_INTERFACE_SIZE     = log2const<INTERFACE_SIZE>::value;
 
 public:
-  MemoryInterface<INTERFACE_SIZE>* nextLevel;
+  SimpleMemory<INTERFACE_SIZE>* nextLevel;
 
   ac_int<TAG_SIZE + LINE_SIZE * 8, false> cacheMemory[SET_SIZE][ASSOCIATIVITY];
   ac_int<40, false> age[SET_SIZE][ASSOCIATIVITY];
