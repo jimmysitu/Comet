@@ -94,21 +94,6 @@ public:
   {
 
     ac_int<LOG_SET_SIZE, false> place = addr.slc<LOG_SET_SIZE>(LOG_LINE_SIZE);
-
-    cacheVal1 = cacheMemory[place][0];
-    cacheVal2 = cacheMemory[place][1];
-    cacheVal3 = cacheMemory[place][2];
-    cacheVal4 = cacheMemory[place][3];
-
-    cacheValid1 = dataValid[place][0];
-    cacheValid2 = dataValid[place][1];
-    cacheValid3 = dataValid[place][2];
-    cacheValid4 = dataValid[place][3];
-
-    cacheAge1 = age[place][0];
-    cacheAge2 = age[place][1];
-    cacheAge3 = age[place][2];
-    cacheAge4 = age[place][3];
   }
 
   void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
@@ -121,6 +106,25 @@ public:
     ac_int<TAG_SIZE, false> tag = addr.slc<TAG_SIZE>(LOG_LINE_SIZE + LOG_SET_SIZE);
     // bitSize is log(lineSize), start address is 2(because of #bytes in a word)
     ac_int<LOG_LINE_SIZE, false> offset = addr.slc<LOG_LINE_SIZE - 2>(2);
+
+    ac_int<LINE_SIZE * 8 + TAG_SIZE, false> cacheVal1_local, cacheVal2_local, cacheVal3_local, cacheVal4_local;
+    ac_int<1, false> cacheValid1_local, cacheValid2_local, cacheValid3_local, cacheValid4_local;
+    ac_int<16, false> cacheAge1_local, cacheAge2_local, cacheAge3_local, cacheAge4_local;
+
+    cacheVal1_local = cacheMemory[place][0];
+    cacheVal2_local = cacheMemory[place][1];
+    cacheVal3_local = cacheMemory[place][2];
+    cacheVal4_local = cacheMemory[place][3];
+
+    cacheValid1_local = dataValid[place][0];
+    cacheValid2_local = dataValid[place][1];
+    cacheValid3_local = dataValid[place][2];
+    cacheValid4_local = dataValid[place][3];
+
+    cacheAge1_local = age[place][0];
+    cacheAge2_local = age[place][1];
+    cacheAge3_local = age[place][2];
+    cacheAge4_local = age[place][3];
 
     if (!nextLevelWaitOut) {
       cycle++;
@@ -382,7 +386,21 @@ public:
 
     this->nextLevel->process(nextLevelAddr, LONG, nextLevelOpType, nextLevelDataIn, nextLevelDataOut, nextLevelWaitOut);
     waitOut = nextLevelWaitOut || cacheState || (wasStore && opType != NONE);
-    processInit(addr, opType);
+
+    cacheVal1 = cacheVal1_local;
+    cacheVal2 = cacheVal2_local;
+    cacheVal3 = cacheVal3_local;
+    cacheVal4 = cacheVal4_local;
+
+    cacheValid1 = cacheValid1_local;
+    cacheValid2 = cacheValid2_local;
+    cacheValid3 = cacheValid3_local;
+    cacheValid4 = cacheValid4_local;
+
+    cacheAge1 = cacheAge1_local;
+    cacheAge2 = cacheAge2_local;
+    cacheAge3 = cacheAge3_local;
+    cacheAge4 = cacheAge4_local;
   }
 };
 
