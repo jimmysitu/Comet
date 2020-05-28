@@ -39,7 +39,7 @@ struct Core {
   MemtoWB memtoWB;
 
   // Interface size are configured with 4 bytes interface size (32 bits)
-  MemoryInterface<4>*dm, *im;
+  CacheMemory<4, 16, 64>*dm, *im;
 
   ac_int<32, true> regFile[32];
   ac_int<32, false> pc;
