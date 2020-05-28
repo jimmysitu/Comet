@@ -107,24 +107,10 @@ public:
     // bitSize is log(lineSize), start address is 2(because of #bytes in a word)
     ac_int<LOG_LINE_SIZE, false> offset = addr.slc<LOG_LINE_SIZE - 2>(2);
 
-    ac_int<LINE_SIZE * 8 + TAG_SIZE, false> cacheVal1_local, cacheVal2_local, cacheVal3_local, cacheVal4_local;
-    ac_int<1, false> cacheValid1_local, cacheValid2_local, cacheValid3_local, cacheValid4_local;
-    ac_int<16, false> cacheAge1_local, cacheAge2_local, cacheAge3_local, cacheAge4_local;
-
-    cacheVal1_local = cacheMemory[place][0];
-    cacheVal2_local = cacheMemory[place][1];
-    cacheVal3_local = cacheMemory[place][2];
-    cacheVal4_local = cacheMemory[place][3];
-
-    cacheValid1_local = dataValid[place][0];
-    cacheValid2_local = dataValid[place][1];
-    cacheValid3_local = dataValid[place][2];
-    cacheValid4_local = dataValid[place][3];
-
-    cacheAge1_local = age[place][0];
-    cacheAge2_local = age[place][1];
-    cacheAge3_local = age[place][2];
-    cacheAge4_local = age[place][3];
+    ac_int<LINE_SIZE * 8 + TAG_SIZE, false> cacheVal1_local = 0, cacheVal2_local = 0, cacheVal3_local = 0,
+                                            cacheVal4_local = 0;
+    ac_int<1, false> cacheValid1_local = 0, cacheValid2_local = 0, cacheValid3_local = 0, cacheValid4_local = 0;
+    ac_int<16, false> cacheAge1_local = 0, cacheAge2_local = 0, cacheAge3_local = 0, cacheAge4_local = 0;
 
     if (!nextLevelWaitOut) {
       cycle++;
@@ -139,6 +125,21 @@ public:
         cacheState                        = 0;
 
       } else if (opType != NONE) {
+
+        cacheVal1_local = cacheMemory[place][0];
+        cacheVal2_local = cacheMemory[place][1];
+        cacheVal3_local = cacheMemory[place][2];
+        cacheVal4_local = cacheMemory[place][3];
+
+        cacheValid1_local = dataValid[place][0];
+        cacheValid2_local = dataValid[place][1];
+        cacheValid3_local = dataValid[place][2];
+        cacheValid4_local = dataValid[place][3];
+
+        cacheAge1_local = age[place][0];
+        cacheAge2_local = age[place][1];
+        cacheAge3_local = age[place][2];
+        cacheAge4_local = age[place][3];
 
         ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val1 = cacheVal1;
         ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val2 = cacheVal2;
