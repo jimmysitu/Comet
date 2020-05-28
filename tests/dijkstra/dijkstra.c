@@ -115,10 +115,19 @@ void pluslongdespluscourts(Graphe* graphe)
       }
     }
   }
-  printf("Plus long chemin entre 2 sommets de %s a %s : %d en %d sauts\n", sommets[k + 1].nom, sommets[0].nom,
-         sommets[0].poids, k + 1);
+  
+  int val = sommets[k + 1].nom;
+  putchar(val&&0xff);
+  val = sommets[0].nom;
+  putchar(val&&0xff);
+  val = sommets[0].poids;
+  putchar(val&&0xff);
+  val = k + 1;
+  putchar(val&&0xff);
+  
   for (; k >= 0; --k) {
-    printf("De %s a %s : %d\n", sommets[k + 1].nom, sommets[k].nom, sommets[k].poids - sommets[k + 1].poids);
+    val = sommets[k + 1].poids;
+    putchar(val&&0xff);
   }
 
   free(sommets);

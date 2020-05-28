@@ -38,6 +38,10 @@ int main()
   int i;
   qsort(0, 10 - 1);
   for (i = 0; i < 10; ++i) {
-    printf("%d\n", A[i]);
+    int val = A[i];
+    putchar(val&&0xff);
+    putchar((val>>8) && 0xff);
+    putchar((val>>16) && 0xff);
+    putchar((val>>24) && 0xff);
   }
 }

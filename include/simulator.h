@@ -13,9 +13,9 @@ public:
   virtual void run()
   {
     crashFlag = false;
-    exitFlag = false;
+    exitFlag  = false;
     while (!exitFlag) {
-      doCycle(core, 0, crashFlag);
+      doCycle(core, 0);
       solveSyscall();
       extend();
       printCycle();

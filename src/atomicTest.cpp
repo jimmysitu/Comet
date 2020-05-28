@@ -157,7 +157,7 @@ int main(int argc, char** argv)
     std::cout << printDecodedInstrRISCV(instruction) << std::endl;
     for (int oneCycle = 0; oneCycle < numberOfCycles; oneCycle++) {
       fprintf(stderr, "cycle\n");
-      doCycle(core, 0, crashFlag);
+      doCycle(core, 0);
     }
 
     bool worked = true;
