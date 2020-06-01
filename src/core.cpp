@@ -760,7 +760,7 @@ void doCore(bool globalStall, ac_int<1, false>* crashFlag, ac_int<32, false> imD
   CacheMemory<4, 16, 64> dmCache = CacheMemory<4, 16, 64>(&dmInterface, false);
 
   core.im         = &imCache;
-  core.dm         = &dmInterface;
+  core.dm         = &dmCache;
   core.pc         = 0x00010000;
   core.regFile[2] = 0x27fff;
 
