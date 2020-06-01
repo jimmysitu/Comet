@@ -22,14 +22,16 @@ solution library add Xilinx_ROMS
 solution library add amba
 solution library add Xilinx_FIFO
 go libraries
+directive set -TRANSACTION_DONE_SIGNAL false
 directive set -CLOCKS {clk {-CLOCK_PERIOD 10.0 -CLOCK_EDGE rising -CLOCK_UNCERTAINTY 0.0 -CLOCK_HIGH_TIME 5.0 -RESET_SYNC_NAME rst -RESET_ASYNC_NAME arst_n -RESET_KIND sync -RESET_SYNC_ACTIVE high -RESET_ASYNC_ACTIVE low -ENABLE_ACTIVE high}}
 go assembly
 directive set /doCore/globalStall:rsc -MAP_TO_MODULE {[DirectInput]}
-directive set /doCore/imData:rsc -MAP_TO_MODULE Xilinx_RAMS.BLOCK_SPRAM_NOCHANGE
-directive set /doCore/dmData:rsc -MAP_TO_MODULE Xilinx_RAMS.BLOCK_SPRAM_NOCHANGE
+directive set /doCore/imData:rsc -MAP_TO_MODULE Xilinx_RAMS.BLOCK_SPRAM_RBW
+directive set /doCore/dmData:rsc -MAP_TO_MODULE Xilinx_RAMS.BLOCK_SPRAM_RBW
 directive set /doCore/core/core.regFile:rsc -MAP_TO_MODULE {[Register]}
 directive set /doCore/core/while -PIPELINE_INIT_INTERVAL 1
 directive set /doCore/crashFlag:rsc -MAP_TO_MODULE ccs_ioport.ccs_out
 directive set -GEN_EXTERNAL_ENABLE true
+
 go architect
 go extract
