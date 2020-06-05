@@ -19,6 +19,8 @@ public:
 template <unsigned int INTERFACE_SIZE> class IncompleteMemory : public MemoryInterface<INTERFACE_SIZE> {
 public:
   ac_int<32, false>* data;
+  ac_int<1, false> pendingWrite;
+  ac_int<32, false> valueLoaded;
 
 public:
   IncompleteMemory(ac_int<32, false>* arg) { data = arg; }
@@ -29,12 +31,62 @@ public:
     // Incomplete memory only works for 32 bits
     assert(INTERFACE_SIZE == 4);
 
+    ac_int<32, true> temp;
+    ac_int<8, false> t8;
+    ac_int<1, true> bit;
+    ac_int<16, false> t16;
+
+    if (!pendingWrite && opType == STORE && mask != WORD) {
+      waitOut      = true;
+      valueLoaded  = data[(addr >> 2) & 0xffffff];
+      pendingWrite = 1;
+      return;
+    }
+
     // no latency, wait is always set to false
     waitOut = false;
     if (opType == STORE) {
-      data[(addr >> 2) & 0xffffff] = dataIn;
+      ac_int<32, false> valToStore = 0;
+      switch (mask) {
+        case BYTE_U:
+        case BYTE:
+          valToStore = valueLoaded.set_slc(((int)addr.slc<2>(0)) << 3, dataIn.template slc<8>(0));
+          break;
+        case HALF:
+        case HALF_U:
+          valToStore = valueLoaded.set_slc(addr[1] ? 16 : 0, dataIn.template slc<16>(0));
+          break;
+        case WORD:
+          valToStore = dataIn;
+          break;
+      }
+      printf("Writing at %x\n", (addr >> 2));
+      data[(addr >> 2) & 0xffffff] = valToStore;
     } else if (opType == LOAD) {
-      dataOut = data[(addr >> 2) & 0xffffff];
+      ac_int<32, 0> dataOutTmp = data[(addr >> 2) & 0xffffff];
+      switch (mask) {
+        case BYTE:
+          t8  = dataOutTmp.slc<8>(((int)addr.slc<2>(0)) << 3);
+          bit = t8.slc<1>(7);
+          dataOut.set_slc(0, t8);
+          dataOut.set_slc(8, (ac_int<24, true>)bit);
+          break;
+        case HALF:
+          t16 = dataOutTmp.slc<16>(addr[1] ? 16 : 0);
+          bit = t16.slc<1>(15);
+          dataOut.set_slc(0, t16);
+          dataOut.set_slc(16, (ac_int<16, true>)bit);
+          break;
+        case WORD:
+          dataOut = dataOutTmp;
+          break;
+        case BYTE_U:
+          dataOut = dataOutTmp.slc<8>(((int)addr.slc<2>(0)) << 3) & 0xff;
+          break;
+        case HALF_U:
+          dataOut = dataOutTmp.slc<16>(addr[1] ? 16 : 0) & 0xffff;
+          break;
+      }
     }
   }
 };
