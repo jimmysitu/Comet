@@ -60,7 +60,6 @@ public:
           valToStore = dataIn;
           break;
       }
-      printf("Writing at %x\n", (addr >> 2));
       data[(addr >> 2) & 0xffffff] = valToStore;
     } else if (opType == LOAD) {
       ac_int<32, 0> dataOutTmp = data[(addr >> 2) & 0xffffff];
