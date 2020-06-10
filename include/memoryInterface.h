@@ -42,7 +42,7 @@ public:
     if ((!pendingWrite && opType == STORE && mask != WORD) || opType == LOAD) {
 
       mergedAccess = data[(addr >> 2) & MEMMASK];
-
+      // printf("Loading at %x : %x\n", addr >> 2, mergedAccess);
       if (!pendingWrite && opType == STORE && mask != WORD) {
         waitOut      = true;
         valueLoaded  = mergedAccess;
@@ -96,9 +96,8 @@ public:
           valToStore = dataIn;
           break;
       }
-
-      if (addr < 0x300000)
-        data[(addr >> 2) & MEMMASK] = valToStore;
+      // printf("Loading at %x : %x\n", addr >> 2, mergedAccess);
+      data[(addr >> 2) & MEMMASK] = valToStore;
     }
   }
 };
