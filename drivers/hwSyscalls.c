@@ -10,7 +10,7 @@
 ssize_t _write(int file, const void* ptr, size_t len)
 {
 
-  int* serial = (int*)STDOUTREG_ADDRESS;
+  char* serial = (char*)STDOUTREG_ADDRESS;
   for (unsigned int oneChar = 0; oneChar < len; oneChar++)
     *serial = ((char*)ptr)[oneChar];
 

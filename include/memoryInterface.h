@@ -2,6 +2,8 @@
 #define __MEMORY_INTERFACE_H__
 
 #include <ac_int.h>
+//#define MEMMASK 0xffffffff
+#define MEMMASK 0x3fff
 
 typedef enum { BYTE = 0, HALF, WORD, BYTE_U, HALF_U, LONG } memMask;
 
@@ -38,11 +40,12 @@ public:
 
     if (!pendingWrite && opType == STORE && mask != WORD) {
       waitOut      = true;
-      valueLoaded  = data[(addr >> 2) & 0xffffff];
+      valueLoaded  = data[(addr >> 2) & MEMMASK];
       pendingWrite = 1;
       return;
     }
 
+    pendingWrite = 0;
     // no latency, wait is always set to false
     waitOut = false;
     if (opType == STORE) {
@@ -50,19 +53,23 @@ public:
       switch (mask) {
         case BYTE_U:
         case BYTE:
-          valToStore = valueLoaded.set_slc(((int)addr.slc<2>(0)) << 3, dataIn.template slc<8>(0));
+          valToStore = valueLoaded;
+          valToStore.set_slc(((int)addr.slc<2>(0)) << 3, dataIn.template slc<8>(0));
           break;
         case HALF:
         case HALF_U:
-          valToStore = valueLoaded.set_slc(addr[1] ? 16 : 0, dataIn.template slc<16>(0));
+          valToStore = valueLoaded;
+          valToStore.set_slc(addr[1] ? 16 : 0, dataIn.template slc<16>(0));
           break;
         case WORD:
           valToStore = dataIn;
           break;
       }
-      data[(addr >> 2) & 0xffffff] = valToStore;
+
+      if (addr < 0x300000)
+        data[(addr >> 2) & MEMMASK] = valToStore;
     } else if (opType == LOAD) {
-      ac_int<32, 0> dataOutTmp = data[(addr >> 2) & 0xffffff];
+      ac_int<32, false> dataOutTmp = data[(addr >> 2) & MEMMASK];
       switch (mask) {
         case BYTE:
           t8  = dataOutTmp.slc<8>(((int)addr.slc<2>(0)) << 3);
@@ -130,6 +137,7 @@ public:
         }
         break;
       case LOAD:
+
         switch (mask) {
           case BYTE:
             t8  = data[addr >> 2].slc<8>(((int)addr.slc<2>(0)) << 3);
@@ -157,7 +165,6 @@ public:
             dataOut = data[addr >> 2].slc<16>(addr[1] ? 16 : 0) & 0xffff;
             break;
         }
-
         break;
     }
     waitOut = false;

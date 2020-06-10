@@ -172,7 +172,8 @@ void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, ac_int<32, true> register
 
       break;
     default:
-      dctoEx.crashFlag = true;
+      if (instruction != 0)
+        dctoEx.crashFlag = true;
       break;
   }
 
@@ -740,11 +741,94 @@ void doCycle(struct Core& core, // Core containing all values
              core.stallSignals[STALL_FETCH] || core.stallIm || core.stallDm || localStall);
 }
 
+void initCore(Core& core)
+{
+  core.regFile[0]                = 0;
+  core.regFile[1]                = 0;
+  core.regFile[2]                = 0;
+  core.regFile[3]                = 0;
+  core.regFile[4]                = 0;
+  core.regFile[5]                = 0;
+  core.regFile[6]                = 0;
+  core.regFile[7]                = 0;
+  core.regFile[8]                = 0;
+  core.regFile[9]                = 0;
+  core.regFile[10]               = 0;
+  core.regFile[11]               = 0;
+  core.regFile[12]               = 0;
+  core.regFile[13]               = 0;
+  core.regFile[14]               = 0;
+  core.regFile[15]               = 0;
+  core.regFile[16]               = 0;
+  core.regFile[17]               = 0;
+  core.regFile[18]               = 0;
+  core.regFile[19]               = 0;
+  core.regFile[20]               = 0;
+  core.regFile[21]               = 0;
+  core.regFile[22]               = 0;
+  core.regFile[23]               = 0;
+  core.regFile[24]               = 0;
+  core.regFile[25]               = 0;
+  core.regFile[26]               = 0;
+  core.regFile[27]               = 0;
+  core.regFile[28]               = 0;
+  core.regFile[29]               = 0;
+  core.regFile[30]               = 0;
+  core.regFile[31]               = 0;
+  core.ftoDC.pc                  = 0;
+  core.ftoDC.instruction         = 0;
+  core.ftoDC.nextPCFetch         = 0;
+  core.ftoDC.we                  = 0;
+  core.dctoEx.pc                 = 0;
+  core.dctoEx.instruction        = 0;
+  core.dctoEx.opCode             = 0;
+  core.dctoEx.funct7             = 0;
+  core.dctoEx.funct3             = 0;
+  core.dctoEx.lhs                = 0;
+  core.dctoEx.rhs                = 0;
+  core.dctoEx.datac              = 0;
+  core.dctoEx.nextPCDC           = 0;
+  core.dctoEx.isBranch           = 0;
+  core.dctoEx.crashFlag          = 0;
+  core.dctoEx.useRs1             = 0;
+  core.dctoEx.useRs2             = 0;
+  core.dctoEx.useRs3             = 0;
+  core.dctoEx.useRd              = 0;
+  core.dctoEx.rs1                = 0;
+  core.dctoEx.rs2                = 0;
+  core.dctoEx.rs3                = 0;
+  core.dctoEx.rd                 = 0;
+  core.dctoEx.we                 = 0;
+  core.extoMem.pc                = 0;
+  core.extoMem.instruction       = 0;
+  core.extoMem.result            = 0;
+  core.extoMem.rd                = 0;
+  core.extoMem.useRd             = 0;
+  core.extoMem.isLongInstruction = 0;
+  core.extoMem.opCode            = 0;
+  core.extoMem.funct3            = 0;
+  core.extoMem.datac             = 0;
+  core.extoMem.nextPC            = 0;
+  core.extoMem.isBranch          = 0;
+  core.extoMem.we                = 0;
+  core.memtoWB.result            = 0;
+  core.memtoWB.rd                = 0;
+  core.memtoWB.useRd             = 0;
+  core.memtoWB.address           = 0;
+  core.memtoWB.valueToWrite      = 0;
+  core.memtoWB.byteEnable        = 0;
+  core.memtoWB.isStore           = 0;
+  core.memtoWB.isLoad            = 0;
+  core.memtoWB.we                = 0;
+}
+
 // void doCore(IncompleteMemory im, IncompleteMemory dm, bool globalStall)
 void doCore(bool globalStall, ac_int<1, false>* crashFlag, ac_int<32, false> imData[1 << 24],
             ac_int<32, false> dmData[1 << 24])
 {
   Core core;
+  initCore(core);
+
   IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
   IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
 
@@ -753,10 +837,14 @@ void doCore(bool globalStall, ac_int<1, false>* crashFlag, ac_int<32, false> imD
   core.im         = &imInterface;
   core.dm         = &dmInterface;
   core.pc         = 0x00010000;
-  core.regFile[2] = 0x27fff;
+  core.regFile[2] = 0x27ffc;
+
+  int cycle = 0;
 
   while (1) {
+    cycle++;
     doCycle(core, globalStall);
+
     if (core.dctoEx.crashFlag) {
       *crashFlag = 1;
       return;
