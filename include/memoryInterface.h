@@ -37,18 +37,49 @@ public:
     ac_int<8, false> t8;
     ac_int<1, true> bit;
     ac_int<16, false> t16;
+    ac_int<32, false> mergedAccess;
 
-    if (!pendingWrite && opType == STORE && mask != WORD) {
-      waitOut      = true;
-      valueLoaded  = data[(addr >> 2) & MEMMASK];
-      pendingWrite = 1;
-      return;
-    }
+    if ((!pendingWrite && opType == STORE && mask != WORD) || opType == LOAD) {
 
-    pendingWrite = 0;
-    // no latency, wait is always set to false
-    waitOut = false;
-    if (opType == STORE) {
+      mergedAccess = data[(addr >> 2) & MEMMASK];
+
+      if (!pendingWrite && opType == STORE && mask != WORD) {
+        waitOut      = true;
+        valueLoaded  = mergedAccess;
+        pendingWrite = 1;
+      } else {
+        pendingWrite                 = 0;
+        waitOut                      = false;
+        ac_int<32, false> dataOutTmp = mergedAccess;
+        switch (mask) {
+          case BYTE:
+            t8  = dataOutTmp.slc<8>(((int)addr.slc<2>(0)) << 3);
+            bit = t8.slc<1>(7);
+            dataOut.set_slc(0, t8);
+            dataOut.set_slc(8, (ac_int<24, true>)bit);
+            break;
+          case HALF:
+            t16 = dataOutTmp.slc<16>(addr[1] ? 16 : 0);
+            bit = t16.slc<1>(15);
+            dataOut.set_slc(0, t16);
+            dataOut.set_slc(16, (ac_int<16, true>)bit);
+            break;
+          case WORD:
+            dataOut = dataOutTmp;
+            break;
+          case BYTE_U:
+            dataOut = dataOutTmp.slc<8>(((int)addr.slc<2>(0)) << 3) & 0xff;
+            break;
+          case HALF_U:
+            dataOut = dataOutTmp.slc<16>(addr[1] ? 16 : 0) & 0xffff;
+            break;
+        }
+      }
+
+    } else if (opType == STORE) {
+      pendingWrite = 0;
+      // no latency, wait is always set to false
+      waitOut                      = false;
       ac_int<32, false> valToStore = 0;
       switch (mask) {
         case BYTE_U:
@@ -68,31 +99,6 @@ public:
 
       if (addr < 0x300000)
         data[(addr >> 2) & MEMMASK] = valToStore;
-    } else if (opType == LOAD) {
-      ac_int<32, false> dataOutTmp = data[(addr >> 2) & MEMMASK];
-      switch (mask) {
-        case BYTE:
-          t8  = dataOutTmp.slc<8>(((int)addr.slc<2>(0)) << 3);
-          bit = t8.slc<1>(7);
-          dataOut.set_slc(0, t8);
-          dataOut.set_slc(8, (ac_int<24, true>)bit);
-          break;
-        case HALF:
-          t16 = dataOutTmp.slc<16>(addr[1] ? 16 : 0);
-          bit = t16.slc<1>(15);
-          dataOut.set_slc(0, t16);
-          dataOut.set_slc(16, (ac_int<16, true>)bit);
-          break;
-        case WORD:
-          dataOut = dataOutTmp;
-          break;
-        case BYTE_U:
-          dataOut = dataOutTmp.slc<8>(((int)addr.slc<2>(0)) << 3) & 0xff;
-          break;
-        case HALF_U:
-          dataOut = dataOutTmp.slc<16>(addr[1] ? 16 : 0) & 0xffff;
-          break;
-      }
     }
   }
 };
