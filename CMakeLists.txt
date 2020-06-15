@@ -21,4 +21,9 @@ add_executable(atomicTests
 							./src/elfFile.cpp
 							./src/riscvISA.cpp)
 
+add_executable(testbench
+							./src/core.cpp
+							./src/elfFile.cpp
+							./src/testbench.cpp)
+
 #target_link_libraries( comet.sim	LINK_PUBLIC ${Boost_LIBRARIES} )
