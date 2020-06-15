@@ -7,12 +7,12 @@
 #define EXITFLAG 0
 
 /* Write to a file.  */
-ssize_t _write(int file, const void* ptr, size_t len)
+ssize_t _write(int file, char* ptr, size_t len)
 {
 
-  char* serial = (char*)STDOUTREG_ADDRESS;
+  volatile char* serial = (char*)STDOUTREG_ADDRESS;
   for (unsigned int oneChar = 0; oneChar < len; oneChar++)
-    *serial = ((char*)ptr)[oneChar];
+    *serial = ptr[oneChar];
 
   return len;
 }
