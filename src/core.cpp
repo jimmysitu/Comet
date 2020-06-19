@@ -859,8 +859,8 @@ void doCore(bool globalStall, ac_int<1, false>* crashFlag, ac_int<32, false> imD
   IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
   IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
 
-  CacheMemory<4, 16, 64> imCache = CacheMemory<4, 16, 64>(&imInterface, false);
-  CacheMemory<4, 16, 64> dmCache = CacheMemory<4, 16, 64>(&dmInterface, false);
+  CacheMemory<IncompleteMemory, 4, 16, 64> imCache = CacheMemory<IncompleteMemory, 4, 16, 64>(&imInterface, false);
+  CacheMemory<IncompleteMemory, 4, 16, 64> dmCache = CacheMemory<IncompleteMemory, 4, 16, 64>(&dmInterface, false);
 
   core.im         = &imCache;
   core.dm         = &dmInterface;

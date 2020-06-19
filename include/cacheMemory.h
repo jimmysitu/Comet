@@ -20,7 +20,7 @@
  * 		- SET_SIZE
  * 		- ASSOCIATIVITY
  ************************************************************************/
-template <unsigned int INTERFACE_SIZE, int LINE_SIZE, int SET_SIZE>
+template <template <unsigned int> class NEXT_LEVEL, unsigned int INTERFACE_SIZE, int LINE_SIZE, int SET_SIZE>
 class CacheMemory : public MemoryInterface<INTERFACE_SIZE> {
 
   static const int LOG_SET_SIZE           = log2const<SET_SIZE>::value;
@@ -35,7 +35,7 @@ class CacheMemory : public MemoryInterface<INTERFACE_SIZE> {
   static const int LOG_INTERFACE_SIZE     = log2const<INTERFACE_SIZE>::value;
 
 public:
-  MemoryInterface<INTERFACE_SIZE>* nextLevel;
+  NEXT_LEVEL<INTERFACE_SIZE>* nextLevel;
 
   ac_int<TAG_SIZE + LINE_SIZE * 8, false> cacheMemory[SET_SIZE][ASSOCIATIVITY];
   ac_int<40, false> age[SET_SIZE][ASSOCIATIVITY];
@@ -76,7 +76,7 @@ public:
   ac_int<1, false> cacheValidPre1, cacheValidPre2, cacheValidPre3, cacheValidPre4;
   ac_int<16, false> cacheAgePre1, cacheAgePre2, cacheAgePre3, cacheAgePre4;
 
-  CacheMemory(MemoryInterface<INTERFACE_SIZE>* nextLevel, bool v)
+  CacheMemory(NEXT_LEVEL<INTERFACE_SIZE>* nextLevel, bool v)
   {
     this->nextLevel = nextLevel;
     for (int oneSetElement = 0; oneSetElement < SET_SIZE; oneSetElement++) {
