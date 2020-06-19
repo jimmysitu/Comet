@@ -862,7 +862,7 @@ void doCore(bool globalStall, ac_int<1, false>* crashFlag, ac_int<32, false> imD
   CacheMemory<IncompleteMemory, 4, 16, 64> imCache = CacheMemory<IncompleteMemory, 4, 16, 64>(&imInterface, false);
   CacheMemory<IncompleteMemory, 4, 16, 64> dmCache = CacheMemory<IncompleteMemory, 4, 16, 64>(&dmInterface, false);
 
-  core.im         = &imCache;
+  core.im         = &imInterface;
   core.dm         = &dmInterface;
   core.pc         = 0x00010000;
   core.regFile[2] = 0x27ffc;
@@ -874,6 +874,7 @@ void doCore(bool globalStall, ac_int<1, false>* crashFlag, ac_int<32, false> imD
     doCycle(core, globalStall);
 
     if (core.dctoEx.crashFlag) {
+      printf("Crash\n");
       *crashFlag = 1;
       return;
     }

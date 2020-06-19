@@ -48,6 +48,7 @@ public:
   ac_int<LINE_SIZE * 8 + TAG_SIZE, false> newVal, oldVal;
   ac_int<32, false> nextLevelAddr;
   memOpType nextLevelOpType;
+  memMask nextLevelMask;
   ac_int<INTERFACE_SIZE * 8, false> nextLevelDataIn;
   ac_int<INTERFACE_SIZE * 8, false> nextLevelDataOut;
   ac_int<40, false> cycle;
@@ -115,9 +116,19 @@ public:
     if (!nextLevelWaitOut) {
       cycle++;
 
+      if (opType != NONE && cacheState == 0 && addr >= 0x30000) {
+        printf("Forwarding to peripherics (%x at %x)\n", addr, dataOut);
+        nextLevelAddr    = addr;
+        nextLevelDataIn  = dataIn;
+        nextLevelDataOut = dataOut;
+        nextLevelOpType  = opType;
+        nextLevelMask    = mask;
+      }
+
       if (wasStore || cacheState == 2) {
         // if (wasStore)
-        //   printf("Storing in cache %d %d -> %x %x %x %x   (addrStore is %x  addrPre is %x)\n", placeStore, setStore,
+        //   printf("Storing in cache %d %d -> %x %x %x %x   (addrStore is %x  addrPre is %x)\n", placeStore,
+        //   setStore,
         //          valStore.template slc<32>(TAG_SIZE), valStore.template slc<32>(TAG_SIZE + 32),
         //          valStore.template slc<32>(TAG_SIZE + 64), valStore.template slc<32>(TAG_SIZE + 96), addrStore,
         //          prefetchedAddr);
@@ -319,6 +330,7 @@ public:
               nextLevelDataIn = oldVal.template slc<INTERFACE_SIZE * 8>(
                   (cacheState - STATE_CACHE_LAST_STORE) * INTERFACE_SIZE * 8 + TAG_SIZE);
               nextLevelOpType = (isValid) ? STORE : NONE;
+              nextLevelMask   = LONG;
               // if (isValid && addr > 0x12bf4)
               //   printf("Writing back %x at %x\n", nextLevelDataIn, nextLevelAddr);
 
@@ -334,6 +346,7 @@ public:
                 nextLevelAddr = (((int)addr.slc<32 - LOG_LINE_SIZE>(LOG_LINE_SIZE)) << LOG_LINE_SIZE) +
                                 ((cacheState - STATE_CACHE_LAST_LOAD - 1) << LOG_INTERFACE_SIZE);
                 nextLevelOpType = LOAD;
+                nextLevelMask   = LONG;
               }
             }
 
@@ -412,8 +425,8 @@ public:
       }
     }
 
-    this->nextLevel->process(nextLevelAddr, LONG, nextLevelOpType, nextLevelDataIn, nextLevelDataOut, nextLevelWaitOut,
-                             nextLevelAddr);
+    this->nextLevel->process(nextLevelAddr, nextLevelMask, nextLevelOpType, nextLevelDataIn, nextLevelDataOut,
+                             nextLevelWaitOut, nextLevelAddr);
     waitOut = nextLevelWaitOut || cacheState || (wasStore && opType != NONE);
 
     if (updateLoadedLine && cacheState != STATE_CACHE_MISS) {

@@ -2,8 +2,8 @@
 #define __MEMORY_INTERFACE_H__
 
 #include <ac_int.h>
-#define MEMMASK 0xffffff
-// #define MEMMASK 0x3fff
+// #define MEMMASK 0xffffff
+#define MEMMASK 0x3fff
 
 typedef enum { BYTE = 0, HALF, WORD, BYTE_U, HALF_U, LONG } memMask;
 
