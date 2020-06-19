@@ -6,12 +6,20 @@
 #include "simulator.h"
 #endif // __HLS__
 
-void fetch(ac_int<32, false> pc, struct FtoDC& ftoDC, ac_int<32, false> instruction)
+void prefetch(ac_int<32, false> pc, struct FtoDC& ftoDC, ac_int<32, false> instruction)
 {
   ftoDC.instruction = instruction;
   ftoDC.pc          = pc;
   ftoDC.nextPCFetch = pc + 4;
   ftoDC.we          = 1;
+}
+
+void fetch(struct FtoDC ftoDC1, struct FtoDC& ftoDC, ac_int<32, false> instruction)
+{
+  ftoDC.instruction = instruction;
+  ftoDC.pc          = ftoDC1.pc;
+  ftoDC.nextPCFetch = ftoDC1.pc + 4;
+  ftoDC.we          = ftoDC1.we;
 }
 
 void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, ac_int<32, true> registerFile[32])
@@ -463,14 +471,15 @@ void forwardUnit(ac_int<5, false> decodeRs1, bool decodeUseRs1, ac_int<5, false>
 
                  ac_int<5, false> writebackRd, bool writebackUseRd,
 
-                 bool stall[5], struct ForwardReg& forwardRegisters)
+                 bool stall[6], struct ForwardReg& forwardRegisters)
 {
 
   if (decodeUseRs1) {
     if (executeUseRd && decodeRs1 == executeRd) {
       if (executeIsLongComputation) {
-        stall[0] = 1;
-        stall[1] = 1;
+        stall[STALL_FETCH1] = 1;
+        stall[STALL_FETCH2] = 1;
+        stall[STALL_DECODE] = 1;
       } else {
         forwardRegisters.forwardExtoVal1 = 1;
       }
@@ -484,8 +493,9 @@ void forwardUnit(ac_int<5, false> decodeRs1, bool decodeUseRs1, ac_int<5, false>
   if (decodeUseRs2) {
     if (executeUseRd && decodeRs2 == executeRd) {
       if (executeIsLongComputation) {
-        stall[0] = 1;
-        stall[1] = 1;
+        stall[STALL_FETCH1] = 1;
+        stall[STALL_FETCH2] = 1;
+        stall[STALL_DECODE] = 1;
       } else {
         forwardRegisters.forwardExtoVal2 = 1;
       }
@@ -607,6 +617,11 @@ void doCycle(struct Core& core, // Core containing all values
   ftoDC_temp.instruction = 0;
   ftoDC_temp.nextPCFetch = 0;
   ftoDC_temp.we          = 0;
+  struct FtoDC ftoDC2_temp;
+  ftoDC2_temp.pc          = 0;
+  ftoDC2_temp.instruction = 0;
+  ftoDC2_temp.nextPCFetch = 0;
+  ftoDC2_temp.we          = 0;
   struct DCtoEx dctoEx_temp;
   dctoEx_temp.isBranch  = 0;
   dctoEx_temp.useRs1    = 0;
@@ -641,12 +656,12 @@ void doCycle(struct Core& core, // Core containing all values
 
   // declare temporary register file
   ac_int<32, false> nextInst;
-
-  if (!localStall && !core.stallDm)
-    core.im->process(core.ftoDC.pc, WORD, LOAD, 0, nextInst, core.stallIm, core.pc);
+  core.im->process(core.ftoDC.pc, WORD, (!localStall && !core.stallDm) ? LOAD : NONE, 0, nextInst, core.stallIm,
+                   core.pc);
 
   ac_int<32, false> localPC = core.pc;
-  fetch(core.ftoDC.pc, ftoDC_temp, nextInst);
+  prefetch(core.pc, ftoDC_temp, 0);
+  fetch(core.ftoDC, ftoDC2_temp, nextInst);
   decode(core.ftoDC2, dctoEx_temp, core.regFile);
   execute(core.dctoEx, extoMem_temp);
   memory(core.extoMem, memtoWB_temp);
@@ -659,41 +674,46 @@ void doCycle(struct Core& core, // Core containing all values
                 memtoWB_temp.rd, memtoWB_temp.useRd, wbOut_temp.rd, wbOut_temp.useRd, core.stallSignals,
                 forwardRegisters);
 
-  if (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.stallIm) {
-
-    memMask mask;
-    // TODO: carry the data size to memToWb
-    switch (core.extoMem.funct3) {
-      case 0:
-        mask = BYTE;
-        break;
-      case 1:
-        mask = HALF;
-        break;
-      case 2:
-        mask = WORD;
-        break;
-      case 4:
-        mask = BYTE_U;
-        break;
-      case 5:
-        mask = HALF_U;
-        break;
-      // Should NEVER happen
-      default:
-        mask = WORD;
-        break;
-    }
-    core.dm->process(memtoWB_temp.address, mask, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE),
-                     memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm, extoMem_temp.result);
+  memMask mask;
+  // TODO: carry the data size to memToWb
+  switch (core.extoMem.funct3) {
+    case 0:
+      mask = BYTE;
+      break;
+    case 1:
+      mask = HALF;
+      break;
+    case 2:
+      mask = WORD;
+      break;
+    case 4:
+      mask = BYTE_U;
+      break;
+    case 5:
+      mask = HALF_U;
+      break;
+    // Should NEVER happen
+    default:
+      mask = WORD;
+      break;
   }
+
+  memOpType opType =
+      (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.stallIm && memtoWB_temp.isLoad)
+          ? LOAD
+          : (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.stallIm && memtoWB_temp.isStore
+                 ? STORE
+                 : NONE);
+  core.dm->process(memtoWB_temp.address, mask, opType, memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm,
+                   extoMem_temp.result);
+
   // commit the changes to the pipeline register
   if (!core.stallSignals[STALL_FETCH2] && !localStall && !core.stallIm && !core.stallDm) {
-    core.ftoDC2 = ftoDC_temp;
+    core.ftoDC2 = ftoDC2_temp;
   }
 
   if (!core.stallSignals[STALL_FETCH1] && !localStall && !core.stallIm && !core.stallDm) {
-    core.ftoDC.pc = localPC;
+    core.ftoDC = ftoDC_temp;
   }
 
   if (!core.stallSignals[STALL_DECODE] && !localStall && !core.stallIm && !core.stallDm) {
@@ -729,7 +749,6 @@ void doCycle(struct Core& core, // Core containing all values
     core.dctoEx.instruction = 0;
     core.dctoEx.pc          = 0;
   }
-
   if (!core.stallSignals[STALL_EXECUTE] && !localStall && !core.stallIm && !core.stallDm) {
     core.extoMem = extoMem_temp;
   }
@@ -844,7 +863,7 @@ void doCore(bool globalStall, ac_int<1, false>* crashFlag, ac_int<32, false> imD
   CacheMemory<4, 16, 64> dmCache = CacheMemory<4, 16, 64>(&dmInterface, false);
 
   core.im         = &imCache;
-  core.dm         = &dmCache;
+  core.dm         = &dmInterface;
   core.pc         = 0x00010000;
   core.regFile[2] = 0x27ffc;
 

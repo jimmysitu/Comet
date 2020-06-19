@@ -11,8 +11,11 @@ void stb(MemoryInterface<4>& interface, ac_int<32, false> addr, ac_int<8, true> 
 {
   ac_int<32, false> wordRes = 0;
   bool stall                = true;
+
+  interface.process(addr, BYTE, STORE, value, wordRes, stall, addr);
+
   while (stall)
-    interface.process(addr, BYTE, STORE, value, wordRes, stall);
+    interface.process(addr, BYTE, STORE, value, wordRes, stall, addr);
 }
 
 int main(int argc, char** argv)

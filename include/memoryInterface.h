@@ -15,7 +15,7 @@ protected:
 
 public:
   virtual void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
-                       ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut) = 0;
+                       ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut, ac_int<32, false> nextAddr) = 0;
 };
 
 template <unsigned int INTERFACE_SIZE> class IncompleteMemory : public MemoryInterface<INTERFACE_SIZE> {
@@ -27,7 +27,7 @@ public:
 public:
   IncompleteMemory(ac_int<32, false>* arg) { data = arg; }
   void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
-               ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut)
+               ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut, ac_int<32, false> nextAddr)
   {
 
     // Incomplete memory only works for 32 bits
@@ -108,7 +108,7 @@ public:
 
   SimpleMemory(ac_int<32, false>* arg) { data = arg; }
   void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
-               ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut)
+               ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut, ac_int<32, false> nextAddr)
   {
     // no latency, wait is always set to false
 
@@ -140,9 +140,10 @@ public:
               data[(addr >> 2) + oneWord] = dataIn.template slc<32>(32 * oneWord);
             break;
         }
+        // if (addr > 0x12bf8)
+        //   printf("Writing %x at %x\n", dataIn, addr);
         break;
       case LOAD:
-
         switch (mask) {
           case BYTE:
             t8  = data[addr >> 2].slc<8>(((int)addr.slc<2>(0)) << 3);
@@ -170,6 +171,8 @@ public:
             dataOut = data[addr >> 2].slc<16>(addr[1] ? 16 : 0) & 0xffff;
             break;
         }
+        // if (addr > 0x12bf8)
+        //   printf("Reading %x at %x\n", dataOut, addr);
         break;
     }
     waitOut = false;

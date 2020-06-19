@@ -39,13 +39,14 @@ struct Core {
   MemtoWB memtoWB;
 
   // Interface size are configured with 4 bytes interface size (32 bits)
-  CacheMemory<4, 16, 64>*dm, *im;
+  MemoryInterface<4>* dm;
+  MemoryInterface<4>* im;
 
   ac_int<32, true> regFile[32];
   ac_int<32, false> pc;
 
   // stall
-  bool stallSignals[6] = {0, 0, 0, 0, 0};
+  bool stallSignals[6] = {0, 0, 0, 0, 0, 0};
   bool stallIm, stallDm;
   unsigned long cycle;
   /// Multicycle operation

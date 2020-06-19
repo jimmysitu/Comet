@@ -27,8 +27,8 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   // core.im = new SimpleMemory<4>(im);
   // core.dm = new SimpleMemory<4>(dm);
 
-  core.im = new CacheMemory<4, 16, 64>(new IncompleteMemory<4>(im), false);
-  core.dm = new CacheMemory<4, 16, 64>(new IncompleteMemory<4>(dm), false);
+  core.im = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(im), false);
+  core.dm = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(dm), false);
 
   for (int i = 0; i < 32; i++) {
     core.regFile[i] = 0;
@@ -78,7 +78,6 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
       free(sectionContent);
     }
   }
-
   //****************************************************************************
   // Looking for start symbol
   for (int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++) {
@@ -138,8 +137,10 @@ void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
 {
   ac_int<32, false> wordRes = 0;
   bool stall                = true;
+  core.dm->process(0, BYTE, NONE, value, wordRes, stall, addr);
+  stall = true;
   while (stall)
-    core.dm->process(addr, BYTE, STORE, value, wordRes, stall);
+    core.dm->process(addr, BYTE, STORE, value, wordRes, stall, 0);
 }
 
 void BasicSimulator::sth(ac_int<32, false> addr, ac_int<16, true> value)
@@ -174,8 +175,11 @@ ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
   result                    = dm[addr >> 2].slc<8>(((int)addr.slc<2>(0)) << 3);
   ac_int<32, false> wordRes = 0;
   bool stall                = true;
+
+  core.dm->process(0, BYTE_U, NONE, 0, wordRes, stall, addr);
+  stall = true;
   while (stall)
-    core.dm->process(addr, BYTE_U, LOAD, 0, wordRes, stall);
+    core.dm->process(addr, BYTE_U, LOAD, 0, wordRes, stall, 0);
 
   result = wordRes.slc<8>(0);
   return result;
