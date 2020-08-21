@@ -26,4 +26,13 @@ add_executable(testbench
 							./src/elfFile.cpp
 							./src/testbench.cpp)
 
+add_executable(generateDataBin
+							./src/generateDataBin.cpp
+							./src/elfFile.cpp)
+
+add_executable(generateInstrBin
+							./src/generateInstrBin.cpp
+							./src/elfFile.cpp)
+
+
 #target_link_libraries( comet.sim	LINK_PUBLIC ${Boost_LIBRARIES} )

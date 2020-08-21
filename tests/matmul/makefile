@@ -7,6 +7,7 @@ EXEC=matmul
 DRIVERSDIR=$(PWD)/../drivers
 
 all: $(EXEC).riscv$(XLEN) $(EXEC).riscv$(XLEN)_hw
+bin: $(EXEC)_data.bin $(EXEC)_instr.bin
 
 $(EXEC).riscv$(XLEN): $(EXEC).c
 	$(CCRV) $(EXEC).c $(CFLAGS) -o $(EXEC).riscv$(XLEN)
@@ -17,5 +18,12 @@ $(EXEC).riscv$(XLEN): $(EXEC).c
 $(EXEC).riscv$(XLEN)_hw: $(EXEC).c $(DRIVERSDIR)/hwSyscalls.c
 	$(CCRV) $(EXEC).c $(DRIVERSDIR)/hwSyscalls.c $(CFLAGS) -o $(EXEC).riscv$(XLEN)_hw -Os -T $(DRIVERSDIR)/linkerScript.ld
 
+$(EXEC)_data.bin: $(EXEC).riscv$(XLEN)_hw
+	../../build/bin/generateDataBin $(EXEC).riscv$(XLEN)_hw > $(EXEC)_data.bin
+
+$(EXEC)_instr.bin: $(EXEC).riscv$(XLEN)_hw
+	../../build/bin/generateInstrBin $(EXEC).riscv$(XLEN)_hw > $(EXEC)_instr.bin
+
+
 clean:
-	rm -f *.riscv* expectedOutput
+	rm -f *.riscv* expectedOutput *.bin
