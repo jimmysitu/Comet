@@ -8,7 +8,7 @@ for TEST in $SUBFOLDERS
 do
   echo "started test : " $TEST
   cd $TEST
-  timeout $TIMEOUT $COMETSIM -f *.riscv* -o testOutput
+  timeout $TIMEOUT $COMETSIM -f *.riscv32 -o testOutput
   STATUS=$?
   if [ $STATUS -ne 0 ]
   then
