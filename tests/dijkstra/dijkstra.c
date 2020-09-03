@@ -117,17 +117,17 @@ void pluslongdespluscourts(Graphe* graphe)
   }
   
   int val = sommets[k + 1].nom;
-  putchar(val&&0xff);
+  putchar(val&0xff);
   val = sommets[0].nom;
-  putchar(val&&0xff);
+  putchar(val&0xff);
   val = sommets[0].poids;
-  putchar(val&&0xff);
+  putchar(val&0xff);
   val = k + 1;
-  putchar(val&&0xff);
+  putchar(val&0xff);
   
   for (; k >= 0; --k) {
     val = sommets[k + 1].poids;
-    putchar(val&&0xff);
+    putchar(val&0xff);
   }
 
   free(sommets);
