@@ -11,7 +11,7 @@
 #include "core.h"
 
 #if 1
-#define dbgsys(format, ...)     fprintf(stderr, "Syscall (%lld) : " format, core->csrs.minstret.to_int64(), ## __VA_ARGS__)
+#define dbgsys(format, ...)     //fprintf(stderr, "Syscall (%lld) : " format, core->csrs.minstret.to_int64(), ## __VA_ARGS__)
 #else
 #define dbgsys(...)
 #endif
@@ -71,7 +71,7 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
         const char* name = (const char*) &(sectionContent[symbol->name]);
         if(strcmp(name, "_start") == 0)
         {
-            fprintf(stderr, "%s     @%06x\n", name, symbol->offset);
+            //fprintf(stderr, "%s     @%06x\n", name, symbol->offset);
             setPC(symbol->offset);
         }
 
@@ -93,7 +93,7 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
     setDataMemory(STACK_INIT + 1, (benchargc >> 8) & 0xFF);
     setDataMemory(STACK_INIT + 2, (benchargc >> 16) & 0xFF);
     setDataMemory(STACK_INIT + 3, (benchargc >> 24) & 0xFF);
-    //fprintf(stderr, "Writing %08x @%06x\n", benchargc, STACK_INIT);
+    ////fprintf(stderr, "Writing %08x @%06x\n", benchargc, STACK_INIT);
 
     ac_int<32, true> currentPlaceStrings = STACK_INIT + 4 + 4*benchargc;
     for (int oneArg = 0; oneArg < benchargc; oneArg++)
@@ -102,7 +102,7 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
         setDataMemory(STACK_INIT+ 4*oneArg + 5, currentPlaceStrings.slc<8>(8));
         setDataMemory(STACK_INIT+ 4*oneArg + 6, currentPlaceStrings.slc<8>(16));
         setDataMemory(STACK_INIT+ 4*oneArg + 7, currentPlaceStrings.slc<8>(24));
-        //fprintf(stderr, "Writing %08x @%06x\n", (int)currentPlaceStrings, STACK_INIT+ 4*oneArg + 4);
+        ////fprintf(stderr, "Writing %08x @%06x\n", (int)currentPlaceStrings, STACK_INIT+ 4*oneArg + 4);
 
         int oneCharIndex = 0;
         char oneChar = benchargv[oneArg][oneCharIndex];
@@ -110,13 +110,13 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
         {
             setDataMemory(currentPlaceStrings + oneCharIndex, oneChar);
 
-            //fprintf(stderr, "Writing %c (%d) @%06x\n", oneChar, (int)oneChar, currentPlaceStrings.to_int() + oneCharIndex);
+            ////fprintf(stderr, "Writing %c (%d) @%06x\n", oneChar, (int)oneChar, currentPlaceStrings.to_int() + oneCharIndex);
 
             oneCharIndex++;
             oneChar = benchargv[oneArg][oneCharIndex];
         }
         setDataMemory(currentPlaceStrings + oneCharIndex, oneChar);
-        //fprintf(stderr, "Writing %c (%d) @%06x\n", oneChar, (int)oneChar, currentPlaceStrings.to_int() + oneCharIndex);
+        ////fprintf(stderr, "Writing %c (%d) @%06x\n", oneChar, (int)oneChar, currentPlaceStrings.to_int() + oneCharIndex);
         oneCharIndex++;
         currentPlaceStrings += oneCharIndex;
     }
@@ -255,7 +255,7 @@ void Simulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
             formatwrite(addr, 0, mem, value);
             ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j] = mem;
             dctrl[i].set_slc(Associativity*(32-tagshift+1) + j, (ac_int<1, false>)true);      // mark as dirty because we wrote it
-            //fprintf(stderr, "data @%06x (%06x) is in cache\n", addr.to_int(), dctrl->tag[i][j].to_int());
+            ////fprintf(stderr, "data @%06x (%06x) is in cache\n", addr.to_int(), dctrl->tag[i][j].to_int());
         }
     }
 #endif
@@ -263,7 +263,7 @@ void Simulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
     ac_int<32, false> mem = dm[addr >> 2];
     formatwrite(addr, 0, mem, value);
     dm[addr >> 2] = mem;
-    //fprintf(stderr,"Write @%06x   %02x\n", addr.to_int(), value.to_int()&0xFF);
+    ////fprintf(stderr,"Write @%06x   %02x\n", addr.to_int(), value.to_int()&0xFF);
 
 }
 
@@ -304,7 +304,7 @@ ac_int<8, true> Simulator::ldb(ac_int<32, false> addr)
         {
             ac_int<32, false> mem = ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
             formatread(addr, 0, 0, mem);
-            //fprintf(stderr, "data @%06x (%06x) is in cache\n", addr.to_int(), dctrl->tag[i][j].to_int());
+            ////fprintf(stderr, "data @%06x (%06x) is in cache\n", addr.to_int(), dctrl->tag[i][j].to_int());
             return mem;
         }
     }
@@ -314,7 +314,7 @@ ac_int<8, true> Simulator::ldb(ac_int<32, false> addr)
     ac_int<32, false> read = dm[addr >> 2];
     formatread(addr, 0, 0, read);
     result = read;
-    //fprintf(stderr, "Read @%06x    %02x   %08x\n", addr.to_int(), result.to_int(), dm[addr >> 2]);
+    ////fprintf(stderr, "Read @%06x    %02x   %08x\n", addr.to_int(), result.to_int(), dm[addr >> 2]);
     return result;
 
 }
@@ -401,119 +401,119 @@ ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, 
         result = this->doUnlink(arg1);
         break;
     case SYS_exit_group:
-        fprintf(stderr, "Syscall : SYS_exit_group\n");
+        ////fprintf(stderr, "Syscall : SYS_exit_group\n");
         sys_status = 1;
         break;
     case SYS_getpid:
-        fprintf(stderr, "Syscall : SYS_getpid\n");
+        //fprintf(stderr, "Syscall : SYS_getpid\n");
         sys_status = 1;
         break;
     case SYS_kill:
-        fprintf(stderr, "Syscall : SYS_kill\n");
+        //fprintf(stderr, "Syscall : SYS_kill\n");
         sys_status = 1;
         break;
     case SYS_link:
-        fprintf(stderr, "Syscall : SYS_link\n");
+        //fprintf(stderr, "Syscall : SYS_link\n");
         sys_status = 1;
         break;
     case SYS_mkdir:
-        fprintf(stderr, "Syscall : SYS_mkdir\n");
+        //fprintf(stderr, "Syscall : SYS_mkdir\n");
         sys_status = 1;
         break;
     case SYS_chdir:
-        fprintf(stderr, "Syscall : SYS_chdir\n");
+        //fprintf(stderr, "Syscall : SYS_chdir\n");
         sys_status = 1;
         break;
     case SYS_getcwd:
-        fprintf(stderr, "Syscall : SYS_getcwd\n");
+        //fprintf(stderr, "Syscall : SYS_getcwd\n");
         sys_status = 1;
         break;
     case SYS_lstat:
-        fprintf(stderr, "Syscall : SYS_lstat\n");
+        //fprintf(stderr, "Syscall : SYS_lstat\n");
         sys_status = 1;
         break;
     case SYS_fstatat:
-        fprintf(stderr, "Syscall : SYS_fstatat\n");
+        //fprintf(stderr, "Syscall : SYS_fstatat\n");
         sys_status = 1;
         break;
     case SYS_access:
-        fprintf(stderr, "Syscall : SYS_access\n");
+        //fprintf(stderr, "Syscall : SYS_access\n");
         sys_status = 1;
         break;
     case SYS_faccessat:
-        fprintf(stderr, "Syscall : SYS_faccessat\n");
+        //fprintf(stderr, "Syscall : SYS_faccessat\n");
         sys_status = 1;
         break;
     case SYS_pread:
-        fprintf(stderr, "Syscall : SYS_pread\n");
+        //fprintf(stderr, "Syscall : SYS_pread\n");
         sys_status = 1;
         break;
     case SYS_pwrite:
-        fprintf(stderr, "Syscall : SYS_pwrite\n");
+        //fprintf(stderr, "Syscall : SYS_pwrite\n");
         sys_status = 1;
         break;
     case SYS_uname:
-        fprintf(stderr, "Syscall : SYS_uname\n");
+        //fprintf(stderr, "Syscall : SYS_uname\n");
         sys_status = 1;
         break;
     case SYS_getuid:
-        fprintf(stderr, "Syscall : SYS_getuid\n");
+        //fprintf(stderr, "Syscall : SYS_getuid\n");
         sys_status = 1;
         break;
     case SYS_geteuid:
-        fprintf(stderr, "Syscall : SYS_geteuid\n");
+        //fprintf(stderr, "Syscall : SYS_geteuid\n");
         sys_status = 1;
         break;
     case SYS_getgid:
-        fprintf(stderr, "Syscall : SYS_getgid\n");
+        //fprintf(stderr, "Syscall : SYS_getgid\n");
         sys_status = 1;
         break;
     case SYS_getegid:
-        fprintf(stderr, "Syscall : SYS_getegid\n");
+        //fprintf(stderr, "Syscall : SYS_getegid\n");
         sys_status = 1;
         break;
     case SYS_mmap:
-        fprintf(stderr, "Syscall : SYS_mmap\n");
+        //fprintf(stderr, "Syscall : SYS_mmap\n");
         sys_status = 1;
         break;
     case SYS_munmap:
-        fprintf(stderr, "Syscall : SYS_munmap\n");
+        //fprintf(stderr, "Syscall : SYS_munmap\n");
         sys_status = 1;
         break;
     case SYS_mremap:
-        fprintf(stderr, "Syscall : SYS_mremap\n");
+        //fprintf(stderr, "Syscall : SYS_mremap\n");
         sys_status = 1;
         break;
     case SYS_time:
-        fprintf(stderr, "Syscall : SYS_time\n");
+        //fprintf(stderr, "Syscall : SYS_time\n");
         sys_status = 1;
         break;
     case SYS_getmainvars:
-        fprintf(stderr, "Syscall : SYS_getmainvars\n");
+        //fprintf(stderr, "Syscall : SYS_getmainvars\n");
         sys_status = 1;
         break;
     case SYS_rt_sigaction:
-        fprintf(stderr, "Syscall : SYS_rt_sigaction\n");
+        //fprintf(stderr, "Syscall : SYS_rt_sigaction\n");
         sys_status = 1;
         break;
     case SYS_writev:
-        fprintf(stderr, "Syscall : SYS_writev\n");
+        //fprintf(stderr, "Syscall : SYS_writev\n");
         sys_status = 1;
         break;
     case SYS_times:
-        fprintf(stderr, "Syscall : SYS_times\n");
+        //fprintf(stderr, "Syscall : SYS_times\n");
         sys_status = 1;
         break;
     case SYS_fcntl:
-        fprintf(stderr, "Syscall : SYS_fcntl\n");
+        //fprintf(stderr, "Syscall : SYS_fcntl\n");
         sys_status = 1;
         break;
     case SYS_getdents:
-        fprintf(stderr, "Syscall : SYS_getdents\n");
+        //fprintf(stderr, "Syscall : SYS_getdents\n");
         sys_status = 1;
         break;
     case SYS_dup:
-        fprintf(stderr, "Syscall : SYS_dup\n");
+        //fprintf(stderr, "Syscall : SYS_dup\n");
         sys_status = 1;
         break;
 
@@ -529,9 +529,9 @@ ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, 
 
 
     default:
-        fprintf(stderr, "Syscall : Unknown system call, %d (%x) with arguments :\n", syscallId.to_int(), syscallId.to_int());
-        fprintf(stderr, "%d (%x)\n%d (%x)\n%d (%x)\n%d (%x)\n", arg1.to_int(), arg1.to_int(), arg2.to_int(), arg2.to_int(),
-                arg3.to_int(), arg3.to_int(), arg4.to_int(), arg4.to_int());
+        //fprintf(stderr, "Syscall : Unknown system call, %d (%x) with arguments :\n", syscallId.to_int(), syscallId.to_int());
+        //fprintf(stderr, "%d (%x)\n%d (%x)\n%d (%x)\n%d (%x)\n", arg1.to_int(), arg1.to_int(), arg2.to_int(), arg2.to_int(),
+                //arg3.to_int(), arg3.to_int(), arg4.to_int(), arg4.to_int());
         sys_status = 1;
         break;
     }
@@ -553,9 +553,9 @@ ac_int<32, true> Simulator::doRead(ac_int<32, false> file, ac_int<32, false> buf
     for (int i(0); i < result; i++)
     {
         this->stb(bufferAddr + i, localBuffer[i]);
-        //fprintf(stderr, "%02x ", localBuffer[i]&0xFF);
+        ////fprintf(stderr, "%02x ", localBuffer[i]&0xFF);
     }
-    //fprintf(stderr, "\n\n");
+    ////fprintf(stderr, "\n\n");
 
     delete[] localBuffer;
     return result;
@@ -636,22 +636,22 @@ ac_int<32, true> Simulator::doFstat(ac_int<32, false> file, ac_int<32, false> st
     stw(stataddr+96 , filestat.__pad0         );  // long
     stw(stataddr+100, filestat.__pad0         );  // long
 
-    /*fprintf(stderr, "st_dev         : %lld\n", filestat.st_dev         );  // unsigned long long
-    fprintf(stderr, "st_ino         : %lld\n", filestat.st_ino         );  // unsigned long long
-    fprintf(stderr, "st_mode        : %o\n", filestat.st_mode        );  // unsigned int
-    fprintf(stderr, "st_nlink       : %d\n", filestat.st_nlink       );  // unsigned int
-    fprintf(stderr, "st_uid         : %d\n", filestat.st_uid         );  // unsigned int
-    fprintf(stderr, "st_gid         : %d\n", filestat.st_gid         );  // unsigned int
-    fprintf(stderr, "st_rdev        : %lld\n", filestat.st_rdev        );  // unsigned long long
-    fprintf(stderr, "st_size        : %lld\n", filestat.st_size        );  // long long
-    fprintf(stderr, "st_blksize     : %d\n", filestat.st_blksize     );  // int
-    fprintf(stderr, "st_blocks      : %lld\n", filestat.st_blocks      );  // long long
-    fprintf(stderr, "st_atim.sec    : %d\n", filestat.st_atim.tv_sec );  // long
-    fprintf(stderr, "st_atim.nsec   : %d\n", filestat.st_atim.tv_nsec);  // long
-    fprintf(stderr, "st_mtim.sec    : %d\n", filestat.st_mtim.tv_sec );  // long
-    fprintf(stderr, "st_mtim.nsec   : %d\n", filestat.st_mtim.tv_nsec);  // long
-    fprintf(stderr, "st_ctim.sec    : %d\n", filestat.st_ctim.tv_sec );  // long
-    fprintf(stderr, "st_ctim.nsec   : %d\n", filestat.st_ctim.tv_nsec);  // long*/
+    /*//fprintf(stderr, "st_dev         : %lld\n", filestat.st_dev         );  // unsigned long long
+    //fprintf(stderr, "st_ino         : %lld\n", filestat.st_ino         );  // unsigned long long
+    //fprintf(stderr, "st_mode        : %o\n", filestat.st_mode        );  // unsigned int
+    //fprintf(stderr, "st_nlink       : %d\n", filestat.st_nlink       );  // unsigned int
+    //fprintf(stderr, "st_uid         : %d\n", filestat.st_uid         );  // unsigned int
+    //fprintf(stderr, "st_gid         : %d\n", filestat.st_gid         );  // unsigned int
+    //fprintf(stderr, "st_rdev        : %lld\n", filestat.st_rdev        );  // unsigned long long
+    //fprintf(stderr, "st_size        : %lld\n", filestat.st_size        );  // long long
+    //fprintf(stderr, "st_blksize     : %d\n", filestat.st_blksize     );  // int
+    //fprintf(stderr, "st_blocks      : %lld\n", filestat.st_blocks      );  // long long
+    //fprintf(stderr, "st_atim.sec    : %d\n", filestat.st_atim.tv_sec );  // long
+    //fprintf(stderr, "st_atim.nsec   : %d\n", filestat.st_atim.tv_nsec);  // long
+    //fprintf(stderr, "st_mtim.sec    : %d\n", filestat.st_mtim.tv_sec );  // long
+    //fprintf(stderr, "st_mtim.nsec   : %d\n", filestat.st_mtim.tv_nsec);  // long
+    //fprintf(stderr, "st_ctim.sec    : %d\n", filestat.st_ctim.tv_sec );  // long
+    //fprintf(stderr, "st_ctim.nsec   : %d\n", filestat.st_ctim.tv_nsec);  // long*/
 
     return result;
 }
@@ -737,7 +737,7 @@ ac_int<32, true> Simulator::doOpen(ac_int<32, false> path, ac_int<32, false> fla
 
 ac_int<32, true> Simulator::doOpenat(ac_int<32, false> dir, ac_int<32, false> path, ac_int<32, false> flags, ac_int<32, false> mode)
 {
-    fprintf(stderr, "Syscall : SYS_openat not implemented yet...\n");
+    //fprintf(stderr, "Syscall : SYS_openat not implemented yet...\n");
     exit(-1);
 }
 

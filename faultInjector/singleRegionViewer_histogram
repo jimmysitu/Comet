@@ -36,31 +36,33 @@ def main():
     patterns = pickle.load(open(args.inputFile, 'rb'))
 
     pdb.set_trace()
-    
+    plist = [][]
+    for p in patterns:
+        plist.extend
+
     #build histgrams per region
-    for region in patterns.keys():
-        hist_bits = buildHistogram_bits(patterns[region])
-        hist_size = buildHistogram_size(patterns[region])
-        #bit probas
-        plt.figure()
-        '''
-        plt.subplot(2, 1, 1)
-        '''
-        plt.bar(range(len(hist_bits)), hist_bits)
-        plt.title(region + ' per bit error probability, 1e6 injections')
-        plt.xlabel('bit position')
-        plt.ylabel('error probability')
-        plt.grid(color='k', linestyle=':', linewidth=0.5)
-        '''
-        #erronous bits number
-        plt.subplot(2, 1, 2)
-        plt.bar(range(len(hist_size)), hist_size)
-        plt.title(region + ' erroneous bits per pattern')
-        plt.xlabel('bit count')
-        plt.ylabel('number of patterns')
-        plt.yscale('log')
-        plt.grid(color='k', linestyle=':', linewidth=0.5)
-        '''
+    hist_bits = buildHistogram_bits(patterns)
+    hist_size = buildHistogram_size(patterns)
+    #bit probas
+    plt.figure()
+    '''
+    plt.subplot(2, 1, 1)
+    '''
+    plt.bar(range(len(hist_bits)), hist_bits)
+    plt.title(region + ' per bit error probability, 1e6 injections')
+    plt.xlabel('bit position')
+    plt.ylabel('error probability')
+    plt.grid(color='k', linestyle=':', linewidth=0.5)
+    '''
+    #erronous bits number
+    plt.subplot(2, 1, 2)
+    plt.bar(range(len(hist_size)), hist_size)
+    plt.title(region + ' erroneous bits per pattern')
+    plt.xlabel('bit count')
+    plt.ylabel('number of patterns')
+    plt.yscale('log')
+    plt.grid(color='k', linestyle=':', linewidth=0.5)
+    '''
     plt.show()
 
 

@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+
+import pickle, argparse, pdb
+import matplotlib.pyplot as plt
+import numpy as np
+
+numBins = 200
+
+def createHistogram_cycleDifferences(runs, refCycles):
+    numRuns = len(runs)
+    #create a list containing only the cycle differences
+    cycleDifferences = []
+    for run in runs:
+        if (run[2] != 'not applicable') and (run[2] != 0):
+            if (run[2] < 0) and (run[2] < -refCycles):
+                print("Outlier found : " + str(run[2]))
+            else:
+                cycleDifferences.append(run[2])
+    print('{0:.2f}% injections triggered exec. cycle faults'.format((len(cycleDifferences)/numRuns)*100))
+    minDiff = min(cycleDifferences)
+    maxDiff = max(cycleDifferences)
+    meanDiff = sum(cycleDifferences)/len(cycleDifferences)
+    print('Min diff: ' + str(minDiff) + ' ({0:.2f}%)'.format((minDiff/refCycles)*100))
+    print('Mean diff: {0} ({1:.2f}%)'.format(meanDiff, ((meanDiff/refCycles)*100)))
+    print('Max diff: ' + str(maxDiff) + ' ({0:.2f}%)'.format((maxDiff/refCycles)*100))
+
+    # per error class:
+    errorClasses = ['AOM', 'ISM', 'ISM & AOM', 'Masked']
+    for errorClass in errorClasses:
+        cycleDifferences_error = []
+        for run in runs:
+            if (run[2] != 'not applicable') and (run[2] != 0) and (run[1] == errorClass):
+                if (run[2] < 0) and (run[2] < -refCycles):
+                    print("Outlier found : " + str(run[2]))
+                else:
+                    cycleDifferences_error.append(run[2])
+        if cycleDifferences_error == []:
+            cycleDifferences_error.append(0)
+
+        minDiff = min(cycleDifferences_error)
+        maxDiff = max(cycleDifferences_error)
+        meanDiff = sum(cycleDifferences_error)/len(cycleDifferences_error)
+        print('\t' + errorClass +' min diff: ' + str(minDiff) + ' ({0:.2f}%)'.format(((minDiff/refCycles)*100)))
+        print('\t' + errorClass + ' mean diff: {0:.2f} ({1:.2f}%)'.format(meanDiff, ((meanDiff/refCycles)*100)))
+        print('\t' + errorClass + ' max diff: ' + str(maxDiff) + ' ({0:.2f}%)'.format(((maxDiff/refCycles)*100)))
+        print('--------------------------------')
+
+    #bar heights
+    weights = np.ones_like(cycleDifferences)/float(len(cycleDifferences))*100
+
+    #absolute exec. cycles errors
+    plt.figure()
+    plt.title('absolute')
+    plt.hist(cycleDifferences, bins=numBins, weights=weights)
+    plt.xlabel('num cycles')
+    plt.xlabel('num samples')
+
+    #relative exec. cycles errors
+    cycleDifferencesRelative = []
+    for c in cycleDifferences:
+        cycleDifferencesRelative.append((c/refCycles)*100)
+    plt.figure()
+    plt.title('relative')
+    plt.hist(cycleDifferencesRelative, bins=numBins, weights=weights)
+    plt.xlabel('num cycles')
+    plt.xlabel('num samples')
+    plt.show()
+
+################################################################################
+
+def main():
+    #parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("inputFile", type=str, help="path to the patterns base")
+    parser.add_argument("nominalCycles", type=int, help="the amount of execution cycles needed to execute the golden sample")
+    args = parser.parse_args()
+
+    #load the patterns data
+    runs = pickle.load(open(args.inputFile, 'rb'))
+
+
+    ############################################################################
+    #   Cycles difference
+    ############################################################################
+    createHistogram_cycleDifferences(runs, args.nominalCycles)
+
+if __name__ == "__main__":
+    main()

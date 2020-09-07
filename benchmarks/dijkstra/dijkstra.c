@@ -142,7 +142,7 @@ void pluslongdespluscourts(Graphe* graphe)
     Sommet* sommets = malloc(graphe->nSommets*sizeof(Sommet));
     for(i = 0; i < graphe->nSommets; ++i)
     {
-        printf("%d\n", i+1);
+        //printf("%d\n", i+1);
         for(j = 0; j < graphe->nSommets; ++j)
         {
             if(i == j)
@@ -174,13 +174,13 @@ void pluslongdespluscourts(Graphe* graphe)
             }
         }
     }
-    printf("Plus long chemin entre 2 sommets de %s a %s : %d en %d sauts\n",
-           sommets[k+1].nom, sommets[0].nom, sommets[0].poids, k+1);
-    for(; k >= 0; --k)
-    {
-        printf("De %s a %s : %d\n", sommets[k+1].nom, sommets[k].nom,
-                                    sommets[k].poids-sommets[k+1].poids);
-    }
+    //printf("Plus long chemin entre 2 sommets de %s a %s : %d en %d sauts\n",
+          // sommets[k+1].nom, sommets[0].nom, sommets[0].poids, k+1);
+    //for(; k >= 0; --k)
+    //{
+        //printf("De %s a %s : %d\n", sommets[k+1].nom, sommets[k].nom,
+      //                              sommets[k].poids-sommets[k+1].poids);
+    //}
 
     free(sommets);
 }

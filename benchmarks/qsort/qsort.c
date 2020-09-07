@@ -43,7 +43,7 @@ int main()
 #ifndef __HLS__
 #define STR1(X) #X
 #define STR(X)  STR1(X)
-    for(i = 0; i < SIZE; ++i)
+/*    for(i = 0; i < SIZE; ++i)
     {
         if(strcmp(STR(TYPE), "float") == 0)
             printf("%f\n", A[i]);
@@ -51,6 +51,6 @@ int main()
             printf("%lld\n", A[i]);
         else
             printf("%d\n", A[i]);                    
-    }
+    } */
 #endif
 }

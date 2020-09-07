@@ -7,9 +7,9 @@ import numpy as np
 
 import FIRegInfo as ri  #register informations and useful functions
 
-nBitPerInj = 3
+#nBitPerInj = 5
 
-PartialResult = collections.namedtuple('PartialResult', ['endType', 'cycle', 'runNumber'])
+PartialResult = collections.namedtuple('PartialResult', ['endType', 'cycle', 'runNumber', 'execCyclesDiff'])
 
 ################################################################################
 #               Injection support
@@ -49,6 +49,7 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosit
     #pick a cycle
     injectionCycle = random.randint(0, referenceCycles)
 
+    #pdb.set_trace()
     #select a zone to inject in
     place = ri.selectRegion()
 
@@ -70,14 +71,56 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosit
         #bitPositions = ri.getrandomBitsinRegister(place, random.randint(1,31))
         bitPositions = ri.getrandomBitsinRegister(place, 1)
 
-    #only inject 1 bit if a pipeline stage comb logic is hit
-    else:
-        bitPositions = ri.getrandomBitsinRegister(place, nBitPerInj)
+    else:  #selected region is a pipeline stage's combinational logic
+        bitPositions = ri.patternToBitPositions(ri.getPattern(place, patterns))   #select a pattern to inject
 
-    ''' USE THIS IF YOU WANT TO INJECT ERROR PATTERNS
+    '''
+    place, bit = ri.getUniformRandomBit()
+    bitPositions = [bit]
+    '''
+    '''
+    #select a zone to inject in
+    place = ri.selectRegion()
+
+    if place=='sequential': #choose a random FF and flip it
+        #choose a register
+        place = ri.selectRegister() #only place where the PC can be hit
+        #select a random FF inside
+        bitPositions = ri.getrandomBitsinRegister(place, 1)
+
+    elif place == 'comb_other': #inject in one of the core ctrl FFs
+        place = 'CoreCtrl'
+        bitPositions = ri.getrandomBitsinRegister(place, 1)
+
+    elif place == 'WriteBack':   #inject in the register file
+        #see faultInjection.md for further details on the fault model
+        #select a random register (can be the one selected in the WB stage)
+        place = ri.selectRFRegister()
+        #fill it with a random number of errors
+        #bitPositions = ri.getrandomBitsinRegister(place, random.randint(1,31))
+        bitPositions = ri.getrandomBitsinRegister(place, 1)
+
     else:  #selected region is a pipeline stage's combinational logic
         bitPositions = ri.patternToBitPositions(ri.getPattern(place, patterns))   #select a pattern to inject
     '''
+
+    '''
+    else:
+        bitPositions = ri.getrandomBitsinRegister(place, 1)
+
+
+    else:  #selected region is a pipeline stage's combinational logic
+        bitPositions = ri.patternToBitPositions(ri.getPattern(place, patterns))   #select a pattern to inject
+
+    else:
+        nBitPerInj = len(ri.getPattern(place, patterns))   #select a pattern to inject, get it's number of erronous bits
+        bitPositions = ri.getrandomBitsinRegister(place, nBitPerInj)
+
+    #only inject 1 bit if a pipeline stage comb logic is hit
+    else:
+        bitPositions = ri.getrandomBitsinRegister(place, nBitPerInj)
+    '''
+
 
     if verbosity > 0:
         print("Injection cycle : " + str(injectionCycle) + ", place : " + place + ", bitPositions : " + ' ' + '"' + ' '.join(map(str, bitPositions)) + '"')
@@ -87,6 +130,14 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosit
     runStdOut = executeSimulation(benchmarkPath, ['-o', '/tmp/injectionRunStdout_'+str(runNumber), '-D', '/tmp/injectionRunMemory_'+str(runNumber), '-I', str(maxAllowedCycles), str(injectionCycle), str(placeId), ' '.join(map(str, bitPositions))])
     #capture the end type
     endType = re.findall('EndType : (.*)', runStdOut)
+    #capture the number of executed cycles
+    execCycles = re.findall('Successfully executed .* in (.*) cycles', runStdOut)
+
+    # print(execCycles)
+    if (endType[0] == 'Hang') or (endType[0] == 'Crash'):
+        cyclesDiff = 'not applicable'
+    else:
+        cyclesDiff = int(execCycles[0]) - referenceCycles
 
     #declare the result dict
     resDict = {place : dict(dict())}
@@ -119,7 +170,7 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosit
         print("endType : " + endType[0])
 
     for bit in bitPositions:
-        nt = PartialResult(endType[0], injectionCycle, runNumber)
+        nt = PartialResult(endType[0], injectionCycle, runNumber, cyclesDiff)
         resDict[place][bit] = nt
 
     if verbosity > 1:
@@ -143,6 +194,7 @@ def initResults(dic):
             dic[key].append({}) #create a dict for each bit in the selected place
             dic[key][bit]["cycles"] =  []
             dic[key][bit]["runNumber"] = []
+            dic[key][bit]["execCyclesDiff"] = []
             dic[key][bit]["nbInj"] = 0  #init the selected bit's stats
             dic[key][bit]["Masked"] = 0
             dic[key][bit]["ISM"] = 0
@@ -219,9 +271,11 @@ def saveResults(path, results_bitwise, results_runwise):
             pickle.dump(results_runwise, of)
 
 def getNumberOfNeededRuns(workloadCycles, numberOfInjectionPoints):
-    N = workloadCycles*numberOfInjectionPoints
-    div = 1+( ((0.01**2)*(N-1)) / (0.25*(3.0902**2)) )
-    return math.ceil(N/div)
+    #N = workloadCycles*numberOfInjectionPoints
+    #div = 1+( ((0.01**2)*(N-1)) / (0.25*(3.0902**2)) )
+    #return math.ceil(N/div)
+    # Considering infinite population
+    return math.ceil((0.25*(3.0902**2))/(0.01**2))
 
 
 
@@ -265,7 +319,6 @@ def main():
     patterns = pickle.load(open(patternsPath, 'rb'))
     #normalize the pattern histograms
     ri.unifyPatternProbas(patterns)
-
     pool = Pool()
 
     if verbosity > 1:
@@ -286,10 +339,11 @@ def main():
             results_bitwise[place][bit]['nbInj'] += 1
             results_bitwise[place][bit]['cycles'].append(res[place][bit].cycle)
             results_bitwise[place][bit]['runNumber'].append(res[place][bit].runNumber)
+            results_bitwise[place][bit]['execCyclesDiff'].append(res[place][bit].execCyclesDiff)
             results_bitwise[place][bit][res[place][bit].endType] += 1
             if firstBit:
                 #log per run
-                results_runwise.append([place, res[place][bit].endType])
+                results_runwise.append([place, res[place][bit].endType, res[place][bit].execCyclesDiff])
                 firstBit = False
 
     showFinalStats_runwise(results_runwise)

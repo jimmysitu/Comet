@@ -2,8 +2,9 @@
 
 import pickle, argparse, pdb
 import matplotlib.pyplot as plt
+import numpy as np
 
-
+fs = 20
 
 '''
 
@@ -48,10 +49,16 @@ def createHistogram_zones(runs):
     zoneCounters = {}
 
     for run in runs:
-        if run[0] not in zoneCounters:
-            zoneCounters[run[0]] = 1
-        else :
-            zoneCounters[run[0]] += 1
+        if 'RF' in run[0]:
+            if 'RF' not in zoneCounters:
+                zoneCounters['RF'] = 1
+            else:
+                zoneCounters['RF'] += 1
+        else:
+            if run[0] not in zoneCounters:
+                zoneCounters[run[0]] = 1
+            else :
+                zoneCounters[run[0]] += 1
 
     names = []
     counters = []
@@ -67,8 +74,21 @@ def createHistogram_AVF(runs):
     zoneCounters = {}
 
     for run in runs:
+
+        if ('RF' in run[0]) and ('RF' not in zoneCounters):  #name of the zone, group RF
+            zoneCounters['RF'] = [0, 0]
+
         if (run[0] not in zoneCounters) and ('RF' not in run[0]) and (run[0] != 'CoreCtrl'):  #name of the zone
             zoneCounters[run[0]] = [0, 0]
+
+
+        if 'RF'in run[0]:
+            zoneCounters['RF'][0] += 1    #Add new inj to total
+            #pdb.set_trace()
+            if run[1] in ['AOM', 'Crash', 'Hang', 'ISM & AOM']:
+                zoneCounters['RF'][1] += 1    #Add new ACE fault
+
+
         if ('RF' not in run[0]) and (run[0] != 'CoreCtrl'):
             zoneCounters[run[0]][0] += 1    #Add new inj to total
             #pdb.set_trace()
@@ -79,8 +99,138 @@ def createHistogram_AVF(runs):
     for k in zoneCounters:
         names.append(k)
         avfs.append(zoneCounters[k][1]/numRuns)
-
+        #avfs.append(zoneCounters[k][1])
+    print('Total faults ACE : ' + str(sum(avfs*numRuns)))
     return names, avfs
+
+
+def createHistogram_NuAVF(runs):
+    numRuns = len(runs)
+    zoneCounters = {}
+
+    for run in runs:
+        if (run[0] not in zoneCounters) and ('RF' not in run[0]) and (run[0] != 'CoreCtrl'):  #name of the zone
+            zoneCounters[run[0]] = [0, 0]
+
+        if ('RF' not in run[0]) and (run[0] != 'CoreCtrl'):
+            zoneCounters[run[0]][0] += 1    #Add new inj to total
+            #pdb.set_trace()
+            if run[1] in ['AOM', 'Crash', 'Hang', 'ISM & AOM']:
+                zoneCounters[run[0]][1] += 1    #Add new ACE fault
+    names = []
+    avfs = []
+    for k in zoneCounters:
+        names.append(k)
+        avfs.append(zoneCounters[k][1]/numRuns)
+        #avfs.append(zoneCounters[k][1])
+    print('Total faults ACE : ' + str(sum(avfs*numRuns)))
+    return names, avfs
+
+
+def createHistogram_participation(runs):
+    numRuns = len(runs)
+    zoneCounters = {}
+
+    CCounter = 0
+    HCounter = 0
+    ACounter = 0
+    AllCounter = 0
+
+    # a zoneCounters entry is a injectable register, it contains two counters in a list, the first ojne contains the number of times injected, the other one the number of ccritical errors triggered
+    #runs[0] is an injectable register
+
+    for run in runs:
+        if ('RF' in run[0]) and ('RF' not in zoneCounters):  #name of the zone, group RF
+            zoneCounters['RF'] = [0, 0]
+
+        if (run[0] not in zoneCounters) and ('RF' not in run[0]) and (run[0] != 'CoreCtrl'):  #name of the zone
+            zoneCounters[run[0]] = [0, 0]
+
+
+        if 'RF'in run[0]:
+            zoneCounters['RF'][0] += 1    #Add new inj to total
+            #pdb.set_trace()
+            if run[1] in ['AOM', 'Crash', 'Hang', 'ISM & AOM']:
+                zoneCounters['RF'][1] += 1    #Add new ACE fault
+
+
+        if ('RF' not in run[0]) and (run[0] != 'CoreCtrl'):
+            zoneCounters[run[0]][0] += 1    #Add new inj to total
+            #pdb.set_trace()
+            if run[1] in ['AOM', 'Crash', 'Hang', 'ISM & AOM']:
+                zoneCounters[run[0]][1] += 1    #Add new ACE fault
+
+        if 'extomem' in run[0].lower():
+            AllCounter += 1
+            if 'Crash' in run[1]:
+                CCounter += 1
+            if 'Hang' in run[1]:
+                HCounter += 1
+            if 'AOM' in run[1]:
+                ACounter += 1
+            #if run[1] != 'Masked':
+                #pdb.set_trace()
+# pdb.set_trace()()
+    totalCritErrors=0
+    for k in zoneCounters:
+        totalCritErrors += zoneCounters[k][1]
+    names = []
+    critPart = []
+    for k in zoneCounters:
+        names.append(k)
+        critPart.append((zoneCounters[k][1]/totalCritErrors)*100)
+        #avfs.append(zoneCounters[k][1])
+    return names, critPart
+
+def createHistogram_RFparticipation(runs):
+    numRuns = len(runs)
+    zoneCounters = {}
+    # a zoneCounters entry is a injectable register, it contains two counters in a list, the forst ojne contains the number of times injected, the other one the number of ccritical errors triggered
+    #runs[0] is an injectable register
+    for run in runs:
+        if ('RF' in run[0]) and (run[0] not in zoneCounters) and (run[0] != 'CoreCtrl'):  #name of the zone
+            zoneCounters[run[0]] = [0, 0]
+
+        if ('RF' in run[0]) and (run[0] != 'CoreCtrl'):
+            zoneCounters[run[0]][0] += 1    #Add new inj to total
+            #pdb.set_trace()
+            if run[1] in ['AOM', 'Crash', 'Hang', 'ISM & AOM']:
+                zoneCounters[run[0]][1] += 1    #Add new ACE fault
+
+    totalCritErrors=0
+    for k in zoneCounters:
+        totalCritErrors += zoneCounters[k][1]
+    names = []
+    critPart = []
+    for k in zoneCounters:
+        names.append(k)
+        critPart.append((zoneCounters[k][1]/totalCritErrors)*100)
+    # pdb.set_trace()
+
+    names, critPart = zip(*sorted(zip(names, critPart), key=lambda t:int(t[0][2:]))) #please see Simon and Davide for this shit
+    print(names)
+    return names, critPart
+
+
+def createHistogram_cycleDifferences(runs):
+    numRuns = len(runs)
+    #create a list containing only the cycle differences
+    cycleDifferences = []
+    for run in runs:
+        if (run[2] != 'not applicable') and (run[2] != 0):
+            cycleDifferences.append(run[2])
+# pdb.set_trace()()
+    minDiff = min(cycleDifferences)
+    maxDiff = max(cycleDifferences)
+    meanDiff = sum(cycleDifferences)/len(cycleDifferences)
+    print('Min diff: ', str(minDiff))
+    print('Max diff: ', str(maxDiff))
+    print('Mean diff: ', str(meanDiff))
+    plt.figure()
+    plt.hist(cycleDifferences, bins=100)
+    plt.title('Cycle diffs')
+    plt.xlabel('num cycles')
+    plt.show()
 
 ################################################################################
 
@@ -92,16 +242,38 @@ def main():
 
     #load the patterns data
     runs = pickle.load(open(args.inputFile, 'rb'))
+# pdb.set_trace()()
 
     numRuns = len(runs)
+    print('Num runs : ' + str(numRuns))
+
+
+    ############################################################################
+    #   Cycles difference
+    ############################################################################
+    createHistogram_cycleDifferences(runs)
+# pdb.set_trace()()
 
     names, hist = createHistogram_ends(runs)
     plt.figure()
-    plt.bar(names, hist)
-    plt.title('Error occurences, matmul_int_8, ' + str(numRuns) + ' injections, area aware')
-    plt.xlabel('Error class')
-    plt.ylabel('Error occurence probability')
+    names = np.array(names)
+    hist = np.array(hist)
+    inds = names.argsort()
+    # pdb.set_trace()
+    plt.bar(names[inds], hist[inds])
+    # pdb.set_trace()
+    #plt.bar(names, hist)
+    plt.title('Error occurences, ' + str(numRuns) + ' injections',  fontsize=fs)
+    plt.xlabel('Error class',  fontsize=fs)
+    plt.ylabel('Error occurence probability',  fontsize=fs)
+    plt.ylim(0, 1)
     plt.grid(color='k', linestyle=':', linewidth=0.5)
+    plt.xticks(fontsize=fs-4)
+    plt.yticks(fontsize=fs-4)
+
+    # print population proportions
+    for ftype in range(len(names)):
+        print('{0}: {1:.2f}%'.format(names[ftype], hist[ftype]*100))
 
     names, hist = createHistogram_zones(runs)
     plt.figure()
@@ -110,12 +282,56 @@ def main():
 
     names, hist = createHistogram_AVF(runs)
     plt.figure()
+    #plt.bar(names, hist)
+    names = np.array(names)
+    hist = np.array(hist)
+    inds = names.argsort()
+    # pdb.set_trace()
+    plt.bar(names[inds], hist[inds])
+    plt.title('Pipeline registers AVF, matmul_int_8, ' + str(numRuns) + ' injections',  fontsize=fs)
+    plt.xlabel('Register name',  fontsize=fs)
+    plt.ylabel('AVF',  fontsize=fs)
+    plt.xticks(fontsize=fs-4)
+    plt.yticks(fontsize=fs-4)
+    #plt.ylim(0, 1)
+    plt.grid(color='k', linestyle=':', linewidth=0.5)
+
+    #participation of each pipeline stage in critical errors
+    names, hist = createHistogram_participation(runs)
+    plt.figure()
+    #plt.bar(names, hist)
+    names = np.array(names)
+    hist = np.array(hist)
+    inds = names.argsort()
+    # pdb.set_trace()
+    plt.bar(names[inds], hist[inds])
+    plt.title('Registers participation in critical faults apparition',  fontsize=fs+10)
+    plt.xlabel('Register name',  fontsize=fs+5)
+    plt.ylabel('Participation (%)',  fontsize=fs+5)
+    plt.xticks(fontsize=fs-4)
+    plt.yticks(fontsize=fs-4)
+    #plt.ylim(0, 1)
+    plt.grid(color='k', linestyle=':', linewidth=0.5)
+
+
+    #participation of each pipeline stage in critical errors
+    names, hist = createHistogram_RFparticipation(runs)
+    plt.figure()
+    #plt.bar(names, hist)
+    names = np.array(names)
+    hist = np.array(hist)
+    # pdb.set_trace()
     plt.bar(names, hist)
-    plt.title('Pipeline registers AVF, matmul_int_8, ' + str(numRuns) + ' injections, area aware')
-    plt.xlabel('Register name')
-    plt.ylabel('AVF')
+    plt.title('Register file participation in critical faults apparition',  fontsize=fs+10)
+    plt.xlabel('Register name',  fontsize=fs+5)
+    plt.ylabel('Participation (%)',  fontsize=fs+5)
+    plt.xticks(fontsize=fs-4, rotation='vertical')
+    plt.yticks(fontsize=fs-4)
+    #plt.ylim(0, 1)
     plt.grid(color='k', linestyle=':', linewidth=0.5)
     plt.show()
+# pdb.set_trace()()
+
 
 if __name__ == "__main__":
     main()

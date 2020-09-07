@@ -55,10 +55,12 @@ registerInfo = {
 
 coreAreas_names = ['sequential', 'comb_pipeline', 'comb_other']    #comb_other -> coreCtrl, cache control
 #coreAreas_probas = [0.338581382365307417, 0.49667440581689906891, 0.16474421181779351409]
-coreAreas_probas = [0.302387984, 0.647612016, 0.05]
+coreAreas_probas = [0.458482514622009, 0.496674405816899, 0.044843079561092]
 
 pipelineAreas_names = ['FToDC', 'DCToEX', 'EXToMEM', 'MEMToWB', 'WriteBack']
-pipelineAreas_probas = [0.065232138, 0.145714051, 0.690445829, 0.049792418, 0.048815564]
+pipelineAreas_probas = [0.035113474644918, 0.064444610787967, 0.207362746102595, 0.029803011039869, 0.247958952877368]
+#pipelineAreas_probas = [0.065232138, 0.145714051, 0.690445829, 0.049792418, 0.048815564]
+
 
 
 def getRegisterList():
@@ -162,11 +164,27 @@ def getPattern(registerName, errorBase):
 def selectRegion():
     region = np.random.choice(coreAreas_names, p=coreAreas_probas)
     if region == 'comb_pipeline':
-        region = np.random.choice(pipelineAreas_names, p=pipelineAreas_probas)
+        #normalize the probas so their sum equates to 1
+        sumProb = 0
+        for p in pipelineAreas_probas:
+            sumProb += p
+        pipelineAreas_probas_temp = np.true_divide(pipelineAreas_probas, sumProb)
+        region = np.random.choice(pipelineAreas_names, p=pipelineAreas_probas_temp)
     return region
 
 def selectRegister():
     return random.choice(list(registerInfo))
+
+def getUniformRandomBit():
+    bit = random.randrange(0, getTotalWidth()-1)
+    #find out which bit it is
+    total = 0
+    for reg in registerInfo:
+        if bit < registerInfo[reg]['width']: #bit is in register
+            return (reg, bit)
+        else:
+            total += registerInfo[reg]['width']
+            bit -= registerInfo[reg]['width']
 
 def selectRFRegister():
     return 'RF' + str(random.randint(0,31))

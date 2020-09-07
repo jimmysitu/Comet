@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+
+import pickle, pdb
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib
+
+matplotlib.rcParams.update({'font.size': 22})
+
+
+with open('mergedPatterns.pkl', 'rb') as f:
+	mergedPatterns = pickle.load(f)
+
+stages = [*mergedPatterns]
+
+for stage in stages:
+	patterns = [*mergedPatterns[stage]][0]
+	counts = [*mergedPatterns[stage]][1]
+	registerWidth = len(patterns[0])
+	histSize = np.zeros(registerWidth)
+	histPositions = np.zeros(registerWidth)
+	numPatterns = 0
+	for pattern in patterns:
+		numAppearances = counts[patterns.index(pattern)]
+		# error sizes
+		numBits = pattern.count('1')
+		if 'X' in pattern:
+			numBits += pattern.count('X')
+		histSize[numBits] += numAppearances
+		# error positions
+		bitPositions = [pos for pos, char in enumerate(pattern) if char == '1']
+		bitPositions.extend([pos for pos, char in enumerate(pattern) if char == 'X'])
+		for b in bitPositions:
+			histPositions[b] += numAppearances
+		numPatterns += numAppearances
+	# normalize the histogram
+	for p in range(registerWidth):
+		histSize[p] /= numPatterns
+		histSize[p] *= 100
+
+		histPositions[p] /= numPatterns
+		histPositions[p] *= 100
+	# plot the hist
+	# pdb.set_trace()
+	plt.figure()
+	plt.title(stage)
+	plt.ylabel('Overall patterns proportion (%)')
+	plt.xlabel('Error size in bits')
+	plt.bar(range(registerWidth), height=histSize)
+	plt.figure()
+	plt.title(stage)
+	plt.ylabel('Overall patterns proportion (%)')
+	plt.xlabel('Erroroneous bits positions')
+	plt.bar(range(registerWidth), height=histPositions)
+plt.show()
