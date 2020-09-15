@@ -44,7 +44,7 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   // Populate memory using ELF file
   ElfFile elfFile(binaryFile);
 
-  for(auto const &section : *elfFile.sectionTable){
+  for(auto const &section : elfFile.sectionTable){
     if(section->address != 0 && section->getName() != ".text"){
       unsigned char* sectionContent = section->getSectionCode();
       for (unsigned byteNumber = 0; byteNumber < section->size; byteNumber++)
@@ -69,8 +69,8 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
 
   //****************************************************************************
   // Looking for start symbol
-  unsigned char* sectionContent = elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode();
-  for (auto const &symbol : *elfFile.symbols){
+  unsigned char* sectionContent = elfFile.sectionTable.at(elfFile.indexOfSymbolNameSection)->getSectionCode();
+  for (auto const &symbol : elfFile.symbols){
     const char* name = (const char*)&(sectionContent[symbol->name]);
     if (strcmp(name, "_start") == 0) 
         core.pc = symbol->offset;

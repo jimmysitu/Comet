@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <vector>
+#include <memory>
 
 #include "elfFile.h"
 
@@ -114,9 +115,8 @@ ElfFile::ElfFile(const char* pathToElfFile)
              tableSize, res);
 
     // We then copy the section table into it
-    this->sectionTable = new std::vector<ElfSection*>();
     for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++)
-      this->sectionTable->push_back(new ElfSection(this, sectionNumber, localSectionTable[sectionNumber]));
+      this->sectionTable.push_back(std::unique_ptr<ElfSection>(new ElfSection(this, sectionNumber, localSectionTable[sectionNumber])));
 
     free(localSectionTable);
   } else {
@@ -129,18 +129,16 @@ ElfFile::ElfFile(const char* pathToElfFile)
              tableSize, res);
 
     // We then copy the section table into it
-    this->sectionTable = new std::vector<ElfSection*>();
     for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++)
-      this->sectionTable->push_back(new ElfSection(this, sectionNumber, localSectionTable[sectionNumber]));
+      this->sectionTable.push_back(std::unique_ptr<ElfSection>(new ElfSection(this, sectionNumber, localSectionTable[sectionNumber])));
 
     free(localSectionTable);
   }
 
   if (DEBUG)
-    for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++) {
-      ElfSection* sect = this->sectionTable->at(sectionNumber);
+    for(auto const &sect : this->sectionTable)
       printf("Section is at %x, of size %x\n", sect->offset, sect->size);
-    }
+    
 
   //*************************************************************************************
   // Location of the String table containing every name
@@ -151,50 +149,46 @@ ElfFile::ElfFile(const char* pathToElfFile)
   else
     nameTableIndex = FIX_SHORT(fileHeader64.e_shstrndx);
 
-  ElfSection* nameTableSection = this->sectionTable->at(nameTableIndex);
+  auto &nameTableSection = this->sectionTable.at(nameTableIndex);
 
   unsigned char* localNameTable = nameTableSection->getSectionCode();
-  this->nameTable               = new std::vector<string>(this->sectionTable->size());
 
-  for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++) {
-    ElfSection* section = this->sectionTable->at(sectionNumber);
-
+  for(auto &section : this->sectionTable){
     unsigned int nameIndex = section->nameIndex;
     std::string name("");
     while (localNameTable[nameIndex] != '\0') {
       name += localNameTable[nameIndex];
       nameIndex++;
     }
-    section->nameIndex = this->nameTable->size();
-    this->nameTable->push_back(name);
+    section->nameIndex = this->nameTable.size();
+    this->nameTable.push_back(name);
   }
   free(localNameTable);
 
   //*************************************************************************************
   // Reading the symbol table
 
-  this->symbols = new vector<ElfSymbol*>();
   for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++) {
-    ElfSection* section = this->sectionTable->at(sectionNumber);
+    auto &section = this->sectionTable.at(sectionNumber);
     if (section->type == SHT_SYMTAB) {
 
       if (this->is32Bits) {
         Elf32_Sym* symbols = (Elf32_Sym*)section->getSectionCode();
         for (unsigned int oneSymbolIndex = 0; oneSymbolIndex < section->size / sizeof(Elf32_Sym); oneSymbolIndex++)
-          this->symbols->push_back(new ElfSymbol(symbols[oneSymbolIndex]));
+          this->symbols.push_back(std::unique_ptr<ElfSymbol>(new ElfSymbol(symbols[oneSymbolIndex])));
         free(symbols);
       } else {
         Elf64_Sym* symbols = (Elf64_Sym*)section->getSectionCode();
         for (unsigned int oneSymbolIndex = 0; oneSymbolIndex < section->size / sizeof(Elf64_Sym); oneSymbolIndex++)
-          this->symbols->push_back(new ElfSymbol(symbols[oneSymbolIndex]));
+          this->symbols.push_back(std::unique_ptr<ElfSymbol>(new ElfSymbol(symbols[oneSymbolIndex])));
         free(symbols);
       }
     }
   }
 
   for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++) {
-    ElfSection* section = this->sectionTable->at(sectionNumber);
-    if (section->getName().compare(std::string(".strtab")) == 0) {
+    const auto &section = this->sectionTable.at(sectionNumber);
+    if (section->getName() == ".strtab") {
       this->indexOfSymbolNameSection = sectionNumber;
       break;
     }
@@ -204,13 +198,6 @@ ElfFile::ElfFile(const char* pathToElfFile)
 ElfFile::~ElfFile()
 {
   fclose(elfFile);
-  delete this->nameTable;
-  for (int i(0); i < this->symbols->size(); ++i)
-    delete this->symbols->at(i);
-  delete this->symbols;
-  for (int i(0); i < this->sectionTable->size(); ++i)
-    delete this->sectionTable->at(i);
-  delete this->sectionTable;
 }
 
 ElfFile* ElfFile::copy(char* newDest)
@@ -272,7 +259,7 @@ ElfSection::ElfSection(ElfFile* elfFile, int id, Elf64_Shdr header)
 
 string ElfSection::getName()
 {
-  return this->containingElfFile->nameTable->at(this->nameIndex);
+  return this->containingElfFile->nameTable.at(this->nameIndex);
 }
 
 bool ElfSection::isRelSection()

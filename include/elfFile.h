@@ -4,6 +4,7 @@
 #ifndef __ELFFILE
 #define __ELFFILE
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -20,9 +21,9 @@ public:
 
   int is32Bits;
 
-  std::vector<ElfSection*>* sectionTable;
-  std::vector<std::string>* nameTable;
-  std::vector<ElfSymbol*>* symbols;
+  std::vector<std::unique_ptr<ElfSection>> sectionTable;
+  std::vector<std::string> nameTable;
+  std::vector<std::unique_ptr<ElfSymbol>> symbols;
 
   int indexOfSymbolNameSection;
 
