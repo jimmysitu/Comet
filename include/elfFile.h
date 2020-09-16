@@ -11,7 +11,6 @@
 #include "elf.h"
 
 class ElfSection;
-class ElfRelocation;
 class ElfSymbol;
 
 class ElfFile {
@@ -29,10 +28,8 @@ public:
 
   ElfFile(const char* pathToElfFile);
   ~ElfFile();
-  ElfFile* copy(char* newDest);
 
   FILE* elfFile;
-  const char* pathToElfFile;
 };
 
 class ElfSection {
@@ -56,9 +53,6 @@ public:
 
   // Functions to access content
   unsigned char* getSectionCode();
-  std::vector<ElfRelocation*>* getRelocations();
-  void writeSectionCode(unsigned char* newContent);
-  void writeSectionCode(FILE* file, unsigned char* newContent);
 
   // Class constructor
   ElfSection(ElfFile* elfFile, int id, Elf32_Shdr header);
@@ -77,20 +71,6 @@ public:
   // Class constructors
   ElfSymbol(Elf32_Sym);
   ElfSymbol(Elf64_Sym);
-};
-
-class ElfRelocation {
-public:
-  unsigned int offset;
-  unsigned int symbol;
-  unsigned int type;
-  unsigned int info;
-
-  // Class constructors
-  ElfRelocation(Elf32_Rel);
-  ElfRelocation(Elf32_Rela);
-  ElfRelocation(Elf64_Rel);
-  ElfRelocation(Elf64_Rela);
 };
 
 #endif

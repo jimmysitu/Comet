@@ -29,7 +29,6 @@ char needToFixEndianness = 0;
 ElfFile::ElfFile(const char* pathToElfFile)
 {
 
-  this->pathToElfFile = pathToElfFile;
   this->elfFile       = fopen(pathToElfFile, "r+");
   if (this->elfFile == NULL) {
     printf("Failing to open %s\n exiting...\n", pathToElfFile);
@@ -199,34 +198,6 @@ ElfFile::~ElfFile()
   fclose(elfFile);
 }
 
-ElfFile* ElfFile::copy(char* newDest)
-{
-
-  int input, output;
-  if ((input = open(this->pathToElfFile, O_RDONLY)) == -1) {
-    printf("Error while opening %s", this->pathToElfFile);
-    exit(-1);
-  }
-  if ((output = open(newDest, O_WRONLY | O_TRUNC | O_CREAT, S_IWRITE | S_IREAD)) == -1) {
-    close(input);
-    printf("Error while opening %s", newDest);
-    exit(-1);
-  }
-
-  // sendfile will work with non-socket output (i.e. regular file) on
-  // Linux 2.6.33+
-  // This is dead code, will NOT compile on OSX
-  // off_t bytesCopied    = 0;
-  // struct stat fileinfo = {0};
-  // fstat(input, &fileinfo);
-  // sendfile(output, input, &bytesCopied, fileinfo.st_size);
-
-  close(input);
-  close(output);
-
-  return new ElfFile(newDest);
-}
-
 /*************************************************************************************************************
  *****************************************  Code for class ElfSection
  ****************************************
@@ -279,47 +250,6 @@ unsigned char* ElfSection::getSectionCode()
   return sectionContent;
 }
 
-std::vector<ElfRelocation*>* ElfSection::getRelocations()
-{
-  vector<ElfRelocation*>* result = new vector<ElfRelocation*>();
-
-  // On non REL or RELA section, we return an empty vector
-  if (!(this->isRelSection() || this->isRelaSection())) {
-    return result;
-  }
-
-  if (this->isRelSection()) {
-    Elf32_Rel* sectionContent = (Elf32_Rel*)malloc(this->size);
-    fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
-    fread(sectionContent, sizeof(Elf32_Rel), this->size / sizeof(Elf32_Rel), this->containingElfFile->elfFile);
-    for (unsigned int relCounter = 0; relCounter < this->size / sizeof(Elf32_Rel); relCounter++)
-      result->push_back(new ElfRelocation(sectionContent[relCounter]));
-
-    free(sectionContent);
-  } else {
-    Elf32_Rela* sectionContent = (Elf32_Rela*)malloc(this->size);
-    fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
-    fread(sectionContent, sizeof(Elf32_Rela), this->size / sizeof(Elf32_Rela), this->containingElfFile->elfFile);
-    for (unsigned int relCounter = 0; relCounter < this->size / sizeof(Elf32_Rela); relCounter++)
-      result->push_back(new ElfRelocation(sectionContent[relCounter]));
-
-    free(sectionContent);
-  }
-
-  return result;
-}
-
-void ElfSection::writeSectionCode(unsigned char* newContent)
-{
-  fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
-  fwrite(newContent, 1, this->size, this->containingElfFile->elfFile);
-}
-
-void ElfSection::writeSectionCode(FILE* file, unsigned char* newContent)
-{
-  fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
-  fwrite(newContent, 1, this->size, this->containingElfFile->elfFile);
-}
 
 /*************************************************************************************************************
  ****************************************  Code for class ElfSymbol
@@ -342,49 +272,4 @@ ElfSymbol::ElfSymbol(Elf64_Sym sym)
   this->section = FIX_SHORT(sym.st_shndx);
   this->size    = FIX_INT(sym.st_size);
   this->name    = FIX_INT(sym.st_name);
-}
-
-/*************************************************************************************************************
- ****************************************  Code for class ElfRelocation
- **************************************
- *************************************************************************************************************/
-
-ElfRelocation::ElfRelocation(Elf32_Rel header)
-{
-  this->offset = FIX_INT(header.r_offset);
-
-  unsigned int tempInfo = FIX_INT(header.r_info);
-  this->symbol          = ELF32_R_SYM(tempInfo);
-  this->type            = ELF32_R_TYPE(tempInfo);
-  this->info            = 0;
-}
-
-ElfRelocation::ElfRelocation(Elf64_Rel header)
-{
-  this->offset = FIX_INT(header.r_offset);
-
-  unsigned long int tempInfo = FIX_INT(header.r_info);
-  this->symbol               = ELF64_R_SYM(tempInfo);
-  this->type                 = ELF64_R_TYPE(tempInfo);
-  this->info                 = 0;
-}
-
-ElfRelocation::ElfRelocation(Elf32_Rela header)
-{
-  this->offset = FIX_INT(header.r_offset);
-
-  unsigned int tempInfo = FIX_INT(header.r_info);
-  this->symbol          = ELF32_R_SYM(tempInfo);
-  this->type            = ELF32_R_TYPE(tempInfo);
-  this->info            = 0;
-}
-
-ElfRelocation::ElfRelocation(Elf64_Rela header)
-{
-  this->offset = FIX_INT(header.r_offset);
-
-  unsigned long int tempInfo = FIX_INT(header.r_info);
-  this->symbol               = ELF64_R_SYM(tempInfo);
-  this->type                 = ELF64_R_TYPE(tempInfo);
-  this->info                 = 0;
 }
