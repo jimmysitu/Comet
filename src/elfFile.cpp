@@ -19,7 +19,7 @@
 
 using namespace std;
 
-char needToFixEndianness = 0;
+bool needToFixEndianness = 0;
 
 /*************************************************************************************************************
  ******************************************  Code for class ElfFile
@@ -36,7 +36,7 @@ ElfFile::ElfFile(const char* pathToElfFile)
   }
 
   //*************************************************************************************
-  // First step is to read the 16 first bits to determine the type of the elf
+  // First step is to read the 16 first bytes to determine the type of the elf
   // file to read.
   char eident[16];
 
@@ -61,16 +61,16 @@ ElfFile::ElfFile(const char* pathToElfFile)
     fread(&this->fileHeader32, sizeof(this->fileHeader32), 1, elfFile);
 
     if (this->fileHeader32.e_ident[0] == 0x7f)
-      needToFixEndianness = 0;
+      needToFixEndianness = false;
     else
-      needToFixEndianness = 1;
+      needToFixEndianness = true;
   } else {
     fread(&this->fileHeader64, sizeof(this->fileHeader64), 1, elfFile);
 
     if (this->fileHeader64.e_ident[0] == 0x7f)
-      needToFixEndianness = 0;
+      needToFixEndianness = false;
     else
-      needToFixEndianness = 1;
+      needToFixEndianness = true;
   }
 
   if (DEBUG && this->is32Bits)
@@ -166,10 +166,8 @@ ElfFile::ElfFile(const char* pathToElfFile)
   //*************************************************************************************
   // Reading the symbol table
 
-  for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++) {
-    auto &section = this->sectionTable.at(sectionNumber);
+  for(auto &section : this->sectionTable){
     if (section->type == SHT_SYMTAB) {
-
       if (this->is32Bits) {
         Elf32_Sym* symbols = (Elf32_Sym*)section->getSectionCode();
         for (unsigned int oneSymbolIndex = 0; oneSymbolIndex < section->size / sizeof(Elf32_Sym); oneSymbolIndex++)
