@@ -105,6 +105,8 @@ ElfFile::ElfFile(const char* pathToElfFile)
   //*************************************************************************************
   // We create a simple array and read the section table
 
+  this->sectionTable.reserve(tableSize);
+
   if (this->is32Bits) {
     // TODO: find a cleaner way to read the headers
     Elf32_Shdr* localSectionTable = (Elf32_Shdr*)malloc(tableSize * entrySize);
@@ -150,10 +152,11 @@ ElfFile::ElfFile(const char* pathToElfFile)
   else
     nameTableIndex = FIX_SHORT(fileHeader64.e_shstrndx);
 
-  auto &nameTableSection = this->sectionTable.at(nameTableIndex);
+  auto const &nameTableSection = this->sectionTable.at(nameTableIndex);
 
   unsigned char* localNameTable = nameTableSection->getSectionCode();
 
+  this->nameTable.reserve(this->sectionTable.size());
   for(auto &section : this->sectionTable){
     unsigned int nameIndex = section->nameIndex;
     std::string name("");
