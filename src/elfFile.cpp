@@ -153,17 +153,12 @@ ElfFile::ElfFile(const char* pathToElfFile)
     nameTableIndex = FIX_SHORT(fileHeader64.e_shstrndx);
 
   auto const &nameTableSection = this->sectionTable.at(nameTableIndex);
-
   unsigned char* localNameTable = nameTableSection->getSectionCode();
 
   this->nameTable.reserve(this->sectionTable.size());
   for(auto &section : this->sectionTable){
     unsigned int nameIndex = section->nameIndex;
-    std::string name("");
-    while (localNameTable[nameIndex] != '\0') {
-      name += localNameTable[nameIndex];
-      nameIndex++;
-    }
+    std::string name(reinterpret_cast<const char*>(&localNameTable[nameIndex]));
     section->nameIndex = this->nameTable.size();
     this->nameTable.push_back(name);
   }
