@@ -10,6 +10,13 @@
 
 #include "elf.h"
 
+#define DEBUG 0
+#define SWAP_2(x) ((((x)&0xff) << 8) | ((unsigned short)(x) >> 8))
+#define SWAP_4(x) ((x << 24) | ((x << 8) & 0x00ff0000) | ((x >> 8) & 0x0000ff00) | (x >> 24))
+#define FIX_SHORT(x) (x) = needToFixEndianness ? SWAP_2(x) : x
+#define FIX_INT(x) (x) = needToFixEndianness ? SWAP_4(x) : x
+
+static bool needToFixEndianness;
 class ElfSection;
 class ElfSymbol;
 
