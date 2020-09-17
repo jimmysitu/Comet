@@ -37,6 +37,17 @@ public:
   ~ElfFile();
 
   FILE* elfFile;
+private:
+  template<typename ElfSymType>
+  void readSymbolTable();
+
+  template<typename ElfSectHeader>
+  void fillSectionTable(const unsigned long tableSize, const unsigned long entrySize);
+
+  void fillNameTable(unsigned long nameTableIndex);
+
+  template<typename FileHeaderT, typename ElfSecT, typename ElfSymT>
+  void readElfFile(FileHeaderT *fileHeader);
 };
 
 class ElfSection {
@@ -85,5 +96,72 @@ public:
   ElfSymbol(Elf32_Sym);
   ElfSymbol(Elf64_Sym);
 };
+
+template<typename ElfSymType>
+void ElfFile::readSymbolTable(){
+  for(auto &section : this->sectionTable){
+    if (section->type == SHT_SYMTAB) {
+      std::vector<ElfSymType> symbols = section->getSectionCode<ElfSymType>();
+      for (const auto symbol : symbols)
+        this->symbols.push_back(std::unique_ptr<ElfSymbol>(new ElfSymbol(symbol)));
+    }
+  }
+
+  for (unsigned sectionNumber = 0; sectionNumber < this->sectionTable.size(); sectionNumber++) {
+    const auto &section = this->sectionTable.at(sectionNumber);
+    if (section->getName() == ".strtab") {
+      this->indexOfSymbolNameSection = sectionNumber;
+      break;
+    }
+  }
+}
+
+
+template<typename ElfSectHeader>
+void ElfFile::fillSectionTable(const unsigned long tableSize, const unsigned long entrySize){
+  this->sectionTable.reserve(tableSize);
+
+  ElfSectHeader *localSectionTable = (ElfSectHeader*)malloc(tableSize * entrySize);
+
+  unsigned res = fread(localSectionTable, entrySize, tableSize, this->elfFile);
+  if (res != tableSize){
+    printf("Error while reading the section table ! (section size is %lu "
+           "while we only read %u entries)\n",
+           tableSize, res);
+    exit(-1);
+  }
+
+  for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++)
+    this->sectionTable.push_back(std::unique_ptr<ElfSection>(new ElfSection(this, sectionNumber, localSectionTable[sectionNumber])));
+
+  free(localSectionTable);
+}
+
+template<typename FileHeaderT, typename ElfSecT, typename ElfSymT>
+void ElfFile::readElfFile(FileHeaderT *fileHeader){
+    fread(fileHeader, sizeof(FileHeaderT), 1, elfFile);
+
+    if (DEBUG && this->is32Bits)
+      printf("Program table is at %x and contains %u entries of %u bytes\n", FIX_INT(this->fileHeader32.e_phoff),
+             FIX_SHORT(this->fileHeader32.e_phnum), FIX_SHORT(this->fileHeader32.e_phentsize));
+
+    unsigned long start          = FIX_INT(fileHeader->e_shoff);
+    unsigned long tableSize      = FIX_SHORT(fileHeader->e_shnum);
+    unsigned long entrySize      = FIX_SHORT(fileHeader->e_shentsize);
+    unsigned long nameTableIndex = FIX_SHORT(fileHeader->e_shstrndx);
+
+    if (DEBUG)
+      printf("Section table is at %lu and contains %lu entries of %lu bytes\n", start, tableSize, entrySize);
+
+    unsigned int res = fseek(elfFile, start, SEEK_SET);
+    if (res != 0){
+      printf("Error while moving to the beginning of section table\n");
+      exit(-1);
+    }
+
+    this->fillSectionTable<ElfSecT>(tableSize, entrySize);
+    this->fillNameTable(nameTableIndex);
+    this->readSymbolTable<ElfSymT>();
+}
 
 #endif
