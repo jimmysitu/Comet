@@ -59,7 +59,13 @@ public:
   bool isRelaSection();
 
   // Functions to access content
-  unsigned char* getSectionCode();
+  template<typename T>
+  std::vector<T> getSectionCode(){
+    std::vector<T> content(this->size / sizeof(T));
+    fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
+    std::fread(&content[0], sizeof(T), content.size(), this->containingElfFile->elfFile);
+    return content;
+  }
 
   // Class constructor
   ElfSection(ElfFile* elfFile, int id, Elf32_Shdr header);

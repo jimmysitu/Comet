@@ -46,7 +46,7 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
 
   for(auto const &section : elfFile.sectionTable){
     if(section->address != 0 && section->getName() != ".text"){
-      unsigned char* sectionContent = section->getSectionCode();
+      std::vector<unsigned char> sectionContent = section->getSectionCode<unsigned char>();
       for (unsigned byteNumber = 0; byteNumber < section->size; byteNumber++)
         this->stb(section->address + byteNumber, sectionContent[byteNumber]);
      
@@ -54,28 +54,25 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
       if (section->address + section->size > heapAddress)
         heapAddress = section->address + section->size;
 
-      free(sectionContent);
     }
     if (section->getName() == ".text") {
-      unsigned char* sectionContent = section->getSectionCode();
+      std::vector<unsigned char> sectionContent = section->getSectionCode<unsigned char>();
       for (unsigned int byteNumber = 0; byteNumber < section->size; byteNumber++) {
         // Write the instruction byte in Instruction Memory using Little Endian
         im[(section->address + byteNumber) / 4].set_slc(((section->address + byteNumber) % 4) * 8,
                                                            ac_int<8, false>(sectionContent[byteNumber]));
       }
-      free(sectionContent);
     }
   }
 
   //****************************************************************************
   // Looking for start symbol
-  unsigned char* sectionContent = elfFile.sectionTable.at(elfFile.indexOfSymbolNameSection)->getSectionCode();
+  std::vector<unsigned char> sectionContent = elfFile.sectionTable[elfFile.indexOfSymbolNameSection]->getSectionCode<unsigned char>();
   for (auto const &symbol : elfFile.symbols){
     const char* name = (const char*)&(sectionContent[symbol->name]);
     if (strcmp(name, "_start") == 0) 
         core.pc = symbol->offset;
   }
-  free(sectionContent);
 
   //****************************************************************************
   // Adding command line arguments on the stack

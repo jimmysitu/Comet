@@ -94,27 +94,9 @@ ElfSection::ElfSection(ElfFile* elfFile, int id, Elf64_Shdr header)
   this->info              = FIX_INT(header.sh_info);
 }
 
-string ElfSection::getName()
+std::string ElfSection::getName()
 {
   return this->containingElfFile->nameTable.at(this->nameIndex);
-}
-
-bool ElfSection::isRelSection()
-{
-  return type == SHT_REL;
-}
-
-bool ElfSection::isRelaSection()
-{
-  return type == SHT_RELA;
-}
-
-unsigned char* ElfSection::getSectionCode()
-{
-  unsigned char* sectionContent = (unsigned char*)malloc(this->size);
-  fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
-  fread(sectionContent, 1, this->size, this->containingElfFile->elfFile);
-  return sectionContent;
 }
 
 
