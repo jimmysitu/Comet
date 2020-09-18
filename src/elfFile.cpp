@@ -1,10 +1,6 @@
 #include <cstdio>
-#include <fcntl.h>
 #include <stdlib.h>
 #include <string>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <vector>
 #include <memory>
 
@@ -37,8 +33,8 @@ ElfFile::ElfFile(const char* pathToElfFile)
   }
 
   char eident[16];
-  fread(eident, sizeof(char), 16, elfFile);
-  fseek(elfFile, 0, SEEK_SET); // set file pointer to zero
+  std::fread(eident, sizeof(char), 16, elfFile);
+  std::fseek(elfFile, 0, SEEK_SET); // set file pointer to zero
   
   const char ELF_MAGIC[] = {ELFMAG0, 'E', 'L', 'F'};
   if (!std::equal(std::begin(ELF_MAGIC), std::end(ELF_MAGIC), eident)){
@@ -49,10 +45,8 @@ ElfFile::ElfFile(const char* pathToElfFile)
   //TODO: Check for endianness: if eident[EI_DATA] == 1 -> little
 
   if (eident[EI_CLASS] == ELFCLASS32){
-    this->is32Bits = 1;
     this->readElfFile<Elf32_Ehdr, Elf32_Shdr, Elf32_Sym>(&this->fileHeader32);
   } else if (eident[EI_CLASS] == ELFCLASS64){
-    this->is32Bits = 0;
     this->readElfFile<Elf64_Ehdr, Elf64_Shdr, Elf64_Sym>(&this->fileHeader64);
   }else {
     fprintf(stderr, "Error while reading ELF file header, cannot handle this "

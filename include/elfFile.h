@@ -17,8 +17,6 @@ public:
   Elf32_Ehdr fileHeader32;
   Elf64_Ehdr fileHeader64;
 
-  int is32Bits;
-
   std::vector<std::unique_ptr<ElfSection>> sectionTable;
   std::vector<std::string> nameTable;
   std::vector<std::unique_ptr<ElfSymbol>> symbols;
@@ -55,16 +53,14 @@ public:
 
   const std::string getName();
 
-  // Functions to access content
   template<typename T>
   std::vector<T> getSectionCode(){
     std::vector<T> content(this->size / sizeof(T));
-    fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
+    std::fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
     std::fread(&content[0], sizeof(T), content.size(), this->containingElfFile->elfFile);
     return content;
   }
 
-  // Class constructor
   ElfSection(ElfFile* elfFile, const Elf32_Shdr header);
   ElfSection(ElfFile* elfFile, const Elf64_Shdr header);
 };
@@ -103,16 +99,16 @@ void ElfFile::readSymbolTable(){
 
 template<typename ElfSectHeader>
 void ElfFile::fillSectionTable(const size_t start, const size_t tableSize, const size_t entrySize){
-  unsigned int res = fseek(elfFile, start, SEEK_SET);
+  unsigned int res = std::fseek(elfFile, start, SEEK_SET);
   if (res != 0){
-    printf("Error while moving to the beginning of section table\n");
+    fprintf(stderr, "Error while moving to the beginning of section table\n");
     exit(-1);
   }
 
-  std::vector<ElfSectHeader> localSectionTable(tableSize);// * entrySize);
-  res = fread(&localSectionTable[0], sizeof(ElfSectHeader), tableSize, this->elfFile);
+  std::vector<ElfSectHeader> localSectionTable(tableSize);
+  res = std::fread(&localSectionTable[0], sizeof(ElfSectHeader), tableSize, this->elfFile);
   if (res != tableSize){
-    printf("Error while reading the section table ! (section size is %lu "
+    fprintf(stderr, "Error while reading the section table ! (section size is %lu "
            "while we only read %u entries)\n", tableSize, res);
     exit(-1);
   }
@@ -125,10 +121,10 @@ void ElfFile::fillSectionTable(const size_t start, const size_t tableSize, const
 template<typename FileHeaderT, typename ElfSecT, typename ElfSymT>
 void ElfFile::readElfFile(FileHeaderT *fileHeader){
     fread(fileHeader, sizeof(FileHeaderT), 1, elfFile);
-    size_t start          = fileHeader->e_shoff;
-    size_t tableSize      = fileHeader->e_shnum;
-    size_t entrySize      = fileHeader->e_shentsize;
-    size_t nameTableIndex = fileHeader->e_shstrndx;
+    const size_t start          = fileHeader->e_shoff;
+    const size_t tableSize      = fileHeader->e_shnum;
+    const size_t entrySize      = fileHeader->e_shentsize;
+    const size_t nameTableIndex = fileHeader->e_shstrndx;
 
     if (DEBUG){
       printf("Program table is at %x and contains %u entries of %u bytes\n", 
