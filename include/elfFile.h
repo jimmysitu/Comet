@@ -8,11 +8,6 @@
 #include "elf.h"
 
 #define DEBUG 0
-static bool needToFixEndianness;
-static uint16_t SWAP_2(const uint16_t x){ return (((x&0xff) << 8) | (x >> 8)); }
-static uint32_t SWAP_4(const uint32_t x){ return ((x << 24) | ((x << 8) & 0x00ff0000) | ((x >> 8) & 0x0000ff00) | (x >> 24)); }
-static uint16_t FIX_SHORT(const uint16_t x) { return needToFixEndianness ? SWAP_2(x) : x; }
-static uint32_t FIX_INT(const uint32_t x){ return needToFixEndianness ? SWAP_4(x) : x; }
 
 class ElfSection;
 struct ElfSymbol;
@@ -130,14 +125,14 @@ void ElfFile::fillSectionTable(const size_t start, const size_t tableSize, const
 template<typename FileHeaderT, typename ElfSecT, typename ElfSymT>
 void ElfFile::readElfFile(FileHeaderT *fileHeader){
     fread(fileHeader, sizeof(FileHeaderT), 1, elfFile);
-    size_t start          = FIX_INT(fileHeader->e_shoff);
-    size_t tableSize      = FIX_SHORT(fileHeader->e_shnum);
-    size_t entrySize      = FIX_SHORT(fileHeader->e_shentsize);
-    size_t nameTableIndex = FIX_SHORT(fileHeader->e_shstrndx);
+    size_t start          = fileHeader->e_shoff;
+    size_t tableSize      = fileHeader->e_shnum;
+    size_t entrySize      = fileHeader->e_shentsize;
+    size_t nameTableIndex = fileHeader->e_shstrndx;
 
     if (DEBUG){
-      printf("Program table is at %x and contains %u entries of %u bytes\n", FIX_INT(fileHeader->e_phoff),
-             FIX_SHORT(fileHeader->e_phnum), FIX_SHORT(fileHeader->e_phentsize));
+      printf("Program table is at %x and contains %u entries of %u bytes\n", 
+              fileHeader->e_phoff, fileHeader->e_phnum, fileHeader->e_phentsize);
       printf("Section table is at %lu and contains %lu entries of %lu bytes\n", start, tableSize, entrySize);
     }
 

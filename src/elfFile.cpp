@@ -30,20 +30,23 @@ void ElfFile::fillNameTable(const unsigned long nameTableIndex){
 ElfFile::ElfFile(const char* pathToElfFile)
 {
   this->elfFile = fopen(pathToElfFile, "r+");
+
   if (this->elfFile == NULL) {
     printf("Failing to open %s\n exiting...\n", pathToElfFile);
     exit(-1);
   }
 
   char eident[16];
-
   fread(eident, sizeof(char), 16, elfFile);
   fseek(elfFile, 0, SEEK_SET); // set file pointer to zero
+  
+  const char ELF_MAGIC[] = {ELFMAG0, 'E', 'L', 'F'};
+  if (!std::equal(std::begin(ELF_MAGIC), std::end(ELF_MAGIC), eident)){
+      fprintf(stderr, "Error: Not a valid ELF file\n"); 
+      exit(-1);
+  }
 
-  if (eident[0] == 0x7f)
-    needToFixEndianness = false;
-  else
-    needToFixEndianness = true;
+  //TODO: Check for endianness: if eident[EI_DATA] == 1 -> little
 
   if (eident[EI_CLASS] == ELFCLASS32){
     this->is32Bits = 1;
@@ -71,23 +74,23 @@ ElfFile::~ElfFile()
 ElfSection::ElfSection(ElfFile* elfFile, const Elf32_Shdr header)
 {
   this->containingElfFile = elfFile;
-  this->offset            = FIX_INT(header.sh_offset);
-  this->size              = FIX_INT(header.sh_size);
-  this->nameIndex         = FIX_INT(header.sh_name);
-  this->address           = FIX_INT(header.sh_addr);
-  this->type              = FIX_INT(header.sh_type);
-  this->info              = FIX_INT(header.sh_info);
+  this->offset            = (header.sh_offset);
+  this->size              = (header.sh_size);
+  this->nameIndex         = (header.sh_name);
+  this->address           = (header.sh_addr);
+  this->type              = (header.sh_type);
+  this->info              = (header.sh_info);
 }
 
 ElfSection::ElfSection(ElfFile* elfFile, const Elf64_Shdr header)
 {
   this->containingElfFile = elfFile;
-  this->offset            = FIX_INT(header.sh_offset);
-  this->size              = FIX_INT(header.sh_size);
-  this->nameIndex         = FIX_INT(header.sh_name);
-  this->address           = FIX_INT(header.sh_addr);
-  this->type              = FIX_INT(header.sh_type);
-  this->info              = FIX_INT(header.sh_info);
+  this->offset            = (header.sh_offset);
+  this->size              = (header.sh_size);
+  this->nameIndex         = (header.sh_name);
+  this->address           = (header.sh_addr);
+  this->type              = (header.sh_type);
+  this->info              = (header.sh_info);
 }
 
 const std::string ElfSection::getName()
@@ -103,18 +106,18 @@ const std::string ElfSection::getName()
 
 ElfSymbol::ElfSymbol(const Elf32_Sym sym)
 {
-  this->offset  = FIX_INT(sym.st_value);
+  this->offset  = (sym.st_value);
   this->type    = (ELF32_ST_TYPE(sym.st_info));
-  this->section = FIX_SHORT(sym.st_shndx);
-  this->size    = FIX_INT(sym.st_size);
-  this->name    = FIX_INT(sym.st_name);
+  this->section = (sym.st_shndx);
+  this->size    = (sym.st_size);
+  this->name    = (sym.st_name);
 }
 
 ElfSymbol::ElfSymbol(const Elf64_Sym sym)
 {
-  this->offset  = FIX_INT(sym.st_value);
+  this->offset  = (sym.st_value);
   this->type    = (ELF64_ST_TYPE(sym.st_info));
-  this->section = FIX_SHORT(sym.st_shndx);
-  this->size    = FIX_INT(sym.st_size);
-  this->name    = FIX_INT(sym.st_name);
+  this->section = (sym.st_shndx);
+  this->size    = (sym.st_size);
+  this->name    = (sym.st_name);
 }
