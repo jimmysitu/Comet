@@ -15,7 +15,7 @@ static uint16_t FIX_SHORT(const uint16_t x) { return needToFixEndianness ? SWAP_
 static uint32_t FIX_INT(const uint32_t x){ return needToFixEndianness ? SWAP_4(x) : x; }
 
 class ElfSection;
-class ElfSymbol;
+struct ElfSymbol;
 
 class ElfFile {
 public:
@@ -58,12 +58,7 @@ public:
   unsigned int type;
   unsigned int info;
 
-  // General functions
-  std::string getName();
-
-  // Test for special section types
-  bool isRelSection();
-  bool isRelaSection();
+  const std::string getName();
 
   // Functions to access content
   template<typename T>
@@ -79,8 +74,7 @@ public:
   ElfSection(ElfFile* elfFile, const Elf64_Shdr header);
 };
 
-class ElfSymbol {
-public:
+struct ElfSymbol {
   unsigned int name;
   unsigned int type;
   unsigned int offset;
@@ -88,7 +82,6 @@ public:
   unsigned int section;
   unsigned int value;
 
-  // Class constructors
   ElfSymbol(const Elf32_Sym);
   ElfSymbol(const Elf64_Sym);
 };
@@ -125,8 +118,7 @@ void ElfFile::fillSectionTable(const size_t start, const size_t tableSize, const
   res = fread(&localSectionTable[0], sizeof(ElfSectHeader), tableSize, this->elfFile);
   if (res != tableSize){
     printf("Error while reading the section table ! (section size is %lu "
-           "while we only read %u entries)\n",
-           tableSize, res);
+           "while we only read %u entries)\n", tableSize, res);
     exit(-1);
   }
 

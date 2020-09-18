@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include <vector>
 #include <memory>
-#include <string>
 
 #include "elfFile.h"
 
@@ -91,7 +90,7 @@ ElfSection::ElfSection(ElfFile* elfFile, const Elf64_Shdr header)
   this->info              = FIX_INT(header.sh_info);
 }
 
-std::string ElfSection::getName()
+const std::string ElfSection::getName()
 {
   return this->containingElfFile->nameTable.at(this->nameIndex);
 }
