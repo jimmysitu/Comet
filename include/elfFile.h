@@ -18,8 +18,8 @@ public:
   Elf64_Ehdr fileHeader64;
 
   std::vector<std::unique_ptr<ElfSection>> sectionTable;
-  std::vector<std::string> nameTable;
   std::vector<std::unique_ptr<ElfSymbol>> symbols;
+  std::vector<std::string> nameTable;
 
   int indexOfSymbolNameSection;
 
@@ -120,7 +120,7 @@ void ElfFile::fillSectionTable(const size_t start, const size_t tableSize, const
 
 template<typename FileHeaderT, typename ElfSecT, typename ElfSymT>
 void ElfFile::readElfFile(FileHeaderT *fileHeader){
-    fread(fileHeader, sizeof(FileHeaderT), 1, elfFile);
+    std::fread(fileHeader, sizeof(FileHeaderT), 1, elfFile);
     const size_t start          = fileHeader->e_shoff;
     const size_t tableSize      = fileHeader->e_shnum;
     const size_t entrySize      = fileHeader->e_shentsize;

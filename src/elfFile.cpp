@@ -15,12 +15,12 @@ void ElfFile::fillNameTable(const unsigned long nameTableIndex){
   auto const &nameTableSection = this->sectionTable[nameTableIndex];
   std::vector<char> localNameTable = nameTableSection->getSectionCode<char>();
   
-   this->nameTable.reserve(this->sectionTable.size());
-   for(auto &section : this->sectionTable){
-     unsigned int nameIndex = section->nameIndex;
-     section->nameIndex = this->nameTable.size();
-     this->nameTable.push_back(std::string(&localNameTable[nameIndex]));
-   }
+  this->nameTable.reserve(this->sectionTable.size());
+  for(auto &section : this->sectionTable){
+    unsigned int nameIndex = section->nameIndex;
+    section->nameIndex = this->nameTable.size();
+    this->nameTable.push_back(std::string(&localNameTable[nameIndex]));
+  }
 }
 
 ElfFile::ElfFile(const char* pathToElfFile)
@@ -28,13 +28,13 @@ ElfFile::ElfFile(const char* pathToElfFile)
   this->elfFile = fopen(pathToElfFile, "r+");
 
   if (this->elfFile == NULL) {
-    printf("Failing to open %s\n exiting...\n", pathToElfFile);
+    fprintf(stderr, "Error cannot open file %s\n", pathToElfFile);
     exit(-1);
   }
 
   char eident[16];
   std::fread(eident, sizeof(char), 16, elfFile);
-  std::fseek(elfFile, 0, SEEK_SET); // set file pointer to zero
+  std::fseek(elfFile, 0, SEEK_SET);
   
   const char ELF_MAGIC[] = {ELFMAG0, 'E', 'L', 'F'};
   if (!std::equal(std::begin(ELF_MAGIC), std::end(ELF_MAGIC), eident)){
@@ -48,9 +48,8 @@ ElfFile::ElfFile(const char* pathToElfFile)
     this->readElfFile<Elf32_Ehdr, Elf32_Shdr, Elf32_Sym>(&this->fileHeader32);
   } else if (eident[EI_CLASS] == ELFCLASS64){
     this->readElfFile<Elf64_Ehdr, Elf64_Shdr, Elf64_Sym>(&this->fileHeader64);
-  }else {
-    fprintf(stderr, "Error while reading ELF file header, cannot handle this "
-                    "type of ELF file...\n");
+  } else {
+    fprintf(stderr, "Error while reading ELF file header: unknown EI_CLASS\n");
     exit(-1);
   }
 }
