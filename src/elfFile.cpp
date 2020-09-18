@@ -16,16 +16,15 @@
  ******************************************
  *************************************************************************************************************/
 
-void ElfFile::fillNameTable(unsigned long nameTableIndex){ 
+void ElfFile::fillNameTable(const unsigned long nameTableIndex){ 
   auto const &nameTableSection = this->sectionTable[nameTableIndex];
   std::vector<char> localNameTable = nameTableSection->getSectionCode<char>();
   
    this->nameTable.reserve(this->sectionTable.size());
    for(auto &section : this->sectionTable){
      unsigned int nameIndex = section->nameIndex;
-     std::string name(&localNameTable[nameIndex]);
      section->nameIndex = this->nameTable.size();
-     this->nameTable.push_back(name);
+     this->nameTable.push_back(std::string(&localNameTable[nameIndex]));
    }
 }
 
@@ -70,10 +69,9 @@ ElfFile::~ElfFile()
  ****************************************
  *************************************************************************************************************/
 
-ElfSection::ElfSection(ElfFile* elfFile, int id, Elf32_Shdr header)
+ElfSection::ElfSection(ElfFile* elfFile, const Elf32_Shdr header)
 {
   this->containingElfFile = elfFile;
-  this->id                = id;
   this->offset            = FIX_INT(header.sh_offset);
   this->size              = FIX_INT(header.sh_size);
   this->nameIndex         = FIX_INT(header.sh_name);
@@ -82,10 +80,9 @@ ElfSection::ElfSection(ElfFile* elfFile, int id, Elf32_Shdr header)
   this->info              = FIX_INT(header.sh_info);
 }
 
-ElfSection::ElfSection(ElfFile* elfFile, int id, Elf64_Shdr header)
+ElfSection::ElfSection(ElfFile* elfFile, const Elf64_Shdr header)
 {
   this->containingElfFile = elfFile;
-  this->id                = id;
   this->offset            = FIX_INT(header.sh_offset);
   this->size              = FIX_INT(header.sh_size);
   this->nameIndex         = FIX_INT(header.sh_name);
@@ -105,7 +102,7 @@ std::string ElfSection::getName()
  **************************************
  *************************************************************************************************************/
 
-ElfSymbol::ElfSymbol(Elf32_Sym sym)
+ElfSymbol::ElfSymbol(const Elf32_Sym sym)
 {
   this->offset  = FIX_INT(sym.st_value);
   this->type    = (ELF32_ST_TYPE(sym.st_info));
@@ -114,7 +111,7 @@ ElfSymbol::ElfSymbol(Elf32_Sym sym)
   this->name    = FIX_INT(sym.st_name);
 }
 
-ElfSymbol::ElfSymbol(Elf64_Sym sym)
+ElfSymbol::ElfSymbol(const Elf64_Sym sym)
 {
   this->offset  = FIX_INT(sym.st_value);
   this->type    = (ELF64_ST_TYPE(sym.st_info));
