@@ -15,11 +15,9 @@ void ElfFile::fillNameTable(const unsigned long nameTableIndex){
   auto const &nameTableSection = sectionTable[nameTableIndex];
   std::vector<char> localNameTable = nameTableSection.getSectionCode<char>();
   
-  nameTable.reserve(sectionTable.size());
   for(auto &section : sectionTable){
     unsigned int nameIndex = section.nameIndex;
-    section.nameIndex = nameTable.size();
-    nameTable.push_back(std::string(&localNameTable[nameIndex]));
+    section.name = std::string(&localNameTable[nameIndex]);
   }
 }
 
@@ -43,15 +41,12 @@ ElfFile::ElfFile(const char* pathToElfFile)
 
   //TODO: Check for endianness: if eident[EI_DATA] == 1 -> little
 
-  if (eident[EI_CLASS] == ELFCLASS32){
-    this->readElfFile<Elf32_Ehdr, Elf32_Shdr, Elf32_Sym>(&this->fileHeader32);
-  } else if (eident[EI_CLASS] == ELFCLASS64){
-    fprintf(stderr, "Error reading ELF file header: unsupported EI_CLASS 64 bit\n");
-    exit(-1);
-  } else {
-    fprintf(stderr, "Error reading ELF file header: unknown EI_CLASS\n");
+  if (eident[EI_CLASS] != ELFCLASS32){
+    fprintf(stderr, "Error reading ELF file header: unkwnonw EI_CLASS\n");
     exit(-1);
   }
+
+  readElfFile<Elf32_Ehdr, Elf32_Shdr, Elf32_Sym>(&fileHeader32);
 }
 
 
@@ -62,29 +57,29 @@ ElfFile::ElfFile(const char* pathToElfFile)
 
 ElfSection::ElfSection(ElfFile* elfFile, const Elf32_Shdr header)
 {
-  this->containingElfFile = elfFile;
-  this->offset            = (header.sh_offset);
-  this->size              = (header.sh_size);
-  this->nameIndex         = (header.sh_name);
-  this->address           = (header.sh_addr);
-  this->type              = (header.sh_type);
-  this->info              = (header.sh_info);
+  containingElfFile = elfFile;
+  offset            = (header.sh_offset);
+  size              = (header.sh_size);
+  nameIndex         = (header.sh_name);
+  address           = (header.sh_addr);
+  type              = (header.sh_type);
+  info              = (header.sh_info);
 }
 
 ElfSection::ElfSection(ElfFile* elfFile, const Elf64_Shdr header)
 {
-  this->containingElfFile = elfFile;
-  this->offset            = (header.sh_offset);
-  this->size              = (header.sh_size);
-  this->nameIndex         = (header.sh_name);
-  this->address           = (header.sh_addr);
-  this->type              = (header.sh_type);
-  this->info              = (header.sh_info);
+  containingElfFile = elfFile;
+  offset            = (header.sh_offset);
+  size              = (header.sh_size);
+  nameIndex         = (header.sh_name);
+  address           = (header.sh_addr);
+  type              = (header.sh_type);
+  info              = (header.sh_info);
 }
 
 std::string ElfSection::getName() const
 {
-  return containingElfFile->nameTable.at(this->nameIndex);
+  return name;
 }
 
 
@@ -95,18 +90,18 @@ std::string ElfSection::getName() const
 
 ElfSymbol::ElfSymbol(const Elf32_Sym sym)
 {
-  this->offset  = (sym.st_value);
-  this->type    = (ELF32_ST_TYPE(sym.st_info));
-  this->section = (sym.st_shndx);
-  this->size    = (sym.st_size);
-  this->name    = (sym.st_name);
+  offset  = (sym.st_value);
+  type    = (ELF32_ST_TYPE(sym.st_info));
+  section = (sym.st_shndx);
+  size    = (sym.st_size);
+  name    = (sym.st_name);
 }
 
 ElfSymbol::ElfSymbol(const Elf64_Sym sym)
 {
-  this->offset  = (sym.st_value);
-  this->type    = (ELF64_ST_TYPE(sym.st_info));
-  this->section = (sym.st_shndx);
-  this->size    = (sym.st_size);
-  this->name    = (sym.st_name);
+  offset  = (sym.st_value);
+  type    = (ELF64_ST_TYPE(sym.st_info));
+  section = (sym.st_shndx);
+  size    = (sym.st_size);
+  name    = (sym.st_name);
 }

@@ -35,7 +35,6 @@ public:
 
   std::vector<ElfSection> sectionTable;
   std::vector<ElfSymbol> symbols;
-  std::vector<std::string> nameTable;
 
   int indexOfSymbolNameSection;
 
@@ -65,6 +64,8 @@ public:
   unsigned int address;
   unsigned int type;
   unsigned int info;
+
+  std::string name;
 
   std::string getName() const;
 
@@ -110,7 +111,6 @@ void ElfFile::readSymbolTable(){
   }
 }
 
-
 template<typename ElfSectHeader>
 void ElfFile::fillSectionTable(const size_t start, const size_t tableSize, const size_t entrySize){
   elfFile.seekg(start);
@@ -127,9 +127,9 @@ void ElfFile::fillSectionTable(const size_t start, const size_t tableSize, const
     exit(-1);
   }
 
-  this->sectionTable.reserve(tableSize);
+  sectionTable.reserve(tableSize);
   for (const auto& sectionHeader : localSectionTable)
-    this->sectionTable.push_back(ElfSection(this, sectionHeader));
+    sectionTable.push_back(ElfSection(this, sectionHeader));
 }
 
 template<typename FileHeaderT, typename ElfSecT, typename ElfSymT>
@@ -147,9 +147,9 @@ void ElfFile::readElfFile(FileHeaderT *fileHeader){
       printf("Section table is at %lu and contains %lu entries of %lu bytes\n", start, tableSize, entrySize);
     }
 
-    this->fillSectionTable<ElfSecT>(start, tableSize, entrySize);
-    this->fillNameTable(nameTableIndex);
-    this->readSymbolTable<ElfSymT>();
+    fillSectionTable<ElfSecT>(start, tableSize, entrySize);
+    fillNameTable(nameTableIndex);
+    readSymbolTable<ElfSymT>();
 }
 
 #endif
