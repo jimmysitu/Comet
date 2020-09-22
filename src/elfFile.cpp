@@ -12,20 +12,20 @@
  *************************************************************************************************************/
 
 void ElfFile::fillNameTable(const unsigned long nameTableIndex){ 
-  auto const &nameTableSection = this->sectionTable[nameTableIndex];
+  auto const &nameTableSection = sectionTable[nameTableIndex];
   std::vector<char> localNameTable = nameTableSection.getSectionCode<char>();
   
-  this->nameTable.reserve(this->sectionTable.size());
-  for(auto &section : this->sectionTable){
+  nameTable.reserve(sectionTable.size());
+  for(auto &section : sectionTable){
     unsigned int nameIndex = section.nameIndex;
-    section.nameIndex = this->nameTable.size();
-    this->nameTable.push_back(std::string(&localNameTable[nameIndex]));
+    section.nameIndex = nameTable.size();
+    nameTable.push_back(std::string(&localNameTable[nameIndex]));
   }
 }
 
 ElfFile::ElfFile(const char* pathToElfFile)
 {
-  elfFile = std::ifstream(pathToElfFile, std::ios::in | std::ios::binary);
+  elfFile.open(pathToElfFile, std::ios::in | std::ios::binary);
 
   if (!elfFile) {
     fprintf(stderr, "Error cannot open file %s\n", pathToElfFile);
