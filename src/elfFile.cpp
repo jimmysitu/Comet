@@ -13,28 +13,27 @@
 
 void ElfFile::fillNameTable(const unsigned long nameTableIndex){ 
   auto const &nameTableSection = this->sectionTable[nameTableIndex];
-  std::vector<char> localNameTable = nameTableSection->getSectionCode<char>();
+  std::vector<char> localNameTable = nameTableSection.getSectionCode<char>();
   
   this->nameTable.reserve(this->sectionTable.size());
   for(auto &section : this->sectionTable){
-    unsigned int nameIndex = section->nameIndex;
-    section->nameIndex = this->nameTable.size();
+    unsigned int nameIndex = section.nameIndex;
+    section.nameIndex = this->nameTable.size();
     this->nameTable.push_back(std::string(&localNameTable[nameIndex]));
   }
 }
 
 ElfFile::ElfFile(const char* pathToElfFile)
 {
-  this->elfFile = fopen(pathToElfFile, "r+");
+  elfFile = std::ifstream(pathToElfFile, std::ios::in | std::ios::binary);
 
-  if (this->elfFile == NULL) {
+  if (!elfFile) {
     fprintf(stderr, "Error cannot open file %s\n", pathToElfFile);
     exit(-1);
   }
 
   char eident[16];
-  std::fread(eident, sizeof(char), 16, elfFile);
-  std::fseek(elfFile, 0, SEEK_SET);
+  elfFile.read(eident, 16);
   
   const char ELF_MAGIC[] = {ELFMAG0, 'E', 'L', 'F'};
   if (!std::equal(std::begin(ELF_MAGIC), std::end(ELF_MAGIC), eident)){
@@ -47,17 +46,14 @@ ElfFile::ElfFile(const char* pathToElfFile)
   if (eident[EI_CLASS] == ELFCLASS32){
     this->readElfFile<Elf32_Ehdr, Elf32_Shdr, Elf32_Sym>(&this->fileHeader32);
   } else if (eident[EI_CLASS] == ELFCLASS64){
-    this->readElfFile<Elf64_Ehdr, Elf64_Shdr, Elf64_Sym>(&this->fileHeader64);
+    fprintf(stderr, "Error reading ELF file header: unsupported EI_CLASS 64 bit\n");
+    exit(-1);
   } else {
-    fprintf(stderr, "Error while reading ELF file header: unknown EI_CLASS\n");
+    fprintf(stderr, "Error reading ELF file header: unknown EI_CLASS\n");
     exit(-1);
   }
 }
 
-ElfFile::~ElfFile()
-{
-  fclose(elfFile);
-}
 
 /*************************************************************************************************************
  *****************************************  Code for class ElfSection
@@ -86,9 +82,9 @@ ElfSection::ElfSection(ElfFile* elfFile, const Elf64_Shdr header)
   this->info              = (header.sh_info);
 }
 
-const std::string ElfSection::getName()
+std::string ElfSection::getName() const
 {
-  return this->containingElfFile->nameTable.at(this->nameIndex);
+  return containingElfFile->nameTable.at(this->nameIndex);
 }
 
 

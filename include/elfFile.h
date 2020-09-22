@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <fstream>
+#include <algorithm>
 
 #include "elf.h"
 
@@ -14,19 +16,19 @@ struct ElfSymbol;
 
 class ElfFile {
 public:
+  std::ifstream elfFile;
   Elf32_Ehdr fileHeader32;
   Elf64_Ehdr fileHeader64;
 
-  std::vector<std::unique_ptr<ElfSection>> sectionTable;
-  std::vector<std::unique_ptr<ElfSymbol>> symbols;
+  std::vector<ElfSection> sectionTable;
+  std::vector<ElfSymbol> symbols;
   std::vector<std::string> nameTable;
 
   int indexOfSymbolNameSection;
 
   ElfFile(const char* pathToElfFile);
-  ~ElfFile();
+  ~ElfFile() = default;
 
-  FILE* elfFile;
 private:
   template<typename ElfSymType>
   void readSymbolTable();
@@ -51,13 +53,13 @@ public:
   unsigned int type;
   unsigned int info;
 
-  const std::string getName();
+  std::string getName() const;
 
   template<typename T>
-  std::vector<T> getSectionCode(){
+  std::vector<T> getSectionCode() const{
     std::vector<T> content(this->size / sizeof(T));
-    std::fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
-    std::fread(&content[0], sizeof(T), content.size(), this->containingElfFile->elfFile);
+    containingElfFile->elfFile.seekg(this->offset);
+    containingElfFile->elfFile.read(reinterpret_cast<char *>(&content[0]), this->size);
     return content;
   }
 
@@ -79,17 +81,16 @@ struct ElfSymbol {
 
 template<typename ElfSymType>
 void ElfFile::readSymbolTable(){
-  for(auto &section : this->sectionTable){
-    if (section->type == SHT_SYMTAB) {
-      std::vector<ElfSymType> symbols = section->getSectionCode<ElfSymType>();
-      for (const auto symbol : symbols)
-        this->symbols.push_back(std::unique_ptr<ElfSymbol>(new ElfSymbol(symbol)));
+  for(const auto &section : sectionTable){
+    if (section.type == SHT_SYMTAB) {
+      for (const auto &symbol : section.getSectionCode<ElfSymType>())
+        symbols.push_back(ElfSymbol(symbol));
     }
   }
 
   for (unsigned sectionNumber = 0; sectionNumber < this->sectionTable.size(); sectionNumber++) {
-    const auto &section = this->sectionTable.at(sectionNumber);
-    if (section->getName() == ".strtab") {
+    const auto &section = sectionTable[sectionNumber];
+    if (section.getName() == ".strtab") {
       this->indexOfSymbolNameSection = sectionNumber;
       break;
     }
@@ -99,28 +100,29 @@ void ElfFile::readSymbolTable(){
 
 template<typename ElfSectHeader>
 void ElfFile::fillSectionTable(const size_t start, const size_t tableSize, const size_t entrySize){
-  unsigned int res = std::fseek(elfFile, start, SEEK_SET);
-  if (res != 0){
+  elfFile.seekg(start);
+  if (!elfFile){
     fprintf(stderr, "Error while moving to the beginning of section table\n");
     exit(-1);
   }
 
   std::vector<ElfSectHeader> localSectionTable(tableSize);
-  res = std::fread(&localSectionTable[0], sizeof(ElfSectHeader), tableSize, this->elfFile);
-  if (res != tableSize){
+  elfFile.read(reinterpret_cast<char *>(&localSectionTable[0]), sizeof(ElfSectHeader)*tableSize);
+  if (!elfFile){
     fprintf(stderr, "Error while reading the section table ! (section size is %lu "
-           "while we only read %u entries)\n", tableSize, res);
+           "while we only read %u entries)\n", tableSize, elfFile.gcount() / sizeof(ElfSectHeader));
     exit(-1);
   }
 
   this->sectionTable.reserve(tableSize);
   for (const auto& sectionHeader : localSectionTable)
-    this->sectionTable.push_back(std::unique_ptr<ElfSection>(new ElfSection(this, sectionHeader)));
+    this->sectionTable.push_back(ElfSection(this, sectionHeader));
 }
 
 template<typename FileHeaderT, typename ElfSecT, typename ElfSymT>
 void ElfFile::readElfFile(FileHeaderT *fileHeader){
-    std::fread(fileHeader, sizeof(FileHeaderT), 1, elfFile);
+    elfFile.seekg(0);
+    elfFile.read(reinterpret_cast<char *>(fileHeader), sizeof(FileHeaderT));
     const size_t start          = fileHeader->e_shoff;
     const size_t tableSize      = fileHeader->e_shnum;
     const size_t entrySize      = fileHeader->e_shentsize;
