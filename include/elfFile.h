@@ -11,14 +11,27 @@
 
 #define DEBUG 0
 
+// static const uint16_t BIG_ENDIAN2(const char x[2]){ return ((x[1] << 0) | (x[2] << 8));}
+// static const uint32_t BIG_ENDIAN4(const char x[4]){ return ((x[3] << 0) | (x[2] << 8) | (x[1] << 16) | (x[0] << 24));}
+// static const uint16_t LIL_ENDIAN2(const char x[2]){ return ((x[0] << 0) | (x[1] << 8));}
+// static const uint32_t LIL_ENDIAN4(const char x[4]){ return ((x[0] << 0) | (x[1] << 8) | (x[2] << 16) | (x[3] << 24));}
+
 class ElfSection;
 struct ElfSymbol;
+
+struct Elf32_Symbol{
+  uint32_t st_name;       /* Symbol name (string tbl index) */
+  uint32_t st_value;      /* Symbol value */
+  uint32_t st_size;       /* Symbol size */
+  unsigned char st_info;  /* Symbol type and binding */
+  unsigned char st_other; /* Symbol visibility */
+  uint32_t st_shndx;      /* Section index */
+};
 
 class ElfFile {
 public:
   std::ifstream elfFile;
   Elf32_Ehdr fileHeader32;
-  Elf64_Ehdr fileHeader64;
 
   std::vector<ElfSection> sectionTable;
   std::vector<ElfSymbol> symbols;
