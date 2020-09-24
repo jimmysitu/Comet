@@ -11,18 +11,33 @@
 
 #define DEBUG 0
 
+static const uint8_t ELF_MAGIC[] = {ELFMAG0, ELFMAG1, ELFMAG2, ELFMAG3};
 
 class ElfSection;
 struct ElfSymbol;
+static const size_t E_SHOFF = 0x20; 
+static const size_t E_SHENTSIZE = 0x2E; 
+static const size_t E_SHNUM = 0x30; 
+static const size_t E_SHSTRNDX = 0x32;
 
-struct Elf32_Symbol{
-  uint32_t st_name;       /* Symbol name (string tbl index) */
-  uint32_t st_value;      /* Symbol value */
-  uint32_t st_size;       /* Symbol size */
-  unsigned char st_info;  /* Symbol type and binding */
-  unsigned char st_other; /* Symbol visibility */
-  uint32_t st_shndx;      /* Section index */
-};
+template<typename Data>
+constexpr uint16_t big_endian2(const Data &x, const size_t loc){ return (x[loc + 1] | (x[loc + 0] << 8));}
+
+template<typename Data>
+constexpr uint16_t lit_endian2(const Data &x, const size_t loc){ return (x[loc + 0] | (x[loc + 1] << 8));}
+
+template<typename Data>
+constexpr uint32_t big_endian4(const Data &x, const size_t loc){ return (x[loc + 3] | (x[loc + 2] << 8) | (x[loc + 1] << 16) | (x[loc + 0] << 24));}
+
+template<typename Data>
+constexpr uint32_t lit_endian4(const Data &x, const size_t loc){ return (x[loc + 0] | (x[loc + 1] << 8) | (x[loc + 2] << 16) | (x[loc + 3] << 24));}
+
+template<typename Data>
+constexpr uint32_t read_word(const Data &x, const size_t loc, const bool is_little=true){ return is_little ? lit_endian4(x, loc) : big_endian4(x, loc); } 
+
+template<typename Data>
+constexpr uint16_t read_half(const Data &x, const size_t loc, const bool is_little=true){ return is_little ? lit_endian2(x, loc) : big_endian2(x, loc); } 
+
 
 class ElfFile {
 public:
