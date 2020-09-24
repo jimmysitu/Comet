@@ -1,54 +1,66 @@
 #include <cstdio>
-#include <stdlib.h>
+#include <cstdlib>
 #include <string>
 #include <vector>
 #include <memory>
+#include <algorithm>
+#include <iterator>
 
 #include "elfFile.h"
 
 
-void ElfFile::fillNameTable(const unsigned long nameTableIndex){ 
-  auto const &nameTableSection = sectionTable[nameTableIndex];
-  std::vector<char> localNameTable = nameTableSection.getSectionCode<char>();
+void checkElf(const std::vector<uint8_t> &content){
+  if (!std::equal(std::begin(ELF_MAGIC), std::end(ELF_MAGIC), content.begin())) {
+      fprintf(stderr, "Error: Not a valid ELF file\n"); 
+      exit(-1);
+  }
+  if (content[EI_CLASS] != ELFCLASS32) {
+    fprintf(stderr, "Error reading ELF file header: unkwnonw EI_CLASS\n");
+    exit(-1);
+  }
+}
+
+ElfSection ElfFile::getSymbolNameSection(){
+  auto it = std::find_if(sectionTable.begin(), sectionTable.end(), 
+                         [](const ElfSection &s){return s.name == ".strtab";});
+  return *it; 
+}
+
+void ElfFile::fillNameTable(){ 
+  const auto nameTableIndex = read_half(content, E_SHSTRNDX); 
+  const auto nameTableOffset = sectionTable[nameTableIndex].offset;
   
   for(auto &section : sectionTable){
-    unsigned int nameIndex = section.nameIndex;
-    section.name = std::string(&localNameTable[nameIndex]);
+    const char *nameStr = (const char*)&content[nameTableOffset + section.nameIndex];
+    section.name = std::string(nameStr);
   }
 }
 
 ElfFile::ElfFile(const char* pathToElfFile)
 {
-  elfFile.open(pathToElfFile, std::ios::in | std::ios::binary);
+  elfFile.open(pathToElfFile, std::ios::binary);
 
   if (!elfFile) {
     fprintf(stderr, "Error cannot open file %s\n", pathToElfFile);
     exit(-1);
   }
 
-  char eident[16];
-  elfFile.read(eident, 16);
+  elfFile.seekg(0, elfFile.end);
+  const auto fileSize = elfFile.tellg();
+  content.reserve(fileSize);
+  elfFile.seekg(0, elfFile.beg);
+  elfFile.read((char*)content.data(), fileSize);
+
+  checkElf(content);
   
-  const char ELF_MAGIC[] = {ELFMAG0, 'E', 'L', 'F'};
-  if (!std::equal(std::begin(ELF_MAGIC), std::end(ELF_MAGIC), eident)){
-      fprintf(stderr, "Error: Not a valid ELF file\n"); 
-      exit(-1);
-  }
-
-  //TODO: Check for endianness: if eident[EI_DATA] == 1 -> little
-
-  if (eident[EI_CLASS] != ELFCLASS32){
-    fprintf(stderr, "Error reading ELF file header: unkwnonw EI_CLASS\n");
-    exit(-1);
-  }
-
-  readElfFile<Elf32_Ehdr, Elf32_Shdr, Elf32_Sym>(&fileHeader32);
+  fillSectionTable<Elf32_Shdr>();
+  fillNameTable();
+  readSymbolTable<Elf32_Sym>();
 }
 
 
-ElfSection::ElfSection(ElfFile* elfFile, const Elf32_Shdr header)
+ElfSection::ElfSection(const Elf32_Shdr header)
 {
-  containingElfFile = elfFile;
   offset            = (header.sh_offset);
   size              = (header.sh_size);
   nameIndex         = (header.sh_name);
@@ -57,9 +69,8 @@ ElfSection::ElfSection(ElfFile* elfFile, const Elf32_Shdr header)
   info              = (header.sh_info);
 }
 
-ElfSection::ElfSection(ElfFile* elfFile, const Elf64_Shdr header)
+ElfSection::ElfSection(const Elf64_Shdr header)
 {
-  containingElfFile = elfFile;
   offset            = (header.sh_offset);
   size              = (header.sh_size);
   nameIndex         = (header.sh_name);
@@ -71,11 +82,11 @@ ElfSection::ElfSection(ElfFile* elfFile, const Elf64_Shdr header)
 
 ElfSymbol::ElfSymbol(const Elf32_Sym sym)
 {
-  offset  = (sym.st_value);
+  offset  = read_word((char*)&sym.st_value, 0);
   type    = (ELF32_ST_TYPE(sym.st_info));
-  section = (sym.st_shndx);
-  size    = (sym.st_size);
-  name    = (sym.st_name);
+  section = read_half((char*)&sym.st_shndx, 0);
+  size    = read_half((char*)&sym.st_size, 0);
+  name    = read_half((char*)&sym.st_name, 0);
 }
 
 ElfSymbol::ElfSymbol(const Elf64_Sym sym)

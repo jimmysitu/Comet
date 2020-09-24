@@ -44,33 +44,29 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   //****************************************************************************
   // Populate memory using ELF file
   ElfFile elfFile(binaryFile);
-
   for(auto const &section : elfFile.sectionTable){
-      std::vector<unsigned char> sectionContent = section.getSectionCode<unsigned char>();
-      for (unsigned byteNumber = 0; byteNumber < section.size; byteNumber++)
-        this->stb(section.address + byteNumber, sectionContent[byteNumber]);
     if(section.address != 0 && section.name != ".text"){
+      for (unsigned i = 0; i < section.size; i++)
+        this->stb(section.address + i, elfFile.content[section.offset + i]);
      
       // We update the size of the heap
       if (section.address + section.size > heapAddress)
         heapAddress = section.address + section.size;
-
     }
-      std::vector<unsigned char> sectionContent = section.getSectionCode<unsigned char>();
-      for (unsigned int byteNumber = 0; byteNumber < section.size; byteNumber++) {
-        // Write the instruction byte in Instruction Memory using Little Endian
-        im[(section.address + byteNumber) / 4].set_slc(((section.address + byteNumber) % 4) * 8,
-                                                           ac_int<8, false>(sectionContent[byteNumber]));
     if (section.name == ".text") {
+      // Write the instruction byte in Instruction Memory using Little Endian
+      for (unsigned i = 0; i < section.size; i++) {
+        im[(section.address + i) / 4].set_slc(((section.address + i) % 4) * 8,
+                                                ac_int<8, false>(elfFile.content[section.offset + i]));
       }
     }
   }
 
   //****************************************************************************
   // Looking for start symbol
-  std::vector<unsigned char> sectionContent = elfFile.sectionTable[elfFile.indexOfSymbolNameSection].getSectionCode<unsigned char>();
+  const auto symNameOffset = elfFile.getSymbolNameSection().offset;
   for (auto const &symbol : elfFile.symbols){
-    const char* name = (const char*)&(sectionContent[symbol.name]);
+    const char* name = (const char*)(&elfFile.content[symNameOffset + symbol.name]);
     if (strcmp(name, "_start") == 0) 
         core.pc = symbol.offset;
   }
@@ -129,7 +125,6 @@ void BasicSimulator::printCycle()
 }
 
 // Function for handling memory accesses
-
 void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
 {
   ac_int<32, false> wordRes = 0;
