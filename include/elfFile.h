@@ -11,10 +11,6 @@
 
 #define DEBUG 0
 
-// static const uint16_t BIG_ENDIAN2(const char x[2]){ return ((x[1] << 0) | (x[2] << 8));}
-// static const uint32_t BIG_ENDIAN4(const char x[4]){ return ((x[3] << 0) | (x[2] << 8) | (x[1] << 16) | (x[0] << 24));}
-// static const uint16_t LIL_ENDIAN2(const char x[2]){ return ((x[0] << 0) | (x[1] << 8));}
-// static const uint32_t LIL_ENDIAN4(const char x[4]){ return ((x[0] << 0) | (x[1] << 8) | (x[2] << 16) | (x[3] << 24));}
 
 class ElfSection;
 struct ElfSymbol;
