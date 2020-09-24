@@ -11,8 +11,9 @@
 #include "core.h"
 #include "elfFile.h"
 
-BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> args, const char* inFile,
-                               const char* outFile, const char* tFile)
+BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> args,
+                               const char* inFile, const char* outFile, 
+                               const char* tFile)
 {
 
   char* coreAsChar = (char*)&core;
@@ -45,22 +46,22 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   ElfFile elfFile(binaryFile);
 
   for(auto const &section : elfFile.sectionTable){
-    if(section.address != 0 && section.getName() != ".text"){
       std::vector<unsigned char> sectionContent = section.getSectionCode<unsigned char>();
       for (unsigned byteNumber = 0; byteNumber < section.size; byteNumber++)
         this->stb(section.address + byteNumber, sectionContent[byteNumber]);
+    if(section.address != 0 && section.name != ".text"){
      
       // We update the size of the heap
       if (section.address + section.size > heapAddress)
         heapAddress = section.address + section.size;
 
     }
-    if (section.getName() == ".text") {
       std::vector<unsigned char> sectionContent = section.getSectionCode<unsigned char>();
       for (unsigned int byteNumber = 0; byteNumber < section.size; byteNumber++) {
         // Write the instruction byte in Instruction Memory using Little Endian
         im[(section.address + byteNumber) / 4].set_slc(((section.address + byteNumber) % 4) * 8,
                                                            ac_int<8, false>(sectionContent[byteNumber]));
+    if (section.name == ".text") {
       }
     }
   }

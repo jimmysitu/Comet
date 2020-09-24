@@ -78,8 +78,6 @@ public:
 
   std::string name;
 
-  std::string getName() const;
-
   template<typename T>
   std::vector<T> getSectionCode() const{
     std::vector<T> content(this->size / sizeof(T));
