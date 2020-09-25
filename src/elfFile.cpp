@@ -5,6 +5,7 @@
 #include <memory>
 #include <algorithm>
 #include <iterator>
+#include <fstream>
 
 #include "elfFile.h"
 
@@ -21,9 +22,8 @@ void checkElf(const std::vector<uint8_t> &content){
 }
 
 ElfSection ElfFile::getSymbolNameSection(){
-  auto it = std::find_if(sectionTable.begin(), sectionTable.end(), 
-                         [](const ElfSection &s){return s.name == ".strtab";});
-  return *it; 
+  return *std::find_if(sectionTable.begin(), sectionTable.end(), 
+                       [](const ElfSection &s){return s.name == ".strtab";});
 }
 
 void ElfFile::fillNameTable(){ 
@@ -38,18 +38,15 @@ void ElfFile::fillNameTable(){
 
 ElfFile::ElfFile(const char* pathToElfFile)
 {
-  elfFile.open(pathToElfFile, std::ios::binary);
+  std::ifstream elfFile(pathToElfFile, std::ios::binary);
 
   if (!elfFile) {
     fprintf(stderr, "Error cannot open file %s\n", pathToElfFile);
     exit(-1);
   }
 
-  elfFile.seekg(0, elfFile.end);
-  const auto fileSize = elfFile.tellg();
-  content.reserve(fileSize);
-  elfFile.seekg(0, elfFile.beg);
-  elfFile.read((char*)content.data(), fileSize);
+  content.assign(std::istreambuf_iterator<char>(elfFile), {});
+
 
   checkElf(content);
   

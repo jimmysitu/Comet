@@ -4,7 +4,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <fstream>
 #include <algorithm>
 
 #include "elf.h"
@@ -41,7 +40,6 @@ struct ElfSymbol;
 
 class ElfFile {
 public:
-  std::ifstream elfFile;
   Elf32_Ehdr fileHeader32;
 
   std::vector<ElfSection> sectionTable;
