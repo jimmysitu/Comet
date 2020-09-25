@@ -29,27 +29,21 @@ ElfSection ElfFile::getSymbolNameSection(){
 void ElfFile::fillNameTable(){ 
   const auto nameTableIndex = read_half(content, E_SHSTRNDX); 
   const auto nameTableOffset = sectionTable[nameTableIndex].offset;
-  
-  for(auto &section : sectionTable){
-    const char *nameStr = (const char*)&content[nameTableOffset + section.nameIndex];
-    section.name = std::string(nameStr);
-  }
+  const char *names = reinterpret_cast<const char*>(&content[nameTableOffset]);
+  for(auto &section : sectionTable)
+    section.name = std::string(&names[section.nameIndex]);
 }
 
 ElfFile::ElfFile(const char* pathToElfFile)
 {
   std::ifstream elfFile(pathToElfFile, std::ios::binary);
-
   if (!elfFile) {
     fprintf(stderr, "Error cannot open file %s\n", pathToElfFile);
     exit(-1);
   }
 
   content.assign(std::istreambuf_iterator<char>(elfFile), {});
-
-
   checkElf(content);
-  
   fillSectionTable<Elf32_Shdr>();
   fillNameTable();
   readSymbolTable<Elf32_Sym>();

@@ -40,8 +40,6 @@ struct ElfSymbol;
 
 class ElfFile {
 public:
-  Elf32_Ehdr fileHeader32;
-
   std::vector<ElfSection> sectionTable;
   std::vector<ElfSymbol> symbols;
   std::vector<uint8_t> content;
