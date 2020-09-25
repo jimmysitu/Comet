@@ -98,9 +98,8 @@ void ElfFile::readSymbolTable(){
 
 template<typename ElfSectHeader>
 void ElfFile::fillSectionTable(){
-  const bool endianness = content[EI_DATA] == 1;
-  const auto tableOffset = read_word(content, E_SHOFF, endianness); 
-  const auto tableSize = read_half(content, E_SHNUM, endianness); 
+  const auto tableOffset = read_word(content, E_SHOFF); 
+  const auto tableSize = read_half(content, E_SHNUM); 
   
   const auto *rawSections = reinterpret_cast<ElfSectHeader*>(&content[tableOffset]);
 

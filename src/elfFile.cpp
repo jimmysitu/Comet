@@ -11,12 +11,16 @@
 
 
 void checkElf(const std::vector<uint8_t> &content){
-  if (!std::equal(std::begin(ELF_MAGIC), std::end(ELF_MAGIC), content.begin())) {
+  if(!std::equal(std::begin(ELF_MAGIC), std::end(ELF_MAGIC), content.begin())) {
       fprintf(stderr, "Error: Not a valid ELF file\n"); 
       exit(-1);
   }
-  if (content[EI_CLASS] != ELFCLASS32) {
+  if(content[EI_CLASS] != ELFCLASS32) {
     fprintf(stderr, "Error reading ELF file header: unkwnonw EI_CLASS\n");
+    exit(-1);
+  }
+  if(content[EI_DATA] != 1){
+    fprintf(stderr, "Error reading ELF file header: EI_DATA is not little-endian\n");
     exit(-1);
   }
 }
