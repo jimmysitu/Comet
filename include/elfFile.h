@@ -55,20 +55,20 @@ struct ElfSection {
 
   std::string name;
 
-  ElfSection(const Elf32_Shdr header);
-  ElfSection(const Elf64_Shdr header);
+  template<typename ElfShdr> ElfSection(const ElfShdr);
 };
 
 struct ElfSymbol {
-  unsigned int name;
+  unsigned int nameIndex;
   unsigned int type;
   unsigned int offset;
   unsigned int size;
   unsigned int section;
   unsigned int value;
 
-  ElfSymbol(const Elf32_Sym);
-  ElfSymbol(const Elf64_Sym);
+  std::string name;
+
+  template<typename ElfSymT> ElfSymbol(const ElfSymT);
 };
 
 class ElfFile {
@@ -111,6 +111,26 @@ template <typename ElfSectHeader> void ElfFile::fillSectionTable()
   sectionTable.reserve(tableSize);
   for (int i = 0; i < tableSize; i++)
     sectionTable.push_back(ElfSection(rawSections[i]));
+}
+
+
+template<typename ElfShdrT> ElfSection::ElfSection(const ElfShdrT header)
+{
+  offset    = (header.sh_offset);
+  size      = (header.sh_size);
+  nameIndex = (header.sh_name);
+  address   = (header.sh_addr);
+  type      = (header.sh_type);
+  info      = (header.sh_info);
+}
+
+template<typename ElfSymT> ElfSymbol::ElfSymbol(const ElfSymT sym)
+{
+  offset  = sym.st_value;
+  type    = ELF32_ST_TYPE(sym.st_info); // TODO: make this generic
+  section = sym.st_shndx;
+  size    = sym.st_size;
+  nameIndex = sym.st_name;
 }
 
 #endif

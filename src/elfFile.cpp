@@ -52,42 +52,5 @@ ElfFile::ElfFile(const char* pathToElfFile)
   fillSectionTable<Elf32_Shdr>();
   fillNameTable();
   readSymbolTable<Elf32_Sym>();
-}
-
-ElfSection::ElfSection(const Elf32_Shdr header)
-{
-  offset    = (header.sh_offset);
-  size      = (header.sh_size);
-  nameIndex = (header.sh_name);
-  address   = (header.sh_addr);
-  type      = (header.sh_type);
-  info      = (header.sh_info);
-}
-
-ElfSection::ElfSection(const Elf64_Shdr header)
-{
-  offset    = (header.sh_offset);
-  size      = (header.sh_size);
-  nameIndex = (header.sh_name);
-  address   = (header.sh_addr);
-  type      = (header.sh_type);
-  info      = (header.sh_info);
-}
-
-ElfSymbol::ElfSymbol(const Elf32_Sym sym)
-{
-  offset  = read_word((char*)&sym.st_value, 0);
-  type    = (ELF32_ST_TYPE(sym.st_info));
-  section = read_half((char*)&sym.st_shndx, 0);
-  size    = read_half((char*)&sym.st_size, 0);
-  name    = read_half((char*)&sym.st_name, 0);
-}
-
-ElfSymbol::ElfSymbol(const Elf64_Sym sym)
-{
-  offset  = (sym.st_value);
-  type    = (ELF64_ST_TYPE(sym.st_info));
-  section = (sym.st_shndx);
-  size    = (sym.st_size);
-  name    = (sym.st_name);
+  fillSymbolsName();
 }
