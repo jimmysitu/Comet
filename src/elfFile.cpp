@@ -35,8 +35,8 @@ void ElfFile::fillNameTable()
 
 void ElfFile::fillSymbolsName()
 {
-  const auto sec = find_by_name(sectionTable, ".strtab"); 
-  auto names = reinterpret_cast<const char*>(&content[sec.offset]);
+  const auto sec = find_by_name(sectionTable, ".strtab");
+  auto names     = reinterpret_cast<const char*>(&content[sec.offset]);
   for (auto& symbol : symbols)
     symbol.name = std::string(&names[symbol.nameIndex]);
 }

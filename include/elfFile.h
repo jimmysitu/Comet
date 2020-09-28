@@ -45,13 +45,14 @@ template <typename Data> constexpr uint16_t read_half(const Data& x, const size_
 }
 
 // Function used to lookup Sections or Symbols by name
-template<typename T> T find_by_name(const std::vector<T> v, const std::string name){
-    const auto it = std::find_if(v.begin(), v.end(), [&](const T &s){ return s.name == name; });
-    if(it == v.end()){
-        fprintf(stderr, "Error: \"%s\" name not found\n", name.c_str());
-        exit(-1);
-    }
-    return *it;
+template <typename T> T find_by_name(const std::vector<T> v, const std::string name)
+{
+  const auto it = std::find_if(v.begin(), v.end(), [&](const T& s) { return s.name == name; });
+  if (it == v.end()) {
+    fprintf(stderr, "Error: \"%s\" name not found\n", name.c_str());
+    exit(-1);
+  }
+  return *it;
 }
 
 struct ElfSection {
@@ -64,7 +65,7 @@ struct ElfSection {
 
   std::string name;
 
-  template<typename ElfShdr> ElfSection(const ElfShdr);
+  template <typename ElfShdr> ElfSection(const ElfShdr);
 };
 
 struct ElfSymbol {
@@ -77,7 +78,7 @@ struct ElfSymbol {
 
   std::string name;
 
-  template<typename ElfSymT> ElfSymbol(const ElfSymT);
+  template <typename ElfSymT> ElfSymbol(const ElfSymT);
 };
 
 class ElfFile {
@@ -111,8 +112,8 @@ template <typename ElfSymT> void ElfFile::readSymbolTable()
 
 template <typename ElfShdrT> void ElfFile::fillSectionTable()
 {
-  const auto tableOffset = read_word(content, E_SHOFF);
-  const auto tableSize   = read_half(content, E_SHNUM);
+  const auto tableOffset  = read_word(content, E_SHOFF);
+  const auto tableSize    = read_half(content, E_SHNUM);
   const auto* rawSections = reinterpret_cast<ElfShdrT*>(&content[tableOffset]);
 
   sectionTable.reserve(tableSize);
@@ -120,8 +121,7 @@ template <typename ElfShdrT> void ElfFile::fillSectionTable()
     sectionTable.push_back(ElfSection(rawSections[i]));
 }
 
-
-template<typename ElfShdrT> ElfSection::ElfSection(const ElfShdrT header)
+template <typename ElfShdrT> ElfSection::ElfSection(const ElfShdrT header)
 {
   offset    = (header.sh_offset);
   size      = (header.sh_size);
@@ -131,12 +131,12 @@ template<typename ElfShdrT> ElfSection::ElfSection(const ElfShdrT header)
   info      = (header.sh_info);
 }
 
-template<typename ElfSymT> ElfSymbol::ElfSymbol(const ElfSymT sym)
+template <typename ElfSymT> ElfSymbol::ElfSymbol(const ElfSymT sym)
 {
-  offset  = sym.st_value;
-  type    = ELF32_ST_TYPE(sym.st_info); // TODO: make this generic
-  section = sym.st_shndx;
-  size    = sym.st_size;
+  offset    = sym.st_value;
+  type      = ELF32_ST_TYPE(sym.st_info); // TODO: make this generic
+  section   = sym.st_shndx;
+  size      = sym.st_size;
   nameIndex = sym.st_name;
 }
 
