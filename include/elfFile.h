@@ -6,8 +6,6 @@
 
 #include "elf.h"
 
-#define DEBUG 0
-
 static const uint8_t ELF_MAGIC[] = {ELFMAG0, ELFMAG1, ELFMAG2, ELFMAG3};
 
 static const size_t E_SHOFF     = 0x20;
@@ -82,31 +80,29 @@ public:
   ~ElfFile() = default;
 
 private:
-  template <typename ElfSymType> void readSymbolTable();
-
-  template <typename ElfSectHeader> void fillSectionTable();
+  template <typename ElfSymT> void readSymbolTable();
+  template <typename ElfShdrT> void fillSectionTable();
 
   void fillNameTable();
 };
 
-template <typename ElfSymType> void ElfFile::readSymbolTable()
+template <typename ElfSymT> void ElfFile::readSymbolTable()
 {
   for (const auto& section : sectionTable) {
     if (section.type == SHT_SYMTAB) {
-      const auto* rawSymbols = reinterpret_cast<ElfSymType*>(&content[section.offset]);
-      const auto N           = section.size / sizeof(ElfSymType);
+      const auto* rawSymbols = reinterpret_cast<ElfSymT*>(&content[section.offset]);
+      const auto N           = section.size / sizeof(ElfSymT);
       for (int i = 0; i < N; i++)
         symbols.push_back(ElfSymbol(rawSymbols[i]));
     }
   }
 }
 
-template <typename ElfSectHeader> void ElfFile::fillSectionTable()
+template <typename ElfShdrT> void ElfFile::fillSectionTable()
 {
   const auto tableOffset = read_word(content, E_SHOFF);
   const auto tableSize   = read_half(content, E_SHNUM);
-
-  const auto* rawSections = reinterpret_cast<ElfSectHeader*>(&content[tableOffset]);
+  const auto* rawSections = reinterpret_cast<ElfShdrT*>(&content[tableOffset]);
 
   sectionTable.reserve(tableSize);
   for (int i = 0; i < tableSize; i++)
