@@ -2,6 +2,7 @@
 #define __ELFFILE
 
 #include <algorithm>
+#include <cstdio>
 #include <string>
 #include <vector>
 
