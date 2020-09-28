@@ -1,6 +1,7 @@
 #ifndef __ELFFILE
 #define __ELFFILE
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -43,6 +44,16 @@ template <typename Data> constexpr uint16_t read_half(const Data& x, const size_
   return is_little ? lit_endian2(x, loc) : big_endian2(x, loc);
 }
 
+// Function used to lookup Sections or Symbols by name
+template<typename T> T find_by_name(const std::vector<T> v, const std::string name){
+    const auto it = std::find_if(v.begin(), v.end(), [&](const T &s){ return s.name == name; });
+    if(it == v.end()){
+        fprintf(stderr, "Error: \"%s\" name not found\n", name.c_str());
+        exit(-1);
+    }
+    return *it;
+}
+
 struct ElfSection {
   unsigned int size;
   unsigned int offset;
@@ -75,7 +86,6 @@ public:
   std::vector<ElfSymbol> symbols;
   std::vector<uint8_t> content;
 
-  ElfSection getSymbolNameSection();
   ElfFile(const char* pathToElfFile);
   ~ElfFile() = default;
 
@@ -84,6 +94,7 @@ private:
   template <typename ElfShdrT> void fillSectionTable();
 
   void fillNameTable();
+  void fillSymbolsName();
 };
 
 template <typename ElfSymT> void ElfFile::readSymbolTable()

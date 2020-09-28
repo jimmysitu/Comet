@@ -24,12 +24,6 @@ void checkElf(const std::vector<uint8_t>& content)
   }
 }
 
-ElfSection ElfFile::getSymbolNameSection()
-{
-  return *std::find_if(sectionTable.begin(), sectionTable.end(),
-                       [](const ElfSection& s) { return s.name == ".strtab"; });
-}
-
 void ElfFile::fillNameTable()
 {
   const auto nameTableIndex  = read_half(content, E_SHSTRNDX);
@@ -37,6 +31,14 @@ void ElfFile::fillNameTable()
   const char* names          = reinterpret_cast<const char*>(&content[nameTableOffset]);
   for (auto& section : sectionTable)
     section.name = std::string(&names[section.nameIndex]);
+}
+
+void ElfFile::fillSymbolsName()
+{
+  const auto sec = find_by_name(sectionTable, ".strtab"); 
+  auto names = reinterpret_cast<const char*>(&content[sec.offset]);
+  for (auto& symbol : symbols)
+    symbol.name = std::string(&names[symbol.nameIndex]);
 }
 
 ElfFile::ElfFile(const char* pathToElfFile)

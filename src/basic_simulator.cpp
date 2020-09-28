@@ -64,12 +64,7 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
 
   //****************************************************************************
   // Looking for start symbol
-  const auto symNameOffset = elfFile.getSymbolNameSection().offset;
-  for (auto const &symbol : elfFile.symbols){
-    const char* name = (const char*)(&elfFile.content[symNameOffset + symbol.name]);
-    if (strcmp(name, "_start") == 0) 
-        core.pc = symbol.offset;
-  }
+  core.pc = find_by_name(elfFile.symbols, "_start").offset;
 
   //****************************************************************************
   // Adding command line arguments on the stack
