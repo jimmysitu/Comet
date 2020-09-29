@@ -26,7 +26,7 @@ void checkElf(const std::vector<uint8_t>& content)
 
 void ElfFile::fillNameTable()
 {
-  const auto nameTableIndex  = read_half(content, E_SHSTRNDX);
+  const auto nameTableIndex  = little_endian<2>(&content[E_SHSTRNDX]);
   const auto nameTableOffset = sectionTable[nameTableIndex].offset;
   const char* names          = reinterpret_cast<const char*>(&content[nameTableOffset]);
   for (auto& section : sectionTable)

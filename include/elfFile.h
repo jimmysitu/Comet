@@ -15,34 +15,20 @@ static const size_t E_SHENTSIZE = 0x2E;
 static const size_t E_SHNUM     = 0x30;
 static const size_t E_SHSTRNDX  = 0x32;
 
-template <typename Data> constexpr uint16_t big_endian2(const Data& x, const size_t loc)
-{
-  return (x[loc + 1] | (x[loc + 0] << 8));
+template<unsigned N> constexpr size_t little_endian(const uint8_t *bytes){
+    return (bytes[N-1] << 8 * (N-1)) | little_endian<N-1>(bytes);
 }
 
-template <typename Data> constexpr uint16_t lit_endian2(const Data& x, const size_t loc)
-{
-  return (x[loc + 0] | (x[loc + 1] << 8));
+template<> constexpr size_t little_endian<0>(const uint8_t *bytes){
+    return 0;
 }
 
-template <typename Data> constexpr uint32_t big_endian4(const Data& x, const size_t loc)
-{
-  return (x[loc + 3] | (x[loc + 2] << 8) | (x[loc + 1] << 16) | (x[loc + 0] << 24));
+template<unsigned N> constexpr size_t big_endian(const unsigned char *bytes){
+    return (bytes[0] << 8 * (N-1)) | big_endian<N-1>(bytes+1);
 }
 
-template <typename Data> constexpr uint32_t lit_endian4(const Data& x, const size_t loc)
-{
-  return (x[loc + 0] | (x[loc + 1] << 8) | (x[loc + 2] << 16) | (x[loc + 3] << 24));
-}
-
-template <typename Data> constexpr uint32_t read_word(const Data& x, const size_t loc, const bool is_little = true)
-{
-  return is_little ? lit_endian4(x, loc) : big_endian4(x, loc);
-}
-
-template <typename Data> constexpr uint16_t read_half(const Data& x, const size_t loc, const bool is_little = true)
-{
-  return is_little ? lit_endian2(x, loc) : big_endian2(x, loc);
+template<> constexpr size_t big_endian<0>(const unsigned char *bytes){
+    return 0;
 }
 
 // Function used to lookup Sections or Symbols by name
@@ -113,8 +99,8 @@ template <typename ElfSymT> void ElfFile::readSymbolTable()
 
 template <typename ElfShdrT> void ElfFile::fillSectionTable()
 {
-  const auto tableOffset  = read_word(content, E_SHOFF);
-  const auto tableSize    = read_half(content, E_SHNUM);
+  const auto tableOffset  = little_endian<4>(&content[E_SHOFF]);
+  const auto tableSize    = little_endian<2>(&content[E_SHNUM]);
   const auto* rawSections = reinterpret_cast<ElfShdrT*>(&content[tableOffset]);
 
   sectionTable.reserve(tableSize);
