@@ -4,6 +4,7 @@ import pickle, argparse, pdb
 import matplotlib.pyplot as plt
 import numpy as np
 
+#fontsize
 fs = 20
 
 '''
@@ -88,29 +89,6 @@ def createHistogram_AVF(runs):
             if run[1] in ['AOM', 'Crash', 'Hang', 'ISM & AOM']:
                 zoneCounters['RF'][1] += 1    #Add new ACE fault
 
-
-        if ('RF' not in run[0]) and (run[0] != 'CoreCtrl'):
-            zoneCounters[run[0]][0] += 1    #Add new inj to total
-            #pdb.set_trace()
-            if run[1] in ['AOM', 'Crash', 'Hang', 'ISM & AOM']:
-                zoneCounters[run[0]][1] += 1    #Add new ACE fault
-    names = []
-    avfs = []
-    for k in zoneCounters:
-        names.append(k)
-        avfs.append(zoneCounters[k][1]/numRuns)
-        #avfs.append(zoneCounters[k][1])
-    print('Total faults ACE : ' + str(sum(avfs*numRuns)))
-    return names, avfs
-
-
-def createHistogram_NuAVF(runs):
-    numRuns = len(runs)
-    zoneCounters = {}
-
-    for run in runs:
-        if (run[0] not in zoneCounters) and ('RF' not in run[0]) and (run[0] != 'CoreCtrl'):  #name of the zone
-            zoneCounters[run[0]] = [0, 0]
 
         if ('RF' not in run[0]) and (run[0] != 'CoreCtrl'):
             zoneCounters[run[0]][0] += 1    #Add new inj to total
@@ -232,6 +210,33 @@ def createHistogram_cycleDifferences(runs):
     plt.xlabel('num cycles')
     plt.show()
 
+
+def createHistogram_Instructions(runs):
+    numRuns = len(runs)
+    counts = {}
+    totalCount = 0
+    for injection in runs:
+        #if the run has resulted in a critical error
+        if  injection[1] in ['AOM', 'ISM & AOM', 'Hang', 'Crash']:
+            totalCount += 1
+            instruction = injection[3]
+            #if there is an instruction associated to this injection
+            if (instruction != []):
+                fullInstruction = instruction[0]
+                mnemonic = instruction[0].split(' ')[0]
+                if mnemonic not in counts:
+                    counts[mnemonic] = 1
+                elif mnemonic in counts:
+                    counts[mnemonic] += 1
+    #build the return data (pretty sloppy, there has to be a better way to do that)
+    names = []
+    hist = []
+    for c in counts:
+        names.append(c)
+        hist.append((counts[c]/totalCount)*100)
+    return names, hist
+
+
 ################################################################################
 
 def main():
@@ -248,11 +253,7 @@ def main():
     print('Num runs : ' + str(numRuns))
 
 
-    ############################################################################
-    #   Cycles difference
-    ############################################################################
     createHistogram_cycleDifferences(runs)
-# pdb.set_trace()()
 
     names, hist = createHistogram_ends(runs)
     plt.figure()
@@ -330,7 +331,22 @@ def main():
     #plt.ylim(0, 1)
     plt.grid(color='k', linestyle=':', linewidth=0.5)
     plt.show()
-# pdb.set_trace()()
+
+
+    #plot the different instructions that caused errors
+    names, hist = createHistogram_Instructions(runs)
+    plt.figure()
+    names = np.array(names)
+    hist = np.array(hist)
+    plt.bar(names, hist)
+    plt.title('Instructions that cased critical errors',  fontsize=fs+10)
+    plt.xlabel('Instruction names',  fontsize=fs+5)
+    plt.ylabel('Participation (%)',  fontsize=fs+5)
+    plt.xticks(fontsize=fs-4, rotation='vertical')
+    plt.yticks(fontsize=fs-4)
+    #plt.ylim(0, 1)
+    plt.grid(color='k', linestyle=':', linewidth=0.5)
+    plt.show()
 
 
 if __name__ == "__main__":
