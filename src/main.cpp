@@ -240,18 +240,27 @@ CCS_MAIN(int argc, char** argv)
                 case FToDC_loc:
                     printf("Injection in FToDC\n");
                     injStatus = injectFault_FToDC(sim.getCore(), injectionBitLocations, faultModel);
+                    //Print instruction here
+                    std::cout << "Instr. at inj cycle: " << printDecodedInstrRISCV(sim.getCore()->ftoDC.instruction) << std::endl;
+                    std::cout << "PC at inj cycle: " << sim.getCore()->ftoDC.pc << std::endl;
                     break;
                 case DCToEX_loc:
                     printf("Injection in DCToEx\n");
                     injStatus = injectFault_DCToEX(sim.getCore(), injectionBitLocations, faultModel);
+                    std::cout << "Instr. at inj cycle: " << printDecodedInstrRISCV(sim.getCore()->dctoEx.instruction) << std::endl;
+                    std::cout << "PC at inj cycle: " << sim.getCore()->dctoEx.pc << std::endl;
                     break;
                 case EXToMEM_loc:
                     printf("Injection in ExToMem\n");
                     injStatus = injectFault_EXToMEM(sim.getCore(), injectionBitLocations, faultModel);
+                    std::cout << "Instr. at inj cycle: " << printDecodedInstrRISCV(sim.getCore()->extoMem.instruction) << std::endl;
+                    std::cout << "PC at inj cycle: " << sim.getCore()->extoMem.pc << std::endl;
                     break;
                 case MEMToWB_loc:
                     printf("Injection in MemToWB\n");
                     injStatus = injectFault_MEMToWB(sim.getCore(), injectionBitLocations, faultModel);
+                    std::cout << "Instr. at inj cycle: " << printDecodedInstrRISCV(sim.getCore()->memtoWB.instruction) << std::endl;
+                    std::cout << "PC at inj cycle: " << sim.getCore()->memtoWB.pc << std::endl;
                     break;
                 case PC_loc:
                     printf("Injection in PC\n");

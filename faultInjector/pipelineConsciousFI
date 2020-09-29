@@ -9,7 +9,7 @@ import FIRegInfo as ri  #register informations and useful functions
 
 #nBitPerInj = 5
 
-PartialResult = collections.namedtuple('PartialResult', ['endType', 'cycle', 'runNumber', 'execCyclesDiff'])
+PartialResult = collections.namedtuple('PartialResult', ['endType', 'cycle', 'runNumber', 'execCyclesDiff', 'injInstr', 'injPC'])
 
 ################################################################################
 #               Injection support
@@ -74,53 +74,6 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosit
     else:  #selected region is a pipeline stage's combinational logic
         bitPositions = ri.patternToBitPositions(ri.getPattern(place, patterns))   #select a pattern to inject
 
-    '''
-    place, bit = ri.getUniformRandomBit()
-    bitPositions = [bit]
-    '''
-    '''
-    #select a zone to inject in
-    place = ri.selectRegion()
-
-    if place=='sequential': #choose a random FF and flip it
-        #choose a register
-        place = ri.selectRegister() #only place where the PC can be hit
-        #select a random FF inside
-        bitPositions = ri.getrandomBitsinRegister(place, 1)
-
-    elif place == 'comb_other': #inject in one of the core ctrl FFs
-        place = 'CoreCtrl'
-        bitPositions = ri.getrandomBitsinRegister(place, 1)
-
-    elif place == 'WriteBack':   #inject in the register file
-        #see faultInjection.md for further details on the fault model
-        #select a random register (can be the one selected in the WB stage)
-        place = ri.selectRFRegister()
-        #fill it with a random number of errors
-        #bitPositions = ri.getrandomBitsinRegister(place, random.randint(1,31))
-        bitPositions = ri.getrandomBitsinRegister(place, 1)
-
-    else:  #selected region is a pipeline stage's combinational logic
-        bitPositions = ri.patternToBitPositions(ri.getPattern(place, patterns))   #select a pattern to inject
-    '''
-
-    '''
-    else:
-        bitPositions = ri.getrandomBitsinRegister(place, 1)
-
-
-    else:  #selected region is a pipeline stage's combinational logic
-        bitPositions = ri.patternToBitPositions(ri.getPattern(place, patterns))   #select a pattern to inject
-
-    else:
-        nBitPerInj = len(ri.getPattern(place, patterns))   #select a pattern to inject, get it's number of erronous bits
-        bitPositions = ri.getrandomBitsinRegister(place, nBitPerInj)
-
-    #only inject 1 bit if a pipeline stage comb logic is hit
-    else:
-        bitPositions = ri.getrandomBitsinRegister(place, nBitPerInj)
-    '''
-
 
     if verbosity > 0:
         print("Injection cycle : " + str(injectionCycle) + ", place : " + place + ", bitPositions : " + ' ' + '"' + ' '.join(map(str, bitPositions)) + '"')
@@ -132,6 +85,10 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosit
     endType = re.findall('EndType : (.*)', runStdOut)
     #capture the number of executed cycles
     execCycles = re.findall('Successfully executed .* in (.*) cycles', runStdOut)
+    #capture the instruction that was concerned by the injection
+    injInstr = re.findall('Instr. at inj cycle: (.*)', runStdOut)
+    #capture the pc associated to the corrupted instruction
+    injPC = re.findall('PC at inj cycle: (.*)', runStdOut)
 
     # print(execCycles)
     if (endType[0] == 'Hang') or (endType[0] == 'Crash'):
@@ -145,12 +102,9 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosit
     #if the workload execution terminated without a crash or a hang
     if endType[0] == 'Normal':
         #check the output and the memory dump against the golden sample
-        filecmp.clear_cache()   #really needed ?
+        filecmp.clear_cache()
         inISMSpace = not filecmp.cmp('/tmp/goldenSampleMemory', '/tmp/injectionRunMemory_'+str(runNumber), shallow=False)
         inAOMSpace = not filecmp.cmp('/tmp/goldenSampleStdout', '/tmp/injectionRunStdout_'+str(runNumber), shallow=False)
-
-        #print('ISM : ' + str(inISMSpace))
-        #print('AOM : ' + str(inAOMSpace))
 
         if (inISMSpace) and (inAOMSpace):
             endType[0] = 'ISM & AOM'
@@ -170,7 +124,7 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosit
         print("endType : " + endType[0])
 
     for bit in bitPositions:
-        nt = PartialResult(endType[0], injectionCycle, runNumber, cyclesDiff)
+        nt = PartialResult(endType[0], injectionCycle, runNumber, cyclesDiff, injInstr, injPC)
         resDict[place][bit] = nt
 
     if verbosity > 1:
@@ -339,11 +293,11 @@ def main():
             results_bitwise[place][bit]['nbInj'] += 1
             results_bitwise[place][bit]['cycles'].append(res[place][bit].cycle)
             results_bitwise[place][bit]['runNumber'].append(res[place][bit].runNumber)
-            results_bitwise[place][bit]['execCyclesDiff'].append(res[place][bit].execCyclesDiff)
+            #results_bitwise[place][bit]['injInstr'].append(res[place][bit].injInstr)
             results_bitwise[place][bit][res[place][bit].endType] += 1
             if firstBit:
                 #log per run
-                results_runwise.append([place, res[place][bit].endType, res[place][bit].execCyclesDiff])
+                results_runwise.append([place, res[place][bit].endType, res[place][bit].execCyclesDiff, res[place][bit].injInstr, res[place][bit].injPC])
                 firstBit = False
 
     showFinalStats_runwise(results_runwise)

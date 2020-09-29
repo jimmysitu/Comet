@@ -203,7 +203,7 @@
 
 #ifndef __CATAPULT
 #ifndef __NIOS
-//std::string printDecodedInstrRISCV(uint32 instruction);
+std::string printDecodedInstrRISCV(unsigned int instruction);
 extern const char* riscvNamesOP[8];
 extern const char* riscvNamesOPI[8];
 extern const char* riscvNamesOPW[8];
