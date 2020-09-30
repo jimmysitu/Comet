@@ -9,7 +9,7 @@ import FIRegInfo as ri  #register informations and useful functions
 
 #nBitPerInj = 5
 
-PartialResult = collections.namedtuple('PartialResult', ['endType', 'cycle', 'runNumber', 'execCyclesDiff', 'injInstr', 'injPC'])
+PartialResult = collections.namedtuple('PartialResult', ['endType', 'pattern', 'injectionCycle', 'runNumber', 'execCyclesDiff', 'injInstr', 'injPC'])
 
 ################################################################################
 #               Injection support
@@ -49,9 +49,10 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosit
     #pick a cycle
     injectionCycle = random.randint(0, referenceCycles)
 
-    #pdb.set_trace()
     #select a zone to inject in
     place = ri.selectRegion()
+    #populate patternToInject as empty
+    patternToInject = ''
 
     if place=='sequential': #choose a random FF and flip it
         #choose a register
@@ -72,14 +73,14 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosit
         bitPositions = ri.getrandomBitsinRegister(place, 1)
 
     else:  #selected region is a pipeline stage's combinational logic
-        bitPositions = ri.patternToBitPositions(ri.getPattern(place, patterns))   #select a pattern to inject
+        patternToInject = ri.getPattern(place, patterns)
+        bitPositions = ri.patternToBitPositions(patternToInject)   #select a pattern to inject
 
 
     if verbosity > 0:
         print("Injection cycle : " + str(injectionCycle) + ", place : " + place + ", bitPositions : " + ' ' + '"' + ' '.join(map(str, bitPositions)) + '"')
-    #run the simulator
     placeId = ri.getRegisterID(place)
-    #runStdOut = executeSimulation(benchmarkPath, ['-o', '/tmp/injectionRunStdout', '-D', '/tmp/injectionRunMemory', '-I', str(maxAllowedCycles), str(injectionCycle), str(placeId), '"' + ' '.join(map(str, bitPositions)) + '"'])
+    #run the simulator
     runStdOut = executeSimulation(benchmarkPath, ['-o', '/tmp/injectionRunStdout_'+str(runNumber), '-D', '/tmp/injectionRunMemory_'+str(runNumber), '-I', str(maxAllowedCycles), str(injectionCycle), str(placeId), ' '.join(map(str, bitPositions))])
     #capture the end type
     endType = re.findall('EndType : (.*)', runStdOut)
@@ -124,7 +125,7 @@ def doInjectionRun(runNumber, benchmarkPath, referenceCycles, patterns, verbosit
         print("endType : " + endType[0])
 
     for bit in bitPositions:
-        nt = PartialResult(endType[0], injectionCycle, runNumber, cyclesDiff, injInstr, injPC)
+        nt = PartialResult(endType[0], patternToInject, injectionCycle, runNumber, cyclesDiff, injInstr, injPC)
         resDict[place][bit] = nt
 
     if verbosity > 1:
@@ -285,19 +286,21 @@ def main():
     resultIterator = pool.imap_unordered(doInjectionPartial, range(nbInj))
 
     ##Merge the result dicts to the main one
+    #PartialResult = collections.namedtuple('PartialResult', ['endType', 'pattern', 'injectionCycle', 'runNumber', 'execCyclesDiff', 'injInstr', 'injPC'])
     results_runwise = []
     for res in resultIterator:
         place = list(res.keys())[0]
         firstBit = True
         for bit in res[place]:
-            results_bitwise[place][bit]['nbInj'] += 1
-            results_bitwise[place][bit]['cycles'].append(res[place][bit].cycle)
-            results_bitwise[place][bit]['runNumber'].append(res[place][bit].runNumber)
-            #results_bitwise[place][bit]['injInstr'].append(res[place][bit].injInstr)
-            results_bitwise[place][bit][res[place][bit].endType] += 1
+            #populate the bitwise database
+            # results_bitwise[place][bit]['nbInj'] += 1
+            # results_bitwise[place][bit]['injCycle'].append(res[place][bit].injectionCycle)
+            # results_bitwise[place][bit]['runNumber'].append(res[place][bit].runNumber)
+            # results_bitwise[place][bit]['injInstr'].append(res[place][bit].injInstr)
+            # results_bitwise[place][bit][res[place][bit].endType] += 1
+            #populate the runwise database
             if firstBit:
-                #log per run
-                results_runwise.append([place, res[place][bit].endType, res[place][bit].execCyclesDiff, res[place][bit].injInstr, res[place][bit].injPC])
+                results_runwise.append([place, res[place][bit].endType, res[place][bit].pattern, res[place][bit].injectionCycle, res[place][bit].runNumber, res[place][bit].execCyclesDiff, res[place][bit].injInstr, res[place][bit].injPC])
                 firstBit = False
 
     showFinalStats_runwise(results_runwise)
