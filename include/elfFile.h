@@ -8,12 +8,12 @@
 
 #include "elf.h"
 
-static const uint8_t ELF_MAGIC[] = {ELFMAG0, ELFMAG1, ELFMAG2, ELFMAG3};
+static constexpr uint8_t ELF_MAGIC[] = {ELFMAG0, ELFMAG1, ELFMAG2, ELFMAG3};
 
-static const size_t E_SHOFF     = 0x20;
-static const size_t E_SHENTSIZE = 0x2E;
-static const size_t E_SHNUM     = 0x30;
-static const size_t E_SHSTRNDX  = 0x32;
+static constexpr size_t E_SHOFF     = 0x20;
+static constexpr size_t E_SHENTSIZE = 0x2E;
+static constexpr size_t E_SHNUM     = 0x30;
+static constexpr size_t E_SHSTRNDX  = 0x32;
 
 template<unsigned N> constexpr size_t little_endian(const uint8_t *bytes){
     return (bytes[N-1] << 8 * (N-1)) | little_endian<N-1>(bytes);
