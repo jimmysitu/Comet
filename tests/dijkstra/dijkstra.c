@@ -116,9 +116,10 @@ void pluslongdespluscourts(Graphe* graphe)
     }
   }
   
-  int val = sommets[k + 1].nom;
+
+  int val = sommets[k + 1].nom[0];
   putchar(val&0xff);
-  val = sommets[0].nom;
+  val = sommets[0].nom[0];
   putchar(val&0xff);
   val = sommets[0].poids;
   putchar(val&0xff);
