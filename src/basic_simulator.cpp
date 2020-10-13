@@ -657,12 +657,15 @@ ac_int<32, true> BasicSimulator::doSbrk(ac_int<32, false> value)
 
 ac_int<32, true> BasicSimulator::doGettimeofday(ac_int<32, false> timeValPtr)
 {
+
+	printf("Call to get time of day !\n");
   struct timeval oneTimeVal;
   int result = gettimeofday(&oneTimeVal, NULL);
 
-  this->stw(timeValPtr, oneTimeVal.tv_sec);
-  this->stw(timeValPtr + 4, oneTimeVal.tv_usec);
+  this->stw(timeValPtr, this->core.cycle/800000000);
+  this->stw(timeValPtr + 4, (this->core.cycle/800)%1000000);
 
+printf("Values : %d and %d\n", this->core.cycle/800000000, (this->core.cycle/800)%1000000);
   return result;
 }
 
