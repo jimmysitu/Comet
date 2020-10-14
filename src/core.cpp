@@ -216,6 +216,7 @@ void execute(struct DCtoEx dctoEx, struct ExtoMem& extoMem)
   imm13[11] = dctoEx.instruction[7];
 
   ac_int<13, true> imm13_signed = 0;
+
   imm13_signed.set_slc(0, imm13);
 
   ac_int<5, false> shamt = dctoEx.instruction.slc<5>(20);
