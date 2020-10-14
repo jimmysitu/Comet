@@ -14,7 +14,7 @@ void fetch(ac_int<32, false> pc, struct FtoDC& ftoDC, ac_int<32, false> instruct
   ftoDC.we          = 1;
 }
 
-void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, ac_int<32, true> registerFile[32])
+void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, ac_int<32, true> registerFile[32], ac_int<64, false> cycle)
 {
   ac_int<32, false> pc          = ftoDC.pc;
   ac_int<32, false> instruction = ftoDC.instruction;
@@ -168,7 +168,12 @@ void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, ac_int<32, true> register
 
       break;
     case RISCV_SYSTEM:
-      // TODO
+      if (funct3 != 0) {
+        if (imm12_I == RISCV_CSR_MCYCLE)
+          dctoEx.lhs = cycle.slc<32>(0);
+        else if (imm12_I == RISCV_CSR_MCYCLEH)
+          dctoEx.lhs = cycle.slc<64>(0);
+      }
 
       break;
     default:
@@ -644,7 +649,7 @@ void doCycle(struct Core& core, // Core containing all values
     core.im->process(core.pc, WORD, LOAD, 0, nextInst, core.stallIm);
 
   fetch(core.pc, ftoDC_temp, nextInst);
-  decode(core.ftoDC, dctoEx_temp, core.regFile);
+  decode(core.ftoDC, dctoEx_temp, core.regFile, core.cycle);
   execute(core.dctoEx, extoMem_temp);
   memory(core.extoMem, memtoWB_temp);
   writeback(core.memtoWB, wbOut_temp);
