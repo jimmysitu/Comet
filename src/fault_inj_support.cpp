@@ -1,5 +1,6 @@
 #include "fault_inj_support.h"
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 
 
