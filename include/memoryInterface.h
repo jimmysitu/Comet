@@ -1,7 +1,8 @@
 #ifndef __MEMORY_INTERFACE_H__
 #define __MEMORY_INTERFACE_H__
 
-#include <ac_int.h>
+#include "tools.h"
+
 
 typedef enum { BYTE = 0, HALF, WORD, BYTE_U, HALF_U, LONG } memMask;
 
@@ -12,18 +13,18 @@ protected:
   bool wait;
 
 public:
-  virtual void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
-                       ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut) = 0;
+  virtual void process(HLS_UINT(32) addr, memMask mask, memOpType opType, HLS_UINT(INTERFACE_SIZE * 8) dataIn,
+                       HLS_UINT(INTERFACE_SIZE * 8)& dataOut, bool& waitOut) = 0;
 };
 
 template <unsigned int INTERFACE_SIZE> class IncompleteMemory : public MemoryInterface<INTERFACE_SIZE> {
 public:
-  ac_int<32, false>* data;
+  HLS_UINT(32)* data;
 
 public:
-  IncompleteMemory(ac_int<32, false>* arg) { data = arg; }
-  void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
-               ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut)
+  IncompleteMemory(HLS_UINT(32)* arg) { data = arg; }
+  void process(HLS_UINT(32) addr, memMask mask, memOpType opType, HLS_UINT(INTERFACE_SIZE * 8) dataIn,
+               HLS_UINT(INTERFACE_SIZE * 8)& dataOut, bool& waitOut)
   {
 
     // Incomplete memory only works for 32 bits
@@ -41,18 +42,18 @@ public:
 
 template <unsigned int INTERFACE_SIZE> class SimpleMemory : public MemoryInterface<INTERFACE_SIZE> {
 public:
-  ac_int<32, false>* data;
+  HLS_UINT(32)* data;
 
-  SimpleMemory(ac_int<32, false>* arg) { data = arg; }
-  void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
-               ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut)
+  SimpleMemory(HLS_UINT(32)* arg) { data = arg; }
+  void process(HLS_UINT(32) addr, memMask mask, memOpType opType, HLS_UINT(INTERFACE_SIZE * 8) dataIn,
+               HLS_UINT(INTERFACE_SIZE * 8)& dataOut, bool& waitOut)
   {
     // no latency, wait is always set to false
 
-    ac_int<32, true> temp;
-    ac_int<8, false> t8;
-    ac_int<1, true> bit;
-    ac_int<16, false> t16;
+    HLS_INT(32) temp;
+    HLS_UINT(8) t8;
+    HLS_INT(1) bit;
+    HLS_UINT(16) t16;
 
     switch (opType) {
       case STORE:
@@ -60,12 +61,12 @@ public:
           case BYTE_U:
           case BYTE:
             temp = data[addr >> 2];
-            data[addr >> 2].set_slc(((int)addr.slc<2>(0)) << 3, dataIn.template slc<8>(0));
+            data[addr >> 2].SET_SLC(((int)addr.SLC(2, 0)) << 3, dataIn.template SLC(8, 0));
             break;
           case HALF:
           case HALF_U:
             temp = data[addr >> 2];
-            data[addr >> 2].set_slc(addr[1] ? 16 : 0, dataIn.template slc<16>(0));
+            data[addr >> 2].SET_SLC(addr[1] ? 16 : 0, dataIn.template SLC(16, 0));
 
             break;
           case WORD:
@@ -74,36 +75,36 @@ public:
             break;
           case LONG:
             for (int oneWord = 0; oneWord < INTERFACE_SIZE / 4; oneWord++)
-              data[(addr >> 2) + oneWord] = dataIn.template slc<32>(32 * oneWord);
+              data[(addr >> 2) + oneWord] = dataIn.template SLC(32, (32 * oneWord));
             break;
         }
         break;
       case LOAD:
         switch (mask) {
           case BYTE:
-            t8  = data[addr >> 2].slc<8>(((int)addr.slc<2>(0)) << 3);
-            bit = t8.slc<1>(7);
-            dataOut.set_slc(0, t8);
-            dataOut.set_slc(8, (ac_int<24, true>)bit);
+            t8  = data[addr >> 2].SLC(8, (((int)addr.SLC(2, 0)) << 3));
+            bit = t8.SLC(1, 7);
+            dataOut.SET_SLC(0, t8);
+            dataOut.SET_SLC(8, (HLS_INT(24))bit);
             break;
           case HALF:
-            t16 = data[addr >> 2].slc<16>(addr[1] ? 16 : 0);
-            bit = t16.slc<1>(15);
-            dataOut.set_slc(0, t16);
-            dataOut.set_slc(16, (ac_int<16, true>)bit);
+            t16 = data[addr >> 2].SLC(16, (addr[1] ? 16 : 0));
+            bit = t16.SLC(1, 15);
+            dataOut.SET_SLC(0, t16);
+            dataOut.SET_SLC(16, (HLS_INT(16))bit);
             break;
           case WORD:
             dataOut = data[addr >> 2];
             break;
           case LONG:
             for (int oneWord = 0; oneWord < INTERFACE_SIZE / 4; oneWord++)
-              dataOut.set_slc(32 * oneWord, data[(addr >> 2) + oneWord]);
+              dataOut.SET_SLC(32 * oneWord, data[(addr >> 2) + oneWord]);
             break;
           case BYTE_U:
-            dataOut = data[addr >> 2].slc<8>(((int)addr.slc<2>(0)) << 3) & 0xff;
+            dataOut = data[addr >> 2].SLC(8, (((int)addr.SLC(2, 0)) << 3)) & 0xff;
             break;
           case HALF_U:
-            dataOut = data[addr >> 2].slc<16>(addr[1] ? 16 : 0) & 0xffff;
+            dataOut = data[addr >> 2].SLC(16, (addr[1] ? 16 : 0)) & 0xffff;
             break;
         }
 
@@ -114,3 +115,4 @@ public:
 };
 
 #endif //__MEMORY_INTERFACE_H__
+

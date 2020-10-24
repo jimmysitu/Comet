@@ -1,7 +1,7 @@
 #ifndef __CORE_H__
 #define __CORE_H__
 
-#include <ac_int.h>
+#include "tools.h"
 #include <riscvISA.h>
 
 // all the possible memories
@@ -34,8 +34,8 @@ struct Core {
   // Interface size are configured with 4 bytes interface size (32 bits)
   MemoryInterface<4>*dm, *im;
 
-  ac_int<32, true> regFile[32];
-  ac_int<32, false> pc;
+  HLS_INT(32) regFile[32];
+  HLS_UINT(32) pc;
 
   // stall
   bool stallSignals[5] = {0, 0, 0, 0, 0};
@@ -55,3 +55,4 @@ struct Core {
 void doCycle(struct Core& core, bool globalStall);
 
 #endif // __CORE_H__
+

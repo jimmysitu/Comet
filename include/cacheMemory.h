@@ -10,7 +10,7 @@
 
 #include "logarithm.h"
 #include "memoryInterface.h"
-#include <ac_int.h>
+#include "tools.h"
 
 /************************************************************************
  * 	Following values are templates:
@@ -36,28 +36,28 @@ class CacheMemory : public MemoryInterface<INTERFACE_SIZE> {
 public:
   MemoryInterface<INTERFACE_SIZE>* nextLevel;
 
-  ac_int<TAG_SIZE + LINE_SIZE * 8, false> cacheMemory[SET_SIZE][ASSOCIATIVITY];
-  ac_int<40, false> age[SET_SIZE][ASSOCIATIVITY];
-  ac_int<1, false> dataValid[SET_SIZE][ASSOCIATIVITY];
+  HLS_UINT(TAG_SIZE + LINE_SIZE * 8) cacheMemory[SET_SIZE][ASSOCIATIVITY];
+  HLS_UINT(40) age[SET_SIZE][ASSOCIATIVITY];
+  HLS_UINT(1) dataValid[SET_SIZE][ASSOCIATIVITY];
 
-  ac_int<6, false> cacheState;                // Used for the internal state machine
-  ac_int<LOG_ASSOCIATIVITY, false> older = 0; // Set where the miss occurs
+  HLS_UINT(6) cacheState;                // Used for the internal state machine
+  HLS_UINT(LOG_ASSOCIATIVITY) older = 0; // Set where the miss occurs
 
   // Variables for next level access
-  ac_int<LINE_SIZE * 8 + TAG_SIZE, false> newVal, oldVal;
-  ac_int<32, false> nextLevelAddr;
+  HLS_UINT(LINE_SIZE * 8 + TAG_SIZE) newVal, oldVal;
+  HLS_UINT(32) nextLevelAddr;
   memOpType nextLevelOpType;
-  ac_int<INTERFACE_SIZE * 8, false> nextLevelDataIn;
-  ac_int<INTERFACE_SIZE * 8, false> nextLevelDataOut;
-  ac_int<40, false> cycle;
-  ac_int<LOG_ASSOCIATIVITY, false> setMiss;
+  HLS_UINT(INTERFACE_SIZE * 8) nextLevelDataIn;
+  HLS_UINT(INTERFACE_SIZE * 8) nextLevelDataOut;
+  HLS_UINT(40) cycle;
+  HLS_UINT(LOG_ASSOCIATIVITY) setMiss;
   bool isValid;
 
   bool wasStore = false;
-  ac_int<LOG_ASSOCIATIVITY, false> setStore;
-  ac_int<LOG_SET_SIZE, false> placeStore;
-  ac_int<LINE_SIZE * 8 + TAG_SIZE, false> valStore;
-  ac_int<INTERFACE_SIZE * 8, false> dataOutStore;
+  HLS_UINT(LOG_ASSOCIATIVITY) setStore;
+  HLS_UINT(LOG_SET_SIZE) placeStore;
+  HLS_UINT(LINE_SIZE * 8 + TAG_SIZE) valStore;
+  HLS_UINT(INTERFACE_SIZE * 8) dataOutStore;
 
   bool nextLevelWaitOut;
 
@@ -85,16 +85,16 @@ public:
     nextLevelOpType  = NONE;
   }
 
-  void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
-               ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut)
+  void process(HLS_UINT(32) addr, memMask mask, memOpType opType, HLS_UINT(INTERFACE_SIZE * 8) dataIn,
+               HLS_UINT(INTERFACE_SIZE * 8)& dataOut, bool& waitOut)
   {
 
     // bit size is the log(setSize)
-    ac_int<LOG_SET_SIZE, false> place = addr.slc<LOG_SET_SIZE>(LOG_LINE_SIZE);
+    HLS_UINT(LOG_SET_SIZE) place = addr.SLC(LOG_SET_SIZE, LOG_LINE_SIZE);
     // startAddress is log(lineSize) + log(setSize) + 2
-    ac_int<TAG_SIZE, false> tag = addr.slc<TAG_SIZE>(LOG_LINE_SIZE + LOG_SET_SIZE);
+    HLS_UINT(TAG_SIZE) tag = addr.SLC(TAG_SIZE, LOG_LINE_SIZE + LOG_SET_SIZE);
     // bitSize is log(lineSize), start address is 2(because of #bytes in a word)
-    ac_int<LOG_LINE_SIZE, false> offset = addr.slc<LOG_LINE_SIZE - 2>(2);
+    HLS_UINT(LOG_LINE_SIZE) offset = addr.SLC(LOG_LINE_SIZE - 2, 2);
 
     if (!nextLevelWaitOut) {
       cycle++;
@@ -110,28 +110,28 @@ public:
 
       } else if (opType != NONE) {
 
-        ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val1 = cacheMemory[place][0];
-        ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val2 = cacheMemory[place][1];
-        ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val3 = cacheMemory[place][2];
-        ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val4 = cacheMemory[place][3];
+        HLS_UINT(LINE_SIZE * 8 + TAG_SIZE) val1 = cacheMemory[place][0];
+        HLS_UINT(LINE_SIZE * 8 + TAG_SIZE) val2 = cacheMemory[place][1];
+        HLS_UINT(LINE_SIZE * 8 + TAG_SIZE) val3 = cacheMemory[place][2];
+        HLS_UINT(LINE_SIZE * 8 + TAG_SIZE) val4 = cacheMemory[place][3];
 
-        ac_int<1, false> valid1 = dataValid[place][0];
-        ac_int<1, false> valid2 = dataValid[place][1];
-        ac_int<1, false> valid3 = dataValid[place][2];
-        ac_int<1, false> valid4 = dataValid[place][3];
+        HLS_UINT(1) valid1 = dataValid[place][0];
+        HLS_UINT(1) valid2 = dataValid[place][1];
+        HLS_UINT(1) valid3 = dataValid[place][2];
+        HLS_UINT(1) valid4 = dataValid[place][3];
 
-        ac_int<16, false> age1 = age[place][0];
-        ac_int<16, false> age2 = age[place][1];
-        ac_int<16, false> age3 = age[place][2];
-        ac_int<16, false> age4 = age[place][3];
+        HLS_UINT(16) age1 = age[place][0];
+        HLS_UINT(16) age2 = age[place][1];
+        HLS_UINT(16) age3 = age[place][2];
+        HLS_UINT(16) age4 = age[place][3];
 
         if (cacheState == 0) {
           numberAccess++;
 
-          ac_int<TAG_SIZE, false> tag1 = val1.template slc<TAG_SIZE>(0);
-          ac_int<TAG_SIZE, false> tag2 = val2.template slc<TAG_SIZE>(0);
-          ac_int<TAG_SIZE, false> tag3 = val3.template slc<TAG_SIZE>(0);
-          ac_int<TAG_SIZE, false> tag4 = val4.template slc<TAG_SIZE>(0);
+          HLS_UINT(TAG_SIZE) tag1 = val1.template SLC(TAG_SIZE, 0);
+          HLS_UINT(TAG_SIZE) tag2 = val2.template SLC(TAG_SIZE, 0);
+          HLS_UINT(TAG_SIZE) tag3 = val3.template SLC(TAG_SIZE, 0);
+          HLS_UINT(TAG_SIZE) tag4 = val4.template SLC(TAG_SIZE, 0);
 
           bool hit1 = (tag1 == tag) && valid1;
           bool hit2 = (tag2 == tag) && valid2;
@@ -139,60 +139,60 @@ public:
           bool hit4 = (tag4 == tag) && valid4;
           bool hit  = hit1 | hit2 | hit3 | hit4;
 
-          ac_int<LOG_ASSOCIATIVITY, false> set = 0;
-          ac_int<LINE_SIZE * 8, false> selectedValue;
-          ac_int<TAG_SIZE, false> tag;
+          HLS_UINT(LOG_ASSOCIATIVITY) set = 0;
+          HLS_UINT(LINE_SIZE * 8) selectedValue;
+          HLS_UINT(TAG_SIZE) tag;
 
           if (hit1) {
-            selectedValue = val1.template slc<LINE_SIZE * 8>(TAG_SIZE);
+            selectedValue = val1.template SLC(LINE_SIZE * 8, TAG_SIZE);
             tag           = tag1;
             set           = 0;
           }
 
           if (hit2) {
-            selectedValue = val2.template slc<LINE_SIZE * 8>(TAG_SIZE);
+            selectedValue = val2.template SLC(LINE_SIZE * 8, TAG_SIZE);
             tag           = tag2;
             set           = 1;
           }
 
           if (hit3) {
-            selectedValue = val3.template slc<LINE_SIZE * 8>(TAG_SIZE);
+            selectedValue = val3.template SLC(LINE_SIZE * 8, TAG_SIZE);
             tag           = tag3;
             set           = 2;
           }
 
           if (hit4) {
-            selectedValue = val4.template slc<LINE_SIZE * 8>(TAG_SIZE);
+            selectedValue = val4.template SLC(LINE_SIZE * 8, TAG_SIZE);
             tag           = tag4;
             set           = 3;
           }
 
-          ac_int<8, true> signedByte;
-          ac_int<16, true> signedHalf;
-          ac_int<32, true> signedWord;
+          HLS_INT(8) signedByte;
+          HLS_INT(16) signedHalf;
+          HLS_INT(32) signedWord;
 
           if (hit) {
-            ac_int<LINE_SIZE * 8 + TAG_SIZE, false> localValStore = 0;
-            localValStore.set_slc(TAG_SIZE, selectedValue);
-            localValStore.set_slc(0, tag);
+            HLS_UINT(LINE_SIZE * 8 + TAG_SIZE) localValStore = 0;
+            localValStore.SET_SLC(TAG_SIZE, selectedValue);
+            localValStore.SET_SLC(0, tag);
 
             // First we handle the store
             if (opType == STORE) {
               switch (mask) {
                 case BYTE:
                 case BYTE_U:
-                  localValStore.set_slc((((int)addr.slc<2>(0)) << 3) + TAG_SIZE + 4 * 8 * offset,
-                                        dataIn.template slc<8>(0));
+                  localValStore.SET_SLC((((int)addr.SLC(2, 0)) << 3) + TAG_SIZE + 4 * 8 * offset,
+                                        dataIn.template SLC(8, 0));
                   break;
                 case HALF:
                 case HALF_U:
-                  localValStore.set_slc((addr[1] ? 16 : 0) + TAG_SIZE + 4 * 8 * offset, dataIn.template slc<16>(0));
+                  localValStore.SET_SLC((addr[1] ? 16 : 0) + TAG_SIZE + 4 * 8 * offset, dataIn.template SLC(16, 0));
                   break;
                 case WORD:
-                  localValStore.set_slc(TAG_SIZE + 4 * 8 * offset, dataIn.template slc<32>(0));
+                  localValStore.SET_SLC(TAG_SIZE + 4 * 8 * offset, dataIn.template SLC(32, 0));
                   break;
                 case LONG:
-                  localValStore.set_slc(TAG_SIZE + 4 * 8 * offset, dataIn);
+                  localValStore.SET_SLC(TAG_SIZE + 4 * 8 * offset, dataIn);
                   break;
               }
 
@@ -204,30 +204,30 @@ public:
             } else {
               switch (mask) {
                 case BYTE:
-                  signedByte = selectedValue.template slc<8>((((int)addr.slc<2>(0)) << 3) + 4 * 8 * offset);
+                  signedByte = selectedValue.template SLC(8, (((int)addr.SLC(2, 0)) << 3) + 4 * 8 * offset);
                   signedWord = signedByte;
-                  dataOut.set_slc(0, signedWord);
+                  dataOut.SET_SLC(0, signedWord);
                   break;
                 case HALF:
-                  signedHalf = selectedValue.template slc<16>((addr[1] ? 16 : 0) + 4 * 8 * offset);
+                  signedHalf = selectedValue.template SLC(16, (addr[1] ? 16 : 0) + 4 * 8 * offset);
                   signedWord = signedHalf;
-                  dataOut.set_slc(0, signedWord);
+                  dataOut.SET_SLC(0, signedWord);
                   break;
                 case WORD:
-                  dataOut = selectedValue.template slc<32>(4 * 8 * offset);
+                  dataOut = selectedValue.template SLC(32, 4 * 8 * offset);
                   break;
                 case BYTE_U:
-                  dataOut = selectedValue.template slc<8>((((int)addr.slc<2>(0)) << 3) + 4 * 8 * offset) & 0xff;
+                  dataOut = selectedValue.template SLC(8, (((int)addr.SLC(2, 0)) << 3) + 4 * 8 * offset) & 0xff;
                   break;
                 case HALF_U:
-                  dataOut = selectedValue.template slc<16>((addr[1] ? 16 : 0) + 4 * 8 * offset) & 0xffff;
+                  dataOut = selectedValue.template SLC(16, (addr[1] ? 16 : 0) + 4 * 8 * offset) & 0xffff;
                   break;
                 case LONG:
-                  dataOut = selectedValue.template slc<INTERFACE_SIZE * 8>(4 * 8 * offset);
+                  dataOut = selectedValue.template SLC(INTERFACE_SIZE * 8, 4 * 8 * offset);
                   break;
               }
 
-              // printf("Hit read %x at %x\n", (unsigned int)dataOut.slc<32>(0), (unsigned int)addr);
+              // printf("Hit read %x at %x\n", (unsigned int)dataOut.SLC(32, 0), (unsigned int)addr);
             }
             // age[place][set] = cycle;
 
@@ -255,33 +255,33 @@ public:
                           : ((age2 < age1 && age2 < age3 && age2 < age4)
                                  ? valid2
                                  : ((age3 < age2 && age3 < age1 && age3 < age4) ? valid3 : valid4));
-            // printf("TAG is %x\n", oldVal.slc<TAG_SIZE>(0));
+            // printf("TAG is %x\n", oldVal.SLC(TAG_SIZE, 0));
           }
 
-          ac_int<32, false> oldAddress = (((int)oldVal.template slc<TAG_SIZE>(0)) << (LOG_LINE_SIZE + LOG_SET_SIZE)) |
+          HLS_UINT(32) oldAddress = (((int)oldVal.template SLC(TAG_SIZE, 0)) << (LOG_LINE_SIZE + LOG_SET_SIZE)) |
                                          (((int)place) << LOG_LINE_SIZE);
           // First we write back the four memory values in upper level
 
           if (cacheState >= STATE_CACHE_LAST_STORE) {
             // We store all values into next memory interface
             nextLevelAddr   = oldAddress + (((int)(cacheState - STATE_CACHE_LAST_STORE)) << LOG_INTERFACE_SIZE);
-            nextLevelDataIn = oldVal.template slc<INTERFACE_SIZE * 8>(
+            nextLevelDataIn = oldVal.template SLC(INTERFACE_SIZE * 8,
                 (cacheState - STATE_CACHE_LAST_STORE) * INTERFACE_SIZE * 8 + TAG_SIZE);
             nextLevelOpType = (isValid) ? STORE : NONE;
 
-            // printf("Writing back %x %x at %x\n", (unsigned int)nextLevelDataIn.slc<32>(0),
-            //        (unsigned int)nextLevelDataIn.slc<32>(32), (unsigned int)nextLevelAddr);
+            // printf("Writing back %x %x at %x\n", (unsigned int)nextLevelDataIn.SLC(32, 0),
+            //        (unsigned int)nextLevelDataIn.SLC(32, 32), (unsigned int)nextLevelAddr);
 
           } else if (cacheState >= STATE_CACHE_LAST_LOAD) {
             // Then we read values from next memory level
             if (cacheState != STATE_CACHE_FIRST_LOAD) {
-              newVal.set_slc(((unsigned int)(cacheState - STATE_CACHE_LAST_LOAD)) * INTERFACE_SIZE * 8 + TAG_SIZE,
+              newVal.SET_SLC(((unsigned int)(cacheState - STATE_CACHE_LAST_LOAD)) * INTERFACE_SIZE * 8 + TAG_SIZE,
                              nextLevelDataOut); // at addr +1
             }
 
             if (cacheState != STATE_CACHE_LAST_LOAD) {
               // We initiate the load at the address determined by next cache state
-              nextLevelAddr = (((int)addr.slc<32 - LOG_LINE_SIZE>(LOG_LINE_SIZE)) << LOG_LINE_SIZE) +
+              nextLevelAddr = (((int)addr.SLC(32 - LOG_LINE_SIZE, LOG_LINE_SIZE)) << LOG_LINE_SIZE) +
                               ((cacheState - STATE_CACHE_LAST_LOAD - 1) << LOG_INTERFACE_SIZE);
               nextLevelOpType = LOAD;
             }
@@ -294,17 +294,17 @@ public:
               switch (mask) {
                 case BYTE:
                 case BYTE_U:
-                  newVal.set_slc((((int)addr.slc<2>(0)) << 3) + TAG_SIZE + 4 * 8 * offset, dataIn.template slc<8>(0));
+                  newVal.SET_SLC((((int)addr.SLC(2, 0)) << 3) + TAG_SIZE + 4 * 8 * offset, dataIn.template SLC(8, 0));
                   break;
                 case HALF:
                 case HALF_U:
-                  newVal.set_slc((addr[1] ? 16 : 0) + TAG_SIZE + 4 * 8 * offset, dataIn.template slc<16>(0));
+                  newVal.SET_SLC((addr[1] ? 16 : 0) + TAG_SIZE + 4 * 8 * offset, dataIn.template SLC(16, 0));
                   break;
                 case WORD:
-                  newVal.set_slc(TAG_SIZE + 4 * 8 * offset, dataIn.template slc<32>(0));
+                  newVal.SET_SLC(TAG_SIZE + 4 * 8 * offset, dataIn.template SLC(32, 0));
                   break;
                 case LONG:
-                  newVal.set_slc(TAG_SIZE + 4 * 8 * offset, dataIn);
+                  newVal.SET_SLC(TAG_SIZE + 4 * 8 * offset, dataIn);
                   break;
               }
             }
@@ -318,35 +318,35 @@ public:
             // age[place][setMiss] = cycle;
             nextLevelOpType = NONE;
 
-            ac_int<8, true> signedByte;
-            ac_int<16, true> signedHalf;
-            ac_int<32, true> signedWord;
+            HLS_INT(8) signedByte;
+            HLS_INT(16) signedHalf;
+            HLS_INT(32) signedWord;
 
             switch (mask) {
               case BYTE:
-                signedByte = newVal.template slc<8>((((int)addr.slc<2>(0)) << 3) + 4 * 8 * offset + TAG_SIZE);
+                signedByte = newVal.template SLC(8, (((int)addr.SLC(2, 0)) << 3) + 4 * 8 * offset + TAG_SIZE);
                 signedWord = signedByte;
-                dataOut.set_slc(0, signedWord);
+                dataOut.SET_SLC(0, signedWord);
                 break;
               case HALF:
-                signedHalf = newVal.template slc<16>((addr[1] ? 16 : 0) + 4 * 8 * offset + TAG_SIZE);
+                signedHalf = newVal.template SLC(16, (addr[1] ? 16 : 0) + 4 * 8 * offset + TAG_SIZE);
                 signedWord = signedHalf;
-                dataOut.set_slc(0, signedWord);
+                dataOut.SET_SLC(0, signedWord);
                 break;
               case WORD:
-                dataOut = newVal.template slc<32>(4 * 8 * offset + TAG_SIZE);
+                dataOut = newVal.template SLC(32, 4 * 8 * offset + TAG_SIZE);
                 break;
               case BYTE_U:
-                dataOut = newVal.template slc<8>((((int)addr.slc<2>(0)) << 3) + 4 * 8 * offset + TAG_SIZE) & 0xff;
+                dataOut = newVal.template SLC(8, (((int)addr.SLC(2, 0)) << 3) + 4 * 8 * offset + TAG_SIZE) & 0xff;
                 break;
               case HALF_U:
-                dataOut = newVal.template slc<16>((addr[1] ? 16 : 0) + 4 * 8 * offset + TAG_SIZE) & 0xffff;
+                dataOut = newVal.template SLC(16, (addr[1] ? 16 : 0) + 4 * 8 * offset + TAG_SIZE) & 0xffff;
                 break;
               case LONG:
-                dataOut = newVal.template slc<INTERFACE_SIZE * 8>(4 * 8 * offset);
+                dataOut = newVal.template SLC(INTERFACE_SIZE * 8, 4 * 8 * offset);
                 break;
             }
-            // printf("After Miss read %x at %x\n", (unsigned int)dataOut.slc<32>(0), (unsigned int)addr);
+            // printf("After Miss read %x at %x\n", (unsigned int)dataOut.SLC(32, 0), (unsigned int)addr);
 
             dataOutStore = dataOut;
           }
@@ -360,3 +360,4 @@ public:
 };
 
 #endif /* INCLUDE_CACHEMEMORY_H_ */
+

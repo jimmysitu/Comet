@@ -18,8 +18,8 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   char* coreAsChar = (char*)&core;
   memset(coreAsChar, 0, sizeof(Core));
 
-  im = new ac_int<32, false>[DRAM_SIZE >> 2];
-  dm = new ac_int<32, false>[DRAM_SIZE >> 2];
+  im = new HLS_UINT(32)[DRAM_SIZE >> 2];
+  dm = new HLS_UINT(32)[DRAM_SIZE >> 2];
 
   // core.im = new SimpleMemory<4>(im);
   // core.dm = new SimpleMemory<4>(dm);
@@ -49,7 +49,7 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
       unsigned char* sectionContent = section->getSectionCode();
       for (unsigned byteNumber = 0; byteNumber < section->size; byteNumber++)
         this->stb(section->address + byteNumber, sectionContent[byteNumber]);
-     
+
       // We update the size of the heap
       if (section->address + section->size > heapAddress)
         heapAddress = section->address + section->size;
@@ -60,8 +60,8 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
       unsigned char* sectionContent = section->getSectionCode();
       for (unsigned int byteNumber = 0; byteNumber < section->size; byteNumber++) {
         // Write the instruction byte in Instruction Memory using Little Endian
-        im[(section->address + byteNumber) / 4].set_slc(((section->address + byteNumber) % 4) * 8,
-                                                           ac_int<8, false>(sectionContent[byteNumber]));
+        im[(section->address + byteNumber) / 4].SET_SLC(((section->address + byteNumber) % 4) * 8,
+                                                           HLS_UINT(8)(sectionContent[byteNumber]));
       }
       free(sectionContent);
     }
@@ -72,7 +72,7 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   unsigned char* sectionContent = elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode();
   for (auto const &symbol : *elfFile.symbols){
     const char* name = (const char*)&(sectionContent[symbol->name]);
-    if (strcmp(name, "_start") == 0) 
+    if (strcmp(name, "_start") == 0)
         core.pc = symbol->offset;
   }
   free(sectionContent);
@@ -80,12 +80,12 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   //****************************************************************************
   // Adding command line arguments on the stack
   unsigned int argc = args.size();
- 
-  // TODO: stw fills the cache, maybe here we should only fill the main memory. (Davide)
-  //this->stw(STACK_INIT, argc);  
-  dm[STACK_INIT >> 2] = argc;  
 
-  ac_int<32, true> currentPlaceStrings = STACK_INIT + 4 + 4 * argc;
+  // TODO: stw fills the cache, maybe here we should only fill the main memory. (Davide)
+  //this->stw(STACK_INIT, argc);
+  dm[STACK_INIT >> 2] = argc;
+
+  HLS_INT(32) currentPlaceStrings = STACK_INIT + 4 + 4 * argc;
   for (unsigned oneArg = 0; oneArg < argc; oneArg++) {
     this->stw(STACK_INIT + 4 * oneArg + 4, currentPlaceStrings);
 
@@ -132,83 +132,83 @@ void BasicSimulator::printCycle()
 
 // Function for handling memory accesses
 
-void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
+void BasicSimulator::stb(HLS_UINT(32) addr, HLS_INT(8) value)
 {
-  ac_int<32, false> wordRes = 0;
+  HLS_UINT(32) wordRes = 0;
   bool stall                = true;
   while (stall)
     core.dm->process(addr, BYTE, STORE, value, wordRes, stall);
 }
 
-void BasicSimulator::sth(ac_int<32, false> addr, ac_int<16, true> value)
+void BasicSimulator::sth(HLS_UINT(32) addr, HLS_INT(16) value)
 {
-  this->stb(addr + 1, value.slc<8>(8));
-  this->stb(addr + 0, value.slc<8>(0));
+  this->stb(addr + 1, value.SLC(8, 8));
+  this->stb(addr + 0, value.SLC(8, 0));
 }
 
-void BasicSimulator::stw(ac_int<32, false> addr, ac_int<32, true> value)
+void BasicSimulator::stw(HLS_UINT(32) addr, HLS_INT(32) value)
 {
-  this->stb(addr + 3, value.slc<8>(24));
-  this->stb(addr + 2, value.slc<8>(16));
-  this->stb(addr + 1, value.slc<8>(8));
-  this->stb(addr + 0, value.slc<8>(0));
+  this->stb(addr + 3, value.SLC(8, 24));
+  this->stb(addr + 2, value.SLC(8, 16));
+  this->stb(addr + 1, value.SLC(8, 8));
+  this->stb(addr + 0, value.SLC(8, 0));
 }
 
-void BasicSimulator::std(ac_int<32, false> addr, ac_int<64, true> value)
+void BasicSimulator::std(HLS_UINT(32) addr, HLS_INT(64) value)
 {
-  this->stb(addr + 7, value.slc<8>(56));
-  this->stb(addr + 6, value.slc<8>(48));
-  this->stb(addr + 5, value.slc<8>(40));
-  this->stb(addr + 4, value.slc<8>(32));
-  this->stb(addr + 3, value.slc<8>(24));
-  this->stb(addr + 2, value.slc<8>(16));
-  this->stb(addr + 1, value.slc<8>(8));
-  this->stb(addr + 0, value.slc<8>(0));
+  this->stb(addr + 7, value.SLC(8, 56));
+  this->stb(addr + 6, value.SLC(8, 48));
+  this->stb(addr + 5, value.SLC(8, 40));
+  this->stb(addr + 4, value.SLC(8, 32));
+  this->stb(addr + 3, value.SLC(8, 24));
+  this->stb(addr + 2, value.SLC(8, 16));
+  this->stb(addr + 1, value.SLC(8, 8));
+  this->stb(addr + 0, value.SLC(8, 0));
 }
 
-ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
+HLS_INT(8) BasicSimulator::ldb(HLS_UINT(32) addr)
 {
-  ac_int<8, true> result;
-  result                    = dm[addr >> 2].slc<8>(((int)addr.slc<2>(0)) << 3);
-  ac_int<32, false> wordRes = 0;
+  HLS_INT(8) result;
+  result                    = dm[addr >> 2].SLC(8, ((int)addr.SLC(2, 0)) << 3);
+  HLS_UINT(32) wordRes = 0;
   bool stall                = true;
   while (stall)
     core.dm->process(addr, BYTE_U, LOAD, 0, wordRes, stall);
 
-  result = wordRes.slc<8>(0);
+  result = wordRes.SLC(8, 0);
   return result;
 }
 
 // Little endian version
-ac_int<16, true> BasicSimulator::ldh(ac_int<32, false> addr)
+HLS_INT(16) BasicSimulator::ldh(HLS_UINT(32) addr)
 {
-  ac_int<16, true> result = 0;
-  result.set_slc(8, this->ldb(addr + 1));
-  result.set_slc(0, this->ldb(addr));
+  HLS_INT(16) result = 0;
+  result.SET_SLC(8, this->ldb(addr + 1));
+  result.SET_SLC(0, this->ldb(addr));
   return result;
 }
 
-ac_int<32, true> BasicSimulator::ldw(ac_int<32, false> addr)
+HLS_INT(32) BasicSimulator::ldw(HLS_UINT(32) addr)
 {
-  ac_int<32, true> result = 0;
-  result.set_slc(24, this->ldb(addr + 3));
-  result.set_slc(16, this->ldb(addr + 2));
-  result.set_slc(8, this->ldb(addr + 1));
-  result.set_slc(0, this->ldb(addr));
+  HLS_INT(32) result = 0;
+  result.SET_SLC(24, this->ldb(addr + 3));
+  result.SET_SLC(16, this->ldb(addr + 2));
+  result.SET_SLC(8, this->ldb(addr + 1));
+  result.SET_SLC(0, this->ldb(addr));
   return result;
 }
 
-ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
+HLS_INT(32) BasicSimulator::ldd(HLS_UINT(32) addr)
 {
-  ac_int<32, true> result = 0;
-  result.set_slc(56, this->ldb(addr + 7));
-  result.set_slc(48, this->ldb(addr + 6));
-  result.set_slc(40, this->ldb(addr + 5));
-  result.set_slc(32, this->ldb(addr + 4));
-  result.set_slc(24, this->ldb(addr + 3));
-  result.set_slc(16, this->ldb(addr + 2));
-  result.set_slc(8, this->ldb(addr + 1));
-  result.set_slc(0, this->ldb(addr));
+  HLS_INT(32) result = 0;
+  result.SET_SLC(56, this->ldb(addr + 7));
+  result.SET_SLC(48, this->ldb(addr + 6));
+  result.SET_SLC(40, this->ldb(addr + 5));
+  result.SET_SLC(32, this->ldb(addr + 4));
+  result.SET_SLC(24, this->ldb(addr + 3));
+  result.SET_SLC(16, this->ldb(addr + 2));
+  result.SET_SLC(8, this->ldb(addr + 1));
+  result.SET_SLC(0, this->ldb(addr));
 
   return result;
 }
@@ -223,14 +223,14 @@ ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
 void BasicSimulator::solveSyscall()
 {
 
-  if ((core.extoMem.opCode == RISCV_SYSTEM) && core.extoMem.instruction.slc<12>(20) == 0 && !core.stallSignals[2] &&
+  if ((core.extoMem.opCode == RISCV_SYSTEM) && core.extoMem.instruction.SLC(12, 20) == 0 && !core.stallSignals[2] &&
       !core.stallIm && !core.stallDm) {
 
-    ac_int<32, true> syscallId = core.regFile[17];
-    ac_int<32, true> arg1      = core.regFile[10];
-    ac_int<32, true> arg2      = core.regFile[11];
-    ac_int<32, true> arg3      = core.regFile[12];
-    ac_int<32, true> arg4      = core.regFile[13];
+    HLS_INT(32) syscallId = core.regFile[17];
+    HLS_INT(32) arg1      = core.regFile[10];
+    HLS_INT(32) arg2      = core.regFile[11];
+    HLS_INT(32) arg3      = core.regFile[12];
+    HLS_INT(32) arg4      = core.regFile[13];
 
     if (core.memtoWB.useRd && core.memtoWB.we && !core.stallSignals[3]) {
       if (core.memtoWB.rd == 10)
@@ -245,7 +245,7 @@ void BasicSimulator::solveSyscall()
         syscallId = core.memtoWB.result;
     }
 
-    ac_int<32, true> result = 0;
+    HLS_INT(32) result = 0;
 
     switch (syscallId) {
       case SYS_exit:
@@ -432,10 +432,10 @@ void BasicSimulator::solveSyscall()
   }
 }
 
-ac_int<32, true> BasicSimulator::doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
+HLS_INT(32) BasicSimulator::doRead(HLS_UINT(32) file, HLS_UINT(32) bufferAddr, HLS_UINT(32) size)
 {
   char* localBuffer = new char[size.to_int()];
-  ac_int<32, true> result;
+  HLS_INT(32) result;
 
   if (file == 0 && inputFile)
     result = read(inputFile->_fileno, localBuffer, size);
@@ -450,14 +450,14 @@ ac_int<32, true> BasicSimulator::doRead(ac_int<32, false> file, ac_int<32, false
   return result;
 }
 
-ac_int<32, true> BasicSimulator::doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
+HLS_INT(32) BasicSimulator::doWrite(HLS_UINT(32) file, HLS_UINT(32) bufferAddr, HLS_UINT(32) size)
 {
   char* localBuffer = new char[size.to_int()];
 
   for (int i = 0; i < size; i++)
     localBuffer[i] = this->ldb(bufferAddr + i);
 
-  ac_int<32, true> result = 0;
+  HLS_INT(32) result = 0;
   if (file == 1 && outputFile) // 3 is the first available file descriptor
   {
     fflush(stdout);
@@ -473,9 +473,9 @@ ac_int<32, true> BasicSimulator::doWrite(ac_int<32, false> file, ac_int<32, fals
   return result;
 }
 
-ac_int<32, true> BasicSimulator::doFstat(ac_int<32, false> file, ac_int<32, false> stataddr)
+HLS_INT(32) BasicSimulator::doFstat(HLS_UINT(32) file, HLS_UINT(32) stataddr)
 {
-  ac_int<32, true> result = 0;
+  HLS_INT(32) result = 0;
   struct stat filestat    = {0};
 
   if (file != 1)
@@ -505,7 +505,7 @@ ac_int<32, true> BasicSimulator::doFstat(ac_int<32, false> file, ac_int<32, fals
   return result;
 }
 
-ac_int<32, true> BasicSimulator::doOpen(ac_int<32, false> path, ac_int<32, false> flags, ac_int<32, false> mode)
+HLS_INT(32) BasicSimulator::doOpen(HLS_UINT(32) path, HLS_UINT(32) flags, HLS_UINT(32) mode)
 {
   int oneStringElement = this->ldb(path);
   int index            = 0;
@@ -573,14 +573,14 @@ ac_int<32, true> BasicSimulator::doOpen(ac_int<32, false> path, ac_int<32, false
   return result;
 }
 
-ac_int<32, true> BasicSimulator::doOpenat(ac_int<32, false> dir, ac_int<32, false> path, ac_int<32, false> flags,
-                                          ac_int<32, false> mode)
+HLS_INT(32) BasicSimulator::doOpenat(HLS_UINT(32) dir, HLS_UINT(32) path, HLS_UINT(32) flags,
+                                          HLS_UINT(32) mode)
 {
   fprintf(stderr, "Syscall : SYS_openat not implemented yet...\n");
   exit(-1);
 }
 
-ac_int<32, true> BasicSimulator::doClose(ac_int<32, false> file)
+HLS_INT(32) BasicSimulator::doClose(HLS_UINT(32) file)
 {
   if (file > 2) // don't close simulator's stdin, stdout & stderr
   {
@@ -590,13 +590,13 @@ ac_int<32, true> BasicSimulator::doClose(ac_int<32, false> file)
   return 0;
 }
 
-ac_int<32, true> BasicSimulator::doLseek(ac_int<32, false> file, ac_int<32, false> ptr, ac_int<32, false> dir)
+HLS_INT(32) BasicSimulator::doLseek(HLS_UINT(32) file, HLS_UINT(32) ptr, HLS_UINT(32) dir)
 {
   int result = lseek(file, ptr, dir);
   return result;
 }
 
-ac_int<32, true> BasicSimulator::doStat(ac_int<32, false> filename, ac_int<32, false> stataddr)
+HLS_INT(32) BasicSimulator::doStat(HLS_UINT(32) filename, HLS_UINT(32) stataddr)
 {
   int oneStringElement = this->ldb(filename);
   int index            = 0;
@@ -640,9 +640,9 @@ ac_int<32, true> BasicSimulator::doStat(ac_int<32, false> filename, ac_int<32, f
   return result;
 }
 
-ac_int<32, true> BasicSimulator::doSbrk(ac_int<32, false> value)
+HLS_INT(32) BasicSimulator::doSbrk(HLS_UINT(32) value)
 {
-  ac_int<32, true> result;
+  HLS_INT(32) result;
   if (value == 0) {
     result = heapAddress;
   } else {
@@ -653,7 +653,7 @@ ac_int<32, true> BasicSimulator::doSbrk(ac_int<32, false> value)
   return result;
 }
 
-ac_int<32, true> BasicSimulator::doGettimeofday(ac_int<32, false> timeValPtr)
+HLS_INT(32) BasicSimulator::doGettimeofday(HLS_UINT(32) timeValPtr)
 {
   struct timeval oneTimeVal;
   int result = gettimeofday(&oneTimeVal, NULL);
@@ -664,7 +664,7 @@ ac_int<32, true> BasicSimulator::doGettimeofday(ac_int<32, false> timeValPtr)
   return result;
 }
 
-ac_int<32, true> BasicSimulator::doUnlink(ac_int<32, false> path)
+HLS_INT(32) BasicSimulator::doUnlink(HLS_UINT(32) path)
 {
   int oneStringElement = this->ldb(path);
   int index            = 0;

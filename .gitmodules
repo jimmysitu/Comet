@@ -1,0 +1,6 @@
+[submodule "include/ac_types"]
+	path = include/ac_types
+	url = https://github.com/hlslibs/ac_types.git
+[submodule "include/ap_types"]
+	path = include/ap_types
+	url = https://github.com/Xilinx/HLS_arbitrary_Precision_Types.git
