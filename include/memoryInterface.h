@@ -13,8 +13,13 @@ protected:
   bool wait;
 
 public:
+#ifdef __VIVADO__
+  void process(HLS_UINT(32) addr, memMask mask, memOpType opType, HLS_UINT(INTERFACE_SIZE * 8) dataIn,
+                       HLS_UINT(INTERFACE_SIZE * 8)& dataOut, bool& waitOut){}
+#else
   virtual void process(HLS_UINT(32) addr, memMask mask, memOpType opType, HLS_UINT(INTERFACE_SIZE * 8) dataIn,
                        HLS_UINT(INTERFACE_SIZE * 8)& dataOut, bool& waitOut) = 0;
+#endif
 };
 
 template <unsigned int INTERFACE_SIZE> class IncompleteMemory : public MemoryInterface<INTERFACE_SIZE> {
@@ -48,13 +53,14 @@ public:
   void process(HLS_UINT(32) addr, memMask mask, memOpType opType, HLS_UINT(INTERFACE_SIZE * 8) dataIn,
                HLS_UINT(INTERFACE_SIZE * 8)& dataOut, bool& waitOut)
   {
-    // no latency, wait is always set to false
 
     HLS_INT(32) temp;
     HLS_UINT(8) t8;
     HLS_INT(1) bit;
     HLS_UINT(16) t16;
 
+    // no latency, wait is always set to 0
+    waitOut = false;
     switch (opType) {
       case STORE:
         switch (mask) {
@@ -107,10 +113,11 @@ public:
             dataOut = data[addr >> 2].SLC(16, (addr[1] ? 16 : 0)) & 0xffff;
             break;
         }
-
         break;
+      default:
+        break;
+
     }
-    waitOut = false;
   }
 };
 

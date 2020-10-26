@@ -446,17 +446,19 @@ void branchUnit(HLS_UINT(32) nextPC_fetch, HLS_UINT(32) nextPC_decode, bool isBr
   }
 }
 
-void forwardUnit(HLS_UINT(5) decodeRs1, bool decodeUseRs1, HLS_UINT(5) decodeRs2, bool decodeUseRs2,
-                 HLS_UINT(5) decodeRs3, bool decodeUseRs3,
+void forwardUnit(
+        HLS_UINT(5) decodeRs1, bool decodeUseRs1,
+        HLS_UINT(5) decodeRs2, bool decodeUseRs2,
+        HLS_UINT(5) decodeRs3, bool decodeUseRs3,
 
-                 HLS_UINT(5) executeRd, bool executeUseRd, bool executeIsLongComputation,
+        HLS_UINT(5) executeRd, bool executeUseRd, bool executeIsLongComputation,
 
-                 HLS_UINT(5) memoryRd, bool memoryUseRd,
+        HLS_UINT(5) memoryRd, bool memoryUseRd,
 
-                 HLS_UINT(5) writebackRd, bool writebackUseRd,
+        HLS_UINT(5) writebackRd, bool writebackUseRd,
 
-                 bool stall[5], struct ForwardReg& forwardRegisters)
-{
+        HLS_UINT(1) stall[5],
+        struct ForwardReg &forwardRegisters){
 
   if (decodeUseRs1) {
     if (executeUseRd && decodeRs1 == executeRd) {
@@ -503,17 +505,17 @@ void forwardUnit(HLS_UINT(5) decodeRs1, bool decodeUseRs1, HLS_UINT(5) decodeRs2
 }
 
 void doCycle(struct Core& core, // Core containing all values
-             bool globalStall)
+             HLS_UINT(1) globalStall)
 {
-  bool localStall = globalStall;
+  HLS_UINT(1) localStall = globalStall;
 
   core.stallSignals[0] = 0;
   core.stallSignals[1] = 0;
   core.stallSignals[2] = 0;
   core.stallSignals[3] = 0;
   core.stallSignals[4] = 0;
-  core.stallIm         = false;
-  core.stallDm         = false;
+  core.stallIm         = 0;
+  core.stallDm         = 0;
 
   // declare temporary structs
   struct FtoDC ftoDC_temp;
@@ -566,10 +568,19 @@ void doCycle(struct Core& core, // Core containing all values
 
   // resolve stalls, forwards
   if (!localStall)
-    forwardUnit(dctoEx_temp.rs1, dctoEx_temp.useRs1, dctoEx_temp.rs2, dctoEx_temp.useRs2, dctoEx_temp.rs3,
-                dctoEx_temp.useRs3, extoMem_temp.rd, extoMem_temp.useRd, extoMem_temp.isLongInstruction,
-                memtoWB_temp.rd, memtoWB_temp.useRd, wbOut_temp.rd, wbOut_temp.useRd, core.stallSignals,
-                forwardRegisters);
+    forwardUnit(
+            dctoEx_temp.rs1, dctoEx_temp.useRs1,
+            dctoEx_temp.rs2, dctoEx_temp.useRs2,
+            dctoEx_temp.rs3, dctoEx_temp.useRs3,
+
+            extoMem_temp.rd, extoMem_temp.useRd, extoMem_temp.isLongInstruction,
+            memtoWB_temp.rd, memtoWB_temp.useRd,
+
+            wbOut_temp.rd, wbOut_temp.useRd,
+
+            core.stallSignals,
+            forwardRegisters
+    );
 
   if (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.stallIm) {
 
@@ -657,14 +668,17 @@ void doCycle(struct Core& core, // Core containing all values
   core.cycle++;
 }
 
-// void doCore(IncompleteMemory im, IncompleteMemory dm, bool globalStall)
-void doCore(bool globalStall, HLS_UINT(32) imData[1 << 24], HLS_UINT(32) dmData[1 << 24])
+void doCore(HLS_UINT(1) globalStall, HLS_UINT(32) imData[1 << 24], HLS_UINT(32) dmData[1 << 24])
 {
   Core core;
-  IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
-  IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
 
-  //    CacheMemory dmCache = CacheMemory(&dmInterface, false);
+#ifdef USE_CACHE
+  CacheMemory<4, 16, 64> imInterface = CacheMemory<4, 16, 64>(new IncompleteMemory<4>(imData), false);
+  CacheMemory<4, 16, 64> dmInterface = CacheMemory<4, 16, 64>(new IncompleteMemory<4>(dmData), true);
+#else
+  MEMORY_INTERFACE<4> imInterface = MEMORY_INTERFACE<4>(imData);
+  MEMORY_INTERFACE<4> dmInterface = MEMORY_INTERFACE<4>(dmData);
+#endif
 
   core.im = &imInterface;
   core.dm = &dmInterface;

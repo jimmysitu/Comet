@@ -12,6 +12,9 @@
 #define DRAM_SIZE ((size_t)1 << 26)
 #define STACK_INIT (DRAM_SIZE - 0x1000)
 
+#ifdef USE_CACHE
+#define MEMORY_INTERFACE CacheMemory
+#endif
 #ifndef MEMORY_INTERFACE
 #define MEMORY_INTERFACE SimpleMemory
 #endif
@@ -32,13 +35,21 @@ struct Core {
   MemtoWB memtoWB;
 
   // Interface size are configured with 4 bytes interface size (32 bits)
-  MemoryInterface<4>*dm, *im;
+#ifdef __VIVADO__
+#ifdef USE_CACHE
+  MEMORY_INTERFACE<4,16,64> *dm, *im;
+#else
+  MEMORY_INTERFACE<4> *dm, *im;
+#endif // USE_CACHE
+#else
+  MemoryInterface<4> *dm, *im;
+#endif
 
   HLS_INT(32) regFile[32];
   HLS_UINT(32) pc;
 
   // stall
-  bool stallSignals[5] = {0, 0, 0, 0, 0};
+  HLS_UINT(1) stallSignals[5] = {0, 0, 0, 0, 0};
   bool stallIm, stallDm;
   unsigned long cycle;
   /// Multicycle operation
@@ -52,7 +63,7 @@ struct Core {
   // modelsim
 };
 
-void doCycle(struct Core& core, bool globalStall);
+void doCycle(struct Core& core, HLS_UINT(1) globalStall);
 
 #endif // __CORE_H__
 

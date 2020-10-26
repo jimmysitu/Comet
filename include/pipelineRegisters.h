@@ -1,6 +1,7 @@
 #ifndef PIPELINE_REGISTERS_H_
 #define PIPELINE_REGISTERS_H_
 
+#include "tools.h"
 /******************************************************************************************
  * Definition of all pipeline registers
  *
@@ -8,17 +9,17 @@
  */
 
 struct ForwardReg {
-  bool forwardWBtoVal1;
-  bool forwardWBtoVal2;
-  bool forwardWBtoVal3;
+  HLS_UINT(1) forwardWBtoVal1;
+  HLS_UINT(1) forwardWBtoVal2;
+  HLS_UINT(1) forwardWBtoVal3;
 
-  bool forwardMemtoVal1;
-  bool forwardMemtoVal2;
-  bool forwardMemtoVal3;
+  HLS_UINT(1) forwardMemtoVal1;
+  HLS_UINT(1) forwardMemtoVal2;
+  HLS_UINT(1) forwardMemtoVal3;
 
-  bool forwardExtoVal1;
-  bool forwardExtoVal2;
-  bool forwardExtoVal3;
+  HLS_UINT(1) forwardExtoVal1;
+  HLS_UINT(1) forwardExtoVal2;
+  HLS_UINT(1) forwardExtoVal3;
 };
 
 struct FtoDC {

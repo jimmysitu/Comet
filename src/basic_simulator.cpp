@@ -21,11 +21,13 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   im = new HLS_UINT(32)[DRAM_SIZE >> 2];
   dm = new HLS_UINT(32)[DRAM_SIZE >> 2];
 
-  // core.im = new SimpleMemory<4>(im);
-  // core.dm = new SimpleMemory<4>(dm);
-
+#ifdef USE_CACHE
   core.im = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(im), false);
   core.dm = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(dm), false);
+#else
+  core.im = new SimpleMemory<4>(im);
+  core.dm = new SimpleMemory<4>(dm);
+#endif
 
   heapAddress = 0;
 
