@@ -10,16 +10,17 @@ add_files $WORKING_DIR/../src/core.cpp \
 open_solution -reset "default"
 set_part {xc7z020clg400-2}
 create_clock -period 10 -name default
+config_bind -effort high
+config_schedule -effort high -verbose
 
 # Directives *************************
 set_directive_interface -mode ap_none "doCore" globalStall
-set_directive_interface -mode bram "doCore" imData
-set_directive_interface -mode bram "doCore" dmData
+set_directive_interface -mode ap_memory -latency 1 "doCore" imData
+set_directive_interface -mode ap_memory -latency 1 "doCore" dmData
 
-set_directive_resource -core XPM_MEMORY -memory_style auto "doCore" core.regFile
+set_directive_resource -latency 1 "doCore" core.regFile
 
-set_directive_pipeline -II 1 "doCycle"
-set_directive_latency -min 4 -max 6 "doCycle"
+set_directive_pipeline -II 1 -rewind "doCycle"
 
 # Run C simulation
 #csim_design

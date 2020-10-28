@@ -13,7 +13,7 @@ void fetch(HLS_UINT(32) pc, struct FtoDC& ftoDC, HLS_UINT(32) instruction)
   ftoDC.we          = 1;
 }
 
-void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, HLS_INT(32) registerFile[32])
+void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, const HLS_INT(32) registerFile[32])
 {
   HLS_UINT(32) pc          = ftoDC.pc;
   HLS_UINT(32) instruction = ftoDC.instruction;
@@ -684,7 +684,7 @@ void doCore(HLS_UINT(1) globalStall, HLS_UINT(32) imData[1 << 24], HLS_UINT(32) 
   core.dm = &dmInterface;
   core.pc = 0;
 
-  while (1) {
+  MAIN_LOOP: while (1) {
     doCycle(core, globalStall);
   }
 }
