@@ -19,6 +19,10 @@ set_directive_interface -mode ap_memory -latency 1 "doCore" imData
 set_directive_interface -mode ap_memory -latency 1 "doCore" dmData
 
 set_directive_resource -latency 1 "doCore" core.regFile
+set_directive_dependence -variable core.regFile -direction WAR -type intra -dependent false "doCycle"
+set_directive_dependence -variable core.dctoEx.lhs -direction WAR -type intra -dependent false "doCycle"
+set_directive_dependence -variable core.dctoEx.rhs -direction WAR -type intra -dependent false "doCycle"
+set_directive_dependence -variable core.dctoEx.datac -direction WAR -type intra -dependent false "doCycle"
 
 set_directive_pipeline -II 1 -rewind "doCycle"
 
@@ -29,9 +33,10 @@ csynth_design
 # Run RTL verification
 #cosim_design
 # Create the IP package
-export_design -flow syn -format ip_catalog -rtl verilog \
+export_design -format ip_catalog -rtl verilog \
     -library "hsl" \
-    -vendor "jimmystone.cn" -version "0.1.0"
+    -vendor "jimmystone.cn" -version "0.1.0" \
+    -flow syn
 
 exit
 
