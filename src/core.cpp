@@ -414,6 +414,8 @@ void memory(struct ExtoMem extoMem, struct MemtoWB& memtoWB)
       memtoWB.byteEnable   = 0xf;
 
       break;
+    default:
+      break;
   }
 }
 
@@ -668,21 +670,26 @@ void doCycle(struct Core& core, // Core containing all values
   core.cycle++;
 }
 
+// Top level for HLS implement
 void doCore(HLS_UINT(1) globalStall, HLS_UINT(32) imData[1 << 24], HLS_UINT(32) dmData[1 << 24])
 {
   Core core;
 
 #ifdef USE_CACHE
-  CacheMemory<4, 16, 64> imInterface = CacheMemory<4, 16, 64>(new IncompleteMemory<4>(imData), false);
-  CacheMemory<4, 16, 64> dmInterface = CacheMemory<4, 16, 64>(new IncompleteMemory<4>(dmData), true);
+  IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
+  IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
+  CacheMemory<4, 16, 64> dcInterface = CacheMemory<4, 16, 64>(&imInterface, false);
+  CacheMemory<4, 16, 64> dmInterface = CacheMemory<4, 16, 64>(&dmInterface, true);
+  core.im = &icInterface;
+  core.dm = &dcInterface;
 #else
-  MEMORY_INTERFACE<4> imInterface = MEMORY_INTERFACE<4>(imData);
-  MEMORY_INTERFACE<4> dmInterface = MEMORY_INTERFACE<4>(dmData);
-#endif
-
+  IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
+  IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
   core.im = &imInterface;
   core.dm = &dmInterface;
-  core.pc = 0;
+#endif
+
+  core.pc = 0x0;
 
   MAIN_LOOP: while (1) {
     doCycle(core, globalStall);

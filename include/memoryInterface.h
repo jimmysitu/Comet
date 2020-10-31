@@ -54,7 +54,7 @@ public:
                HLS_UINT(INTERFACE_SIZE * 8)& dataOut, bool& waitOut)
   {
 
-    HLS_INT(32) temp;
+    //HLS_INT(32) temp;
     HLS_UINT(8) t8;
     HLS_INT(1) bit;
     HLS_UINT(16) t16;
@@ -66,22 +66,23 @@ public:
         switch (mask) {
           case BYTE_U:
           case BYTE:
-            temp = data[addr >> 2];
+            //temp = data[addr >> 2];
             data[addr >> 2].SET_SLC(((int)addr.SLC(2, 0)) << 3, dataIn.template SLC(8, 0));
             break;
           case HALF:
           case HALF_U:
-            temp = data[addr >> 2];
+            //temp = data[addr >> 2];
             data[addr >> 2].SET_SLC(addr[1] ? 16 : 0, dataIn.template SLC(16, 0));
-
             break;
           case WORD:
-            temp            = data[addr >> 2];
+            //temp = data[addr >> 2];
             data[addr >> 2] = dataIn;
             break;
           case LONG:
             for (int oneWord = 0; oneWord < INTERFACE_SIZE / 4; oneWord++)
               data[(addr >> 2) + oneWord] = dataIn.template SLC(32, (32 * oneWord));
+            break;
+          default:
             break;
         }
         break;
@@ -111,6 +112,8 @@ public:
             break;
           case HALF_U:
             dataOut = data[addr >> 2].SLC(16, (addr[1] ? 16 : 0)) & 0xffff;
+            break;
+          default:
             break;
         }
         break;
