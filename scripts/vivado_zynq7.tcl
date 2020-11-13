@@ -9,7 +9,7 @@ add_files $WORKING_DIR/../src/core.cpp \
 # Solution for SRAM interface *********************
 open_solution -reset "default"
 set_part {xc7z020clg400-2}
-create_clock -period 10 -name default
+create_clock -period 5 -name default
 config_bind -effort high
 config_schedule -effort high -verbose
 
@@ -23,11 +23,17 @@ set_directive_array_partition -dim 0 "doCore" core.regFile
 set_directive_pipeline -II 1 "doCycle"
 
 #FIXME: Try to pipeline manually, not work
+set_directive_latency -min 5 "doCore"
+set_directive_stream -depth 1 "fetch"   ftoDC
+set_directive_stream -depth 1 "decode"  dctoEx
+set_directive_stream -depth 1 "execute" extoMem
+set_directive_stream -depth 1 "memory"  memtoWB
 #set_directive_latency -min 1 "fetch"
 #set_directive_latency -min 1 "decode"
 #set_directive_latency -min 1 "execute"
 #set_directive_latency -min 1 "memory"
 #set_directive_latency -min 1 "writeback"
+
 
 # Run C simulation
 #csim_design
@@ -37,9 +43,10 @@ csynth_design
 #cosim_design
 # Create the IP package
 export_design -format ip_catalog -rtl verilog \
-    -library "hsl" \
+    -library "hls" \
     -vendor "jimmystone.cn" -version "0.1.0" \
-    -flow impl
+
+#    -flow impl
 
 ## Solution for AXI interface *********************
 #open_solution -reset "axi_interface"
